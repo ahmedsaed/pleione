@@ -1,5 +1,7 @@
+/* The ring, border, and fill snap to focus: animating them repaints the
+   element and its shadow on every frame, which a TV rasterizer cannot keep
+   up with. Transforms and opacity still animate. */
 [data-focusable] {
-  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   outline: none;
   cursor: pointer;
 }

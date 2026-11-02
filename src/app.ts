@@ -70,6 +70,7 @@ import type {
   PlaylistEntry,
 } from './types';
 import { getLocale, initLocale, localeDirection, resolveLocale, setLocale, t, tp } from './i18n';
+import { installBackdropArt } from './utils/backdrop-art';
 
 const log = createLogger('App');
 
@@ -182,6 +183,7 @@ class App {
     if (loadingTitle) loadingTitle.textContent = CONFIG.APP_NAME;
     initTheme();
     applyDirection(localeDirection());
+    installBackdropArt();
     this.views = {
       home: $('#view-home')!,
       channels: $('#view-channels')!,

@@ -30,6 +30,31 @@
 .home-glow-search { --backdrop-tint: var(--backdrop-tint-search); }
 .home-glow-settings { --backdrop-tint: var(--backdrop-tint-settings); }
 
+/* Painted once into images (css/main.css, src/utils/backdrop-art.ts). */
+html.backdrop-art .home-glow-live:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-glow-live) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art .home-glow-epg:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-glow-epg) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art .home-glow-movies:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-glow-movies) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art .home-glow-series:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-glow-series) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art .home-glow-search:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-glow-search) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art .home-glow-settings:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-glow-settings) 0 0 / 100% 100% no-repeat;
+}
+
 .home-view[data-tint="live"] .home-glow-live,
 .home-view[data-tint="epg"] .home-glow-epg,
 .home-view[data-tint="movies"] .home-glow-movies,
@@ -163,7 +188,10 @@
   border: none;
   border-radius: var(--card-radius);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  /* Only the lift animates, on the card's own layer: a TV rasterizes a
+     shadow or blur anew on every frame it animates. */
+  transition: transform 200ms ease;
+  will-change: transform;
 }
 
 /* The top sheen over every card's gradient. */

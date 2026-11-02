@@ -5,8 +5,11 @@ description: Stage and commit changes in this repo — tests scoped to the chang
 
 # Commit
 
-Only commit or push when the user asks. Commit **directly to `main`** — no
-feature branch, no PR.
+Only commit or push when the user asks. The default branch is `pleione`;
+never commit to it directly. Commit on a branch off `pleione` named
+`pleione-<topic>` (e.g. `pleione-readme`), and when the user asks for a PR,
+push it and open one against `pleione` with `gh pr create --base pleione`.
+If you are already on a `pleione-*` branch for the same work, commit there.
 
 ## 1. Test what the change touches
 

@@ -106,7 +106,7 @@ and `tsc` strictness are real gates.
 `.github/workflows/build.yml` runs typecheck (app, `service`, **and**
 `benchmarks`), `npm run lint` and the compat gate, `vitest run`, the esbuild
 bundle, `service:smoke:matrix`, and packages the IPK, while the E2E suite
-runs in both projects across six parallel shards. Pushes to `main` and every
+runs in both projects across six parallel shards. Pushes to `pleione` and every
 PR build; tagged `v*` pushes publish a GitHub release with the `.ipk` once
 the build and every shard pass.
 
@@ -266,5 +266,6 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
   assert each event in a test.
 - **Done** means `npm run typecheck`, `npm run lint`, and the relevant tests
   pass. Then run the `feature-review` skill for any finished feature.
-- **Git:** commit directly to `main`, only when asked, via the `commit`
-  skill — scoped tests first, lines ≤ 72, no trailers.
+- **Git:** commit only when asked, via the `commit` skill, on a
+  `pleione-<topic>` branch merged into `pleione` by PR — scoped tests
+  first, lines ≤ 72, no trailers.

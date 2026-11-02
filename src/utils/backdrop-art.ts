@@ -164,7 +164,7 @@ function draw(ctx: CanvasRenderingContext2D, layers: Gradient[], color: string, 
   }
 }
 
-const cache = new Map<string, string>();
+const cache = new Map<string, Promise<string | null>>();
 let probes: HTMLElement | null = null;
 let scheduled = false;
 
@@ -188,47 +188,66 @@ function probeRoot(): HTMLElement {
   return probes;
 }
 
-function imageFor(el: HTMLElement): string | null {
+// A blob: URL, not a data: URL: the custom properties holding them sit on
+// <html>, and tens of kilobytes of data: URL there tripled the TV's style
+// recalc time per key press.
+function toUrl(canvas: HTMLCanvasElement): Promise<string> {
+  if (typeof canvas.toBlob !== 'function' || typeof URL.createObjectURL !== 'function') {
+    return Promise.resolve(canvas.toDataURL('image/png'));
+  }
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob ? URL.createObjectURL(blob) : canvas.toDataURL('image/png'));
+    }, 'image/png');
+  });
+}
+
+function imageFor(el: HTMLElement): Promise<string | null> {
   const cs = getComputedStyle(el);
   const w = el.offsetWidth;
   const h = el.offsetHeight;
-  if (!w || !h) return null;
+  if (!w || !h) return Promise.resolve(null);
   const key = `${w}x${h}|${cs.backgroundColor}|${cs.backgroundImage}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const layers = parseBackgroundImage(cs.backgroundImage);
-  if (!layers || layers.length === 0) return null;
+  if (!layers || layers.length === 0) return Promise.resolve(null);
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(w * SCALE));
   canvas.height = Math.max(1, Math.round(h * SCALE));
   const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
+  if (!ctx) return Promise.resolve(null);
   ctx.scale(SCALE, SCALE);
   draw(ctx, layers, cs.backgroundColor, w, h);
-  const url = canvas.toDataURL('image/png');
+  const url = toUrl(canvas);
   cache.set(key, url);
   return url;
 }
 
+let generation = 0;
+
 function paint(): void {
   const root = document.documentElement;
   const container = probeRoot();
-  let painted = 0;
-  for (const el of Array.from(container.children) as HTMLElement[]) {
-    const name = el.getAttribute('data-backdrop');
-    const glow = /home-glow-(\w+)/.exec(el.className)?.[1];
-    const prop = name ? `--backdrop-art-${name}` : `--backdrop-art-glow-${glow}`;
-    const url = imageFor(el);
-    const value = url ? `url("${url}")` : '';
-    // applyTheme() runs on every view change; an unchanged value costs no recalc.
-    if (root.style.getPropertyValue(prop) !== value) {
-      if (value) root.style.setProperty(prop, value);
-      else root.style.removeProperty(prop);
-    }
-    if (url) painted++;
-  }
-  // All or nothing: a partial set would leave a view without its backdrop.
-  root.classList.toggle(ROOT_CLASS, painted === container.children.length);
+  const probesNow = Array.from(container.children) as HTMLElement[];
+  const run = ++generation;
+  void Promise.all(probesNow.map(imageFor)).then((urls) => {
+    // A newer paint (another theme or size) supersedes this one.
+    if (run !== generation) return;
+    probesNow.forEach((el, i) => {
+      const name = el.getAttribute('data-backdrop');
+      const glow = /home-glow-(\w+)/.exec(el.className)?.[1];
+      const prop = name ? `--backdrop-art-${name}` : `--backdrop-art-glow-${glow}`;
+      const value = urls[i] ? `url("${urls[i]}")` : '';
+      // applyTheme() runs on every view change; an unchanged value costs no recalc.
+      if (root.style.getPropertyValue(prop) !== value) {
+        if (value) root.style.setProperty(prop, value);
+        else root.style.removeProperty(prop);
+      }
+    });
+    // All or nothing: a partial set would leave a view without its backdrop.
+    root.classList.toggle(ROOT_CLASS, urls.every(Boolean));
+  });
 }
 
 /** Repaint the backdrop images once the current task's style changes settle. */

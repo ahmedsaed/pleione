@@ -4,6 +4,9 @@ import { seedXtream } from './fixtures/xtream';
 // The backdrops and Home's glows draw from images painted once from their
 // gradients (src/utils/backdrop-art.ts), not from the gradients themselves.
 
+// A blob: URL where the engine can make one, else a PNG data: URL.
+const PAINTED = /^url\("(blob:|data:image\/png)/;
+
 const background = (page: Page, selector: string) =>
   page.locator(selector).first().evaluate((el) => getComputedStyle(el).backgroundImage);
 
@@ -13,12 +16,12 @@ test('every backdrop and Home glow draws from a painted image', async ({ page })
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('html')).toHaveClass(/backdrop-art/);
 
-  expect(await background(page, '#view-home')).toMatch(/^url\("data:image\/png/);
-  expect(await background(page, '#view-home .home-glow-live')).toMatch(/^url\("data:image\/png/);
+  expect(await background(page, '#view-home')).toMatch(PAINTED);
+  expect(await background(page, '#view-home .home-glow-live')).toMatch(PAINTED);
   // The probes keep the gradients the images come from.
   expect(await background(page, '.backdrop-art-probe[data-backdrop="home"]')).toMatch(/gradient/);
   for (const view of ['#view-channels', '#view-settings', '#view-movies', '#view-search']) {
-    expect(await background(page, view), view).toMatch(/^url\("data:image\/png/);
+    expect(await background(page, view), view).toMatch(PAINTED);
   }
 });
 
@@ -32,5 +35,5 @@ test('the images follow the theme', async ({ page }) => {
   await page.locator('[data-settings-target="appearance"]').click();
   await page.locator('.theme-swatch[data-theme-id="daylight"]').click();
   await expect.poll(() => background(page, '#view-settings')).not.toBe(dark);
-  await expect.poll(() => background(page, '#view-settings')).toMatch(/^url\("data:image\/png/);
+  await expect.poll(() => background(page, '#view-settings')).toMatch(PAINTED);
 });

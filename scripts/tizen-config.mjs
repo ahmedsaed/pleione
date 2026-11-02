@@ -1,7 +1,7 @@
 // The Samsung Tizen widget manifest (dist-tizen/config.xml), written by the
 // build. The package id is the app's permanent identity on Samsung TVs,
 // together with the author certificate: never change it once it ships.
-export const TIZEN_PACKAGE_ID = 'mjqZohRMl4';
+export const TIZEN_PACKAGE_ID = 'PleioneMrp';
 export const TIZEN_APP_ID = `${TIZEN_PACKAGE_ID}.Pleione`;
 
 const PRIVILEGES = [

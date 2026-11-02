@@ -26,7 +26,17 @@ if (platform !== 'webos' && platform !== 'tizen') {
   console.error(`Unknown --platform=${platform}; expected webos or tizen`);
   process.exit(1);
 }
-const OUT = platform === 'tizen' ? 'dist-tizen' : 'dist';
+// LG's Full HD TVs run apps on a 1280x720 plane and need their own package
+// (`"resolution": "1280x720"`). That build scales the whole 1920x1080 design
+// by 2/3 into dist-720/: every stylesheet length, the canvas, and every JS
+// length that goes through uiPx() (UI_BASE_SCALE).
+const isFhd = process.argv.includes('--resolution=720');
+if (isFhd && platform !== 'webos') {
+  console.error('--resolution=720 is the LG Full HD package; it needs --platform=webos');
+  process.exit(1);
+}
+const OUT = platform === 'tizen' ? 'dist-tizen' : isFhd ? 'dist-720' : 'dist';
+const UI_BASE_SCALE = isFhd ? 2 / 3 : 1;
 // Checked-in but regenerated on every build; never a source input.
 const GENERATED_STYLESHEET = 'legacy-webos-base.css';
 // Read version from package.json (single source of truth)
@@ -50,7 +60,7 @@ function interfaceSizes() {
 // Every non-default Interface size gets its own copy of each stylesheet in
 // css/ui-<size>/, with the px lengths already multiplied out, and every
 // stylesheet a mirrored right-to-left copy in css/rtl/ (and css/rtl/ui-<size>/).
-function transformStylesheets(outDir) {
+function transformStylesheets(outDir, baseScale) {
   const sizes = interfaceSizes();
   for (const size of sizes) {
     mkdirSync(`${outDir}/ui-${size}`, { recursive: true });
@@ -59,7 +69,10 @@ function transformStylesheets(outDir) {
   for (const file of readdirSync(outDir)) {
     if (!file.endsWith('.css')) continue;
     const path = `${outDir}/${file}`;
-    const css = scaleFontSizes(convertLegacyColorSyntax(readFileSync(path, 'utf8')));
+    const source = scaleFontSizes(convertLegacyColorSyntax(readFileSync(path, 'utf8')));
+    // The plane's own scale reaches the canvas and subtitle cues too, which
+    // an Interface size leaves alone.
+    const css = baseScale === 1 ? source : scaleLengths(source, baseScale, { canvas: true, cues: true });
     const rtl = mirrorStylesheet(css);
     writeFileSync(path, css);
     writeFileSync(`${outDir}/rtl/${file}`, rtl);
@@ -82,13 +95,19 @@ let outputIndexHtml = indexHtml.replace(
 if (outputIndexHtml === indexHtml) {
   throw new Error('Build could not find the preview library marker in index.html.');
 }
+if (isFhd) {
+  const viewport = '<meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">';
+  if (!outputIndexHtml.includes(viewport)) throw new Error('Build could not find the viewport meta in index.html.');
+  outputIndexHtml = outputIndexHtml.replace(viewport, viewport.replace('width=1920, height=1080', 'width=1280, height=720'));
+}
 if (platform === 'tizen') {
   // Samsung remotes have no pointer, so the app starts in key mode.
   outputIndexHtml = outputIndexHtml.replace('<html lang="en">', '<html lang="en" class="keyboard-nav">');
   writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version));
   cpSync('assets/icon130.png', `${OUT}/icon.png`);
 } else {
-  cpSync('appinfo.json', `${OUT}/appinfo.json`);
+  writeFileSync(`${OUT}/appinfo.json`, JSON.stringify(
+    isFhd ? { ...appinfo, resolution: '1280x720' } : appinfo, null, 2) + '\n');
   rmSync(`${OUT}/resources`, { recursive: true, force: true });
   cpSync('resources', `${OUT}/resources`, { recursive: true });
 }
@@ -97,12 +116,12 @@ writeFileSync(`${OUT}/index.html`, outputIndexHtml);
 const sourceStylesheets = linkedStylesheets(indexHtml, readdirSync('css'), GENERATED_STYLESHEET)
   .map((file) => readFileSync(`css/${file}`, 'utf8'));
 const generatedStylesheet = generateFlexGapFallback(sourceStylesheets);
-// The Tizen build can run beside the webOS one (two E2E servers), so only
-// the webOS build rewrites the checked-in copy.
-if (platform === 'webos') writeFileSync(`css/${GENERATED_STYLESHEET}`, generatedStylesheet);
+// The 1280x720 and Tizen builds can run beside the main one (E2E servers
+// start together), so only the main webOS build rewrites the checked-in copy.
+if (platform === 'webos' && !isFhd) writeFileSync(`css/${GENERATED_STYLESHEET}`, generatedStylesheet);
 cpSync('css', `${OUT}/css`, { recursive: true });
 writeFileSync(`${OUT}/css/${GENERATED_STYLESHEET}`, generatedStylesheet);
-transformStylesheets(`${OUT}/css`);
+transformStylesheets(`${OUT}/css`, UI_BASE_SCALE);
 if (platform === 'webos') {
   cpSync('assets/icon80.png', `${OUT}/icon.png`);
   cpSync('assets/icon130.png', `${OUT}/largeIcon.png`);
@@ -119,6 +138,7 @@ const define = {
   '__SERVICE_ID__': JSON.stringify(serviceId),
   '__ENABLE_PSEUDO_LOCALE__': JSON.stringify(isPreview),
   '__PLATFORM__': JSON.stringify(platform),
+  '__UI_BASE_SCALE__': JSON.stringify(UI_BASE_SCALE),
 };
 // Target Chromium 53 — the engine on webOS 4. This down-levels newer
 // syntax (`?.`, `??`, etc.) which would otherwise fail to parse on

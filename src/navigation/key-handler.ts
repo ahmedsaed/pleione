@@ -7,6 +7,7 @@ import { edgeScrollTrackAt, installEdgeScroll } from './edge-scroll';
 import { caretAtEdge, caretSideOf } from './caret-edge';
 import { logicalAction } from '../utils/direction';
 import { platform } from '../platform';
+import { uiPx } from '../utils/ui-scale';
 import type { Action, NumberEvent } from '../types';
 
 type ActionHandler = (action: Action, event?: NumberEvent) => void;
@@ -272,7 +273,7 @@ export const KeyHandler = {
     }, true);
     document.addEventListener('mousemove', (e: MouseEvent) => {
       if (pointerHold && Math.abs(e.clientX - pointerHold.x) + Math.abs(e.clientY - pointerHold.y)
-          > LONG_PRESS_SLOP_PX) cancelPointerHold();
+          > uiPx(LONG_PRESS_SLOP_PX)) cancelPointerHold();
     }, true);
     document.addEventListener('mouseup', cancelPointerHold, true);
     document.addEventListener('click', (e: MouseEvent) => {

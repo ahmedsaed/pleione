@@ -3,6 +3,7 @@ import { CONFIG } from '../config';
 import { $, html, inShownView, onceTransitionEnd, type Safe, withInstantScroll } from '../utils/dom';
 import { morph } from '../utils/morph';
 import { isRtl } from '../utils/direction';
+import { uiPx } from '../utils/ui-scale';
 import { t } from '../i18n';
 import { Focus, type FocusScope, type Via } from '../navigation/focus-scope';
 
@@ -177,8 +178,8 @@ export class PlayerMenu {
       el.style.removeProperty('left');
       el.style.right = `${Math.max(window.innerWidth - dockRect.right, window.innerWidth - right)}px`;
     }
-    el.style.bottom = `${window.innerHeight - dockRect.top + ANCHOR_GAP}px`;
-    el.style.maxHeight = `${Math.max(0, dockRect.top - ANCHOR_GAP - TOP_MARGIN)}px`;
+    el.style.bottom = `${window.innerHeight - dockRect.top + uiPx(ANCHOR_GAP)}px`;
+    el.style.maxHeight = `${Math.max(0, dockRect.top - uiPx(ANCHOR_GAP) - uiPx(TOP_MARGIN))}px`;
   }
 
   private activeIndex(): number {

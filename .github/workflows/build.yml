@@ -102,6 +102,15 @@ jobs:
       - name: Generate Homebrew Channel manifest
         run: npm run manifest
 
+      # LG's Full HD TVs need a second file with the same id and version
+      # (issue #62); the _fhd suffix tells the two apart for Seller Lounge.
+      - name: Package Full HD IPK
+        run: |
+          node esbuild.config.mjs --resolution=720
+          rm -rf build/ipk-fhd && mkdir -p build/ipk-fhd
+          ares-package --no-minify -e "*preview-libs.js" dist-720 build/bundled-service -o build/ipk-fhd
+          for f in build/ipk-fhd/*_all.ipk; do mv "$f" "$(basename "${f%_all.ipk}")_fhd_all.ipk"; done
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:

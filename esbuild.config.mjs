@@ -96,8 +96,12 @@ writeFileSync(`${OUT}/index.html`, outputIndexHtml);
 // Refresh the flex-`gap` fallback; see its header for the cascade rationale.
 const sourceStylesheets = linkedStylesheets(indexHtml, readdirSync('css'), GENERATED_STYLESHEET)
   .map((file) => readFileSync(`css/${file}`, 'utf8'));
-writeFileSync(`css/${GENERATED_STYLESHEET}`, generateFlexGapFallback(sourceStylesheets));
+const generatedStylesheet = generateFlexGapFallback(sourceStylesheets);
+// The Tizen build can run beside the webOS one (two E2E servers), so only
+// the webOS build rewrites the checked-in copy.
+if (platform === 'webos') writeFileSync(`css/${GENERATED_STYLESHEET}`, generatedStylesheet);
 cpSync('css', `${OUT}/css`, { recursive: true });
+writeFileSync(`${OUT}/css/${GENERATED_STYLESHEET}`, generatedStylesheet);
 transformStylesheets(`${OUT}/css`);
 if (platform === 'webos') {
   cpSync('assets/icon80.png', `${OUT}/icon.png`);

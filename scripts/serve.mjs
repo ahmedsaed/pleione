@@ -4,7 +4,8 @@ import { join, extname } from 'path';
 import { LEGACY_HEADER, readLegacyAsset } from './chromium-53-simulation.mjs';
 
 const PORT = Number(process.env.PREVIEW_PORT) || 3000;
-const DIR = 'dist';
+// PREVIEW_DIR=dist-tizen serves the Samsung build (the tizen-sim E2E project).
+const DIR = process.env.PREVIEW_DIR || 'dist';
 
 const MIME = {
   '.css': 'text/css',

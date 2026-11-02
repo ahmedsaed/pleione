@@ -74,10 +74,26 @@ Media came from the demo Xtream server (`docs/xtream-demo-server.md`).
 | CEA-608, native (HLS and DASH) | **Not rendered and not exposed** as a `TextTrack` |
 | CEA-608 through Shaka | Parsed (CC1/CC3) and rendered over the video |
 
+### Live seeking (in the app, through the Tizen build)
+
+| Seek on live HLS | Result |
+|---|---|
+| None (plain play) | Plays. While loading (`readyState` 1) `currentTime` reads 0 under a window that starts later, then jumps to the live edge |
+| Back to edge − 60 s | Plays on |
+| Back to the window start + 3–10 s | Borderline: plays a few seconds, or freezes |
+| Forward to the live edge (Go to Live) | **Freezes for good**, with `readyState` 4 and `paused` false |
+
+A freeze at `readyState` 4 also slips past the stall watchdog, which
+treats frozen-but-buffered as a hiccup. So live DVR stays off on Tizen
+(the finite duration already keeps `dvrWindow()` from seeing a live
+window); timeshift waits for an MSE (Shaka/hls.js) or AVPlay path. With
+no live seeks, nothing in the app triggers this freeze.
+
 So the Stage A plan holds on Tizen 5.5: the native path plays HLS, TS and
 MP4, the audio picker works, and subtitles take the self-render path as
 on webOS. Live-stream detection must not rely on `duration === Infinity`,
-and catch-up/EPG alignment cannot use `getStartDate()` here.
+and catch-up/EPG alignment cannot use `getStartDate()` here. Live DVR
+stays off (above).
 
 ## DRM (Shaka 5.2.12 on MSE/EME)
 

@@ -333,7 +333,9 @@ services.
 
 **Stage B — AVPlay engine (only if Stage A falls short on device).**
 Triggers: Tizen 8+ multi-audio, TS streams the native element refuses,
-4K/HDR or performance gaps.
+4K/HDR or performance gaps, and **live DVR**: native seeks to the live edge
+freeze on Tizen 5.5 (spike, `docs/tizen.md`), so timeshift is off on the
+native path.
 - Introduce a `MediaBackend` facade over the ~40 element operations
   `Player` uses (load/play/pause/seek, time/duration/seekable,
   readyState/networkState, events, volume, error, display rect).

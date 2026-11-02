@@ -71,6 +71,7 @@ import type {
   PlaylistEntry,
 } from './types';
 import { getLocale, initLocale, localeDirection, resolveLocale, setLocale, t, tp } from './i18n';
+import { installBackdropArt } from './utils/backdrop-art';
 
 const log = createLogger('App');
 
@@ -184,6 +185,7 @@ class App {
     if (loadingTitle) loadingTitle.textContent = CONFIG.APP_NAME;
     initTheme();
     applyDirection(localeDirection());
+    installBackdropArt();
     this.views = {
       home: $('#view-home')!,
       channels: $('#view-channels')!,
@@ -226,12 +228,16 @@ class App {
       },
     );
     this.player = new Player(this.views.player, () => this.goUp('player'), (idx, catchupStart) => {
+      const watching = this.channelList.watching;
       this.channelList.setPlaying(idx, catchupStart);
       // Zapping full screen moves where Back returns to; the preview never does.
       if (idx >= 0 && this.isCurrentView('player') && !this.player.isInLivePreview()) {
         this.channelList.setWatching(idx);
       }
-      if (this.livePreview?.isShowing) this.channelList.render(false);
+      if (!this.livePreview?.isShowing) return;
+      // Every row marks the watching channel; only Recently Watched the playing one.
+      if (this.channelList.watching !== watching) this.channelList.render(false);
+      else this.channelList.renderPlaying();
     },
     () => !this.sidebar.visible,
     () => {

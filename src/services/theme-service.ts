@@ -1,6 +1,7 @@
 import { DEFAULT_THEME, DEFAULT_OVERLAY, DEFAULT_TEXT_SIZE, DEFAULT_INTERFACE_SIZE, isValidTheme, isValidOverlayStyle, isValidTextSize, isValidInterfaceSize } from '../config/themes';
 import { StorageService } from './storage-service';
 import { swapInterfaceStylesheets } from '../utils/ui-scale';
+import { scheduleBackdropArt } from '../utils/backdrop-art';
 
 // Theme switching is a single attribute write on <html>; the CSS variable
 // overrides live in css/themes.css keyed by `[data-theme="<id>"]`. No runtime
@@ -8,6 +9,7 @@ import { swapInterfaceStylesheets } from '../utils/ui-scale';
 
 function setThemeAttr(id: string | null | undefined): void {
   document.documentElement.dataset.theme = isValidTheme(id) ? id : DEFAULT_THEME;
+  scheduleBackdropArt();
 }
 
 /** Persisted theme applied to the document root. */
@@ -40,6 +42,7 @@ export function applyInterfaceSize(size: string): void {
   const valid = isValidInterfaceSize(size) ? size : DEFAULT_INTERFACE_SIZE;
   document.documentElement.dataset.interfaceSize = valid;
   swapInterfaceStylesheets(valid);
+  scheduleBackdropArt();
 }
 
 /** Layout direction → `dir` on the document root plus the matching
@@ -49,6 +52,7 @@ export function applyDirection(direction: 'ltr' | 'rtl'): void {
   const changed = (root.dir === 'rtl') !== (direction === 'rtl');
   root.dir = direction;
   if (changed) swapInterfaceStylesheets(root.dataset.interfaceSize || DEFAULT_INTERFACE_SIZE);
+  if (changed) scheduleBackdropArt();
   if (StorageService.getDirection() !== direction) StorageService.setDirection(direction);
 }
 

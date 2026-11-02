@@ -104,6 +104,7 @@ describe('LivePreview', () => {
       playlist: '',
       highlightEntryPoint: actions.onHighlightEntryPoint,
       render: vi.fn(),
+      renderPlaying: vi.fn(),
       setPlaying: actions.onSetPlaying,
     } as unknown as ChannelList;
     preview = new LivePreview(root, {
@@ -289,6 +290,43 @@ describe('LivePreview', () => {
     expect(actions.onSetPlaying).toHaveBeenCalledWith(1);
     expect(requestFrame).toHaveBeenCalledOnce();
     expect(actions.onHighlightEntryPoint).toHaveBeenCalledOnce();
+  });
+
+  it('draws the pane after the next frame once a re-tune starts playback', () => {
+    const current = state();
+    PlaylistService.channels = [current.channel, { ...current.channel, id: 'ch2', url: 'http://host/ch2' }];
+    liveSnapshot.mockReturnValue(current);
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const refresh = vi.spyOn(preview, 'refresh');
+    preview.selectChannel(1, undefined, { group: 'builtin:all' }, 'preview');
+    // Playback starts in this task; the pane waits for the frame to pass.
+    expect(playerPlay).toHaveBeenCalledOnce();
+    expect(refresh).not.toHaveBeenCalled();
+    frames.forEach(callback => callback(0));
+    expect(refresh).not.toHaveBeenCalled();
+    vi.runOnlyPendingTimers();
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it('drops a waiting pane refresh that a direct refresh already drew', () => {
+    const current = state();
+    PlaylistService.channels = [current.channel, { ...current.channel, id: 'ch2', url: 'http://host/ch2' }];
+    liveSnapshot.mockReturnValue(current);
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback);
+      return frames.length;
+    });
+    preview.selectChannel(1, undefined, { group: 'builtin:all' }, 'preview');
+    const refresh = vi.spyOn(preview, 'refresh');
+    preview.refresh();
+    frames.forEach(callback => callback(0));
+    vi.runOnlyPendingTimers();
+    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it('does not take the stream back into the pane while Live shows the Guide', () => {

@@ -13,15 +13,23 @@ async function expectBackdrop(page: Page, view: string, section: Section, clear:
   await expect(viewEl).toHaveAttribute('data-backdrop', section);
   // Strings, since the launch splash is checked before app.js brings the
   // polyfills the simulation needs to return an object.
+  // The view draws the image painted from its section's gradient
+  // (src/utils/backdrop-art.ts); the gradient itself sits on that image's probe.
   const paint = JSON.parse(await viewEl.evaluate((el, name) => {
     const root = getComputedStyle(document.documentElement);
     const token = (prop: string) => root.getPropertyValue(prop).trim();
+    const probe = document.querySelector(`.backdrop-art-probe[data-backdrop="${name}"]`);
     return JSON.stringify({
-      image: getComputedStyle(el).backgroundImage,
+      drawn: getComputedStyle(el).backgroundImage,
+      art: token(`--backdrop-art-${name}`),
+      image: probe ? getComputedStyle(probe).backgroundImage : getComputedStyle(el).backgroundImage,
       glow: token('--backdrop-glow'),
       tint: name === 'home' ? '' : token(`--backdrop-tint-${name}`),
     });
-  }, section)) as { image: string; glow: string; tint: string };
+  }, section)) as { drawn: string; art: string; image: string; glow: string; tint: string };
+  if (paint.art) {
+    expect(paint.drawn.replace(/\s+/g, '')).toBe(paint.art.replace(/\s+/g, ''));
+  }
   expect(paint.glow).not.toBe('');
   expect(paint.image).toContain(paint.glow);
   // Search centers the glow behind its query box; every other page keeps it top left.

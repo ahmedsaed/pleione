@@ -356,7 +356,7 @@ html[data-animation="reduced"] .catalog-tile { transition: transform var(--trans
   cursor: pointer;
 }
 html[data-animation="full"] .detail-btn,
-html[data-animation="reduced"] .detail-btn { transition: transform var(--transition), box-shadow var(--transition); }
+html[data-animation="reduced"] .detail-btn { transition: transform var(--transition); }
 /* Light on dark themes and dark on light ones, like the mock's white Play. */
 .detail-btn-primary { background: var(--text-primary); color: var(--bg-primary); }
 .catalog-detail .detail-btn.focused {

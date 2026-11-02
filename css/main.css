@@ -219,6 +219,58 @@ html[dir="rtl"] .rtl-mirror {
 }
 [data-backdrop="settings"] { --backdrop-tint: var(--backdrop-tint-settings); }
 
+/* The backdrops and Home's glows, painted once into images by
+   src/utils/backdrop-art.ts: a TV's software rasterizer repaints these
+   gradients on every frame anything above them changes. Hidden probes keep
+   the gradients for it to read; without its images, the gradients stay. */
+.backdrop-art-probes {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.backdrop-art-probes > [data-backdrop] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+html.backdrop-art [data-backdrop="home"]:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-home) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art [data-backdrop="live"]:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-live) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art [data-backdrop="epg"]:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-epg) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art [data-backdrop="movies"]:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-movies) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art [data-backdrop="series"]:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-series) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art [data-backdrop="search"]:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-search) 0 0 / 100% 100% no-repeat;
+}
+
+html.backdrop-art [data-backdrop="settings"]:not(.backdrop-art-probe) {
+  background: var(--backdrop-art-settings) 0 0 / 100% 100% no-repeat;
+}
+
+
 .hidden {
   display: none !important;
 }

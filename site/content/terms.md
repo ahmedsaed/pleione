@@ -31,7 +31,7 @@ operated by Merope. Pleione uses the TMDB API but is not endorsed or certified b
 
 Pleione is free software, distributed under the
 [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0); the source code is on
-[GitHub](https://github.com/ahmedsaed/pleione-webos-iptv-player). As that license says, it is
+[GitHub](https://github.com/ahmedsaed/pleione). As that license says, it is
 provided **"as is", without warranties or conditions of any kind**, and to the extent the law
 allows, Merope is not liable for any damages arising from its use, including from content you
 play with it or the availability of any provider.

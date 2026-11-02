@@ -5,7 +5,7 @@ import { cardSize, CARDS, type CardName } from './social-card';
 export const SITE_URL = 'https://pleione.merope.dev';
 export const SITE_NAME = 'Pleione';
 
-export const REPO = 'https://github.com/ahmedsaed/pleione-webos-iptv-player';
+export const REPO = 'https://github.com/ahmedsaed/pleione';
 export const RELEASES = `${REPO}/releases/latest`;
 export const ISSUES = `${REPO}/issues`;
 export const UPSTREAM = 'https://github.com/lennylxx/webos-iptv-player';

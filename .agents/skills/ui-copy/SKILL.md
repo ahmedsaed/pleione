@@ -39,7 +39,7 @@ words first, translate second.
    are unsure about instead of guessing silently.
 
 When the user changes a term later, update "Settled terms" first, then
-sweep every locale, both READMEs, and the setup page for the old term.
+sweep every locale, the README, and the setup page for the old term.
 
 ## Terms
 
@@ -152,4 +152,4 @@ direction),
 - Grep every locale for the old term after a rename.
 - Ask yourself per locale: is this what that market's TV apps say?
   Flag any you can't vouch for.
-- Keep `README.md` and `README.zh-CN.md` in sync with the same terms.
+- Keep `README.md` in step with the same terms.

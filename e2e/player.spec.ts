@@ -13,6 +13,7 @@ import {
   SEARCH_M3U,
   pressStepsAndReadPlayer,
   seekBarGeometry,
+  pressBack, BACK_KEY,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -32,11 +33,10 @@ async function gotoGroupedPlayer(page: Page): Promise<void> {
 }
 
 async function pressRemoteBack(page: Page): Promise<void> {
-  await page.evaluate(() =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
 }
 
-const [ENTER, UP, RIGHT, DOWN, BACK, YELLOW] = [13, 38, 39, 40, 461, 405];
+const [ENTER, UP, RIGHT, DOWN, BACK, YELLOW] = [13, 38, 39, 40, BACK_KEY, 405];
 
 test('remote arrow keys move focus and Enter starts playback', async ({ page }) => {
   await routePlaylist(page);

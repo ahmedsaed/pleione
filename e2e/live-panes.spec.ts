@@ -4,6 +4,7 @@ import {
   routeLiveManifest,
   routePlaylist,
   type Page,
+  BACK_KEY,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -34,7 +35,7 @@ const EPG = `<tv>
 const ROW = '#channel-browser .channel-main .channel-item';
 const HEADER = '.live-header';
 const PREVIEW_NAME = '#live-preview .live-preview-channel';
-const KEY = { up: 38, down: 40, left: 37, right: 39, ok: 13, back: 461, red: 403 } as const;
+const KEY = { up: 38, down: 40, left: 37, right: 39, ok: 13, back: BACK_KEY, red: 403 } as const;
 
 test.use({ timezoneId: 'UTC' });
 

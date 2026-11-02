@@ -6,6 +6,7 @@ import {
   enterTab,
   readUserDataStore,
   openGuide,
+  pressBack, BACK_KEY,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -287,9 +288,8 @@ test('a movie search result deep-links into its Movies detail and Back returns t
   await expect(page.locator('#view-movies')).toBeVisible();
   await expect(page.locator('#view-movies .detail-plot')).toContainText('Movie plot.');
 
-  // Back from the deep-linked detail returns to Search (CONFIG.KEYS.BACK = 461;
-  // dispatch a raw keydown like the other section specs do).
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  // Back from the deep-linked detail returns to Search.
+  await pressBack(page);
   await expect(page.locator('#view-search')).toBeVisible();
 });
 
@@ -324,7 +324,7 @@ test('opening Movies reloads a browse a Search deep link interrupted', async ({ 
   await enterSearch(page);
 
   await openMovieResult(page, 'one');
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-search')).toBeVisible();
 
   await enterTab(page, 'movies');
@@ -357,13 +357,12 @@ test('a movie result opened by POINTER can then be played by pointer (the box le
   await streamRequested;
 });
 
-const BACK = 461;
-async function pressBack(page: import('@playwright/test').Page): Promise<void> {
+async function pressBackFromFocus(page: import('@playwright/test').Page): Promise<void> {
   // Back reaches the app even from the search box (an input passthrough key).
   await page.evaluate((code) => {
     const target = document.activeElement ?? document.body;
     target.dispatchEvent(new KeyboardEvent('keydown', { keyCode: code, bubbles: true }));
-  }, BACK);
+  }, BACK_KEY);
 }
 
 test('recent searches show as chips under the box, run on OK, and clear without confirming', async ({ page }) => {
@@ -607,7 +606,7 @@ test('Back steps from recent searches and results to the box, then Home', async 
   const input = page.locator('.search-box-input');
   await input.press('ArrowDown');
   await expect(page.locator('#view-search .search-recent-chip').first()).toHaveClass(/focused/);
-  await pressBack(page);
+  await pressBackFromFocus(page);
   await expect(input).toBeFocused();
   await expect(page.locator('.focused:visible')).toHaveCount(0);
   await expect(page.locator('#view-search')).toBeVisible();
@@ -616,12 +615,12 @@ test('Back steps from recent searches and results to the box, then Home', async 
   await expect(page.locator('#view-search .catalog-tile[data-stream-id="10"]')).toContainText('Movie One');
   await input.press('ArrowDown');
   await expect(page.locator('#view-search .focused')).toHaveCount(1);
-  await pressBack(page);
+  await pressBackFromFocus(page);
   await expect(input).toBeFocused();
   await expect(page.locator('#view-search')).toBeVisible();
   await expect(page.locator('#view-search .focused')).toHaveCount(0);
 
-  await pressBack(page);
+  await pressBackFromFocus(page);
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('#view-search')).toBeHidden();
   await expect(page.locator('#view-home .focused')).toHaveAttribute('data-section', 'search');
@@ -644,14 +643,14 @@ test('Back from a channel played from Search returns to Search', async ({ page }
   await page.keyboard.press('Enter');
   await expect(page.locator('#view-player')).toBeVisible();
 
-  await pressBack(page);
+  await pressBackFromFocus(page);
   await expect(page.locator('#view-search')).toBeVisible();
   await expect(page.locator('#view-player')).toBeHidden();
   await expect(page.locator('#view-channels')).toBeHidden();
   await expect(channel).toBeVisible();
-  await pressBack(page);
+  await pressBackFromFocus(page);
   await expect(input).toBeFocused();
-  await pressBack(page);
+  await pressBackFromFocus(page);
   await expect(page.locator('#view-home')).toBeVisible();
 });
 
@@ -665,7 +664,7 @@ test('Red from Search releases Search, while a title it opens keeps it for Back'
   await enterSearch(page);
   // A title Search opens keeps Search beneath it: Back finds the results.
   await openMovieResult(page, 'one');
-  await pressBack(page);
+  await pressBackFromFocus(page);
   await expect(page.locator('#view-search .catalog-tile[data-stream-id="10"]')).toBeVisible();
 
   // Search holds the shared worker while it is the page shown.

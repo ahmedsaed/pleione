@@ -1,5 +1,6 @@
 import {
   test, expect, enterTab, isChromium53, pressKeys, routeLiveManifest, type Page,
+  BACK_KEY,
 } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
@@ -8,7 +9,7 @@ import { seedXtream } from './fixtures/xtream';
 // runs no more than its own timers and no worker, and no hidden view holds
 // a decoded poster.
 const CYCLES = 5;
-const KEY = { UP: 38, DOWN: 40, RIGHT: 39, ENTER: 13, BACK: 461, RED: 403 };
+const KEY = { UP: 38, DOWN: 40, RIGHT: 39, ENTER: 13, BACK: BACK_KEY, RED: 403 };
 
 interface Budget {
   timers: Map<string, string>;

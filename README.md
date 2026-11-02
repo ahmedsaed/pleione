@@ -4,8 +4,8 @@
   <p><strong>A free IPTV player for your own M3U playlists and Xtream accounts, made for the remote.</strong></p>
   <p>
   <a href="#supported-webos-versions"><img src="https://img.shields.io/badge/webOS-4%2B-e6007e?logo=webos&logoColor=white" alt="webOS 4+"></a>
-  <a href="https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest"><img src="https://img.shields.io/github/v/release/ahmedsaed/pleione-webos-iptv-player" alt="Latest release"></a>
-  <a href="https://github.com/ahmedsaed/pleione-webos-iptv-player/releases"><img src="https://img.shields.io/github/downloads/ahmedsaed/pleione-webos-iptv-player/total" alt="GitHub downloads"></a>
+  <a href="https://github.com/ahmedsaed/pleione/releases/latest"><img src="https://img.shields.io/github/v/release/ahmedsaed/pleione" alt="Latest release"></a>
+  <a href="https://github.com/ahmedsaed/pleione/releases"><img src="https://img.shields.io/github/downloads/ahmedsaed/pleione/total" alt="GitHub downloads"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
   </p>
   <p><a href="https://pleione.merope.dev/">Website</a> · <a href="https://pleione.merope.dev/setup/">Setup guide</a> · <a href="https://pleione.merope.dev/support/">Support</a> · <a href="https://pleione.merope.dev/privacy/">Privacy</a></p>
@@ -85,7 +85,7 @@ Some things webOS does not allow, or that are out of scope, are listed in
 - **LG Content Store** — coming soon. Once listed, search for **Pleione** on
   your TV.
 - **Developer Mode** — download the latest `.ipk` from
-  [Releases](https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest)
+  [Releases](https://github.com/ahmedsaed/pleione/releases/latest)
   and install it with the
   [webOS CLI](https://webostv.developer.lge.com/develop/tools/cli-installation):
 
@@ -100,7 +100,7 @@ Some things webOS does not allow, or that are out of scope, are listed in
   app, and the TV then removes sideloaded apps.
 - **Homebrew Channel** (rooted TVs) — add this repository to Homebrew
   Channel:
-  `https://raw.githubusercontent.com/ahmedsaed/pleione-webos-iptv-player/pleione/homebrew-repository.json`
+  `https://raw.githubusercontent.com/ahmedsaed/pleione/pleione/homebrew-repository.json`
 
 The [setup guide](https://pleione.merope.dev/setup/) walks through every
 step, adding your first account or playlist, and finding your way around

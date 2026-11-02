@@ -4,7 +4,7 @@ import { TIZEN_APP_ID, TIZEN_PACKAGE_ID, tizenConfigXml } from './tizen-config.m
 describe('tizenConfigXml', () => {
   it('keeps the permanent package id and derives the app id from it', () => {
     expect(TIZEN_PACKAGE_ID).toMatch(/^[A-Za-z0-9]{10}$/);
-    expect(TIZEN_APP_ID).toBe(`${TIZEN_PACKAGE_ID}.Pleione`);
+    expect(TIZEN_APP_ID).toBe(`${TIZEN_PACKAGE_ID}.PleioneIPTV`);
     expect(tizenConfigXml('2.1.0')).toContain(`<tizen:application id="${TIZEN_APP_ID}" package="${TIZEN_PACKAGE_ID}"`);
   });
 

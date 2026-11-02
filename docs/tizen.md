@@ -137,6 +137,22 @@ on webOS. Live-stream detection must not rely on `duration === Infinity`,
 and catch-up/EPG alignment cannot use `getStartDate()` here. Live DVR
 stays off (above).
 
+### AVPlay (`webapis.avplay` 4.0) on the same live HLS
+
+| Check | AVPlay | Native `<video>` |
+|---|---|---|
+| Plays | Yes | Yes |
+| Live window | `GET_LIVE_DURATION` (e.g. 4000–304000 ms) | `seekable`, duration finite |
+| Track names | Audio tracks carry their language | Language only, no labels |
+| `seekTo` on live | Fails (`PLAYER_ERROR_SEEK_FAILED`) | Freezes at the edge |
+| `jumpBackward` 60 s / `jumpForward` to near the edge | Both play on | n/a |
+| Audio-track switch | Does not switch (stays on the first) | Switches |
+
+So on Tizen 5.5 AVPlay trades audio-track switching for live rewind. The
+plan's Stage B (an AVPlay backend) waits for the same checks on a Tizen 8+
+TV, where native audio switching is reported broken: `scripts/tizen.sh
+probe` runs them.
+
 ## DRM (Shaka 5.2.12 on MSE/EME)
 
 `requestMediaKeySystemAccess` grants `com.widevine.alpha`,

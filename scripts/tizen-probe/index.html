@@ -173,6 +173,71 @@
     });
   }
 
+  // Samsung's AVPlay on the same live stream: its window, its tracks, live
+  // seeking with jumpBackward/jumpForward (seekTo fails on live), and an
+  // audio switch. Runs after the <video> checks: one decoder serves both.
+  function avplay() {
+    var av = typeof webapis !== 'undefined' ? webapis.avplay : null;
+    if (!av) { record('avplay', 'not available'); return Promise.resolve(); }
+    var result = {};
+    var obj = document.createElement('object');
+    obj.type = 'application/avplayer';
+    obj.style.cssText = 'position:absolute;left:1080px;top:40px;width:800px;height:450px';
+    document.body.appendChild(obj);
+    video.style.display = 'none';
+    var now = function () { return av.getCurrentTime(); };
+    var jump = function (name, ms) {
+      return new Promise(function (resolve) {
+        try { av[name](ms, function () { resolve('ok'); }, function (e) { resolve('ERR ' + e); }); }
+        catch (e) { resolve('ERR ' + e.message); }
+      });
+    };
+    var moved = function (ms) { var from = now(); return wait(ms).then(function () { return now() > from + 2000; }); };
+    return new Promise(function (resolve, reject) {
+      av.open(MEDIA + '/live/demo/demo/1.m3u8');
+      av.setDisplayRect(1080, 40, 800, 450);
+      av.prepareAsync(resolve, reject);
+    }).then(function () {
+      av.play();
+      result.version = safe(function () { return av.getVersion(); });
+      return wait(5000).then(function () { return moved(2000); });
+    }).then(function (plays) {
+      result.plays = plays;
+      result.liveWindow = safe(function () { return av.getStreamingProperty('GET_LIVE_DURATION'); });
+      result.tracks = safe(function () {
+        return av.getTotalTrackInfo().map(function (t) { return t.type + ':' + (JSON.parse(t.extra_info).language || ''); });
+      });
+      return jump('jumpBackward', 60000);
+    }).then(function (back) {
+      result.jumpBack = back;
+      return moved(4000);
+    }).then(function (plays) {
+      result.backPlays = plays;
+      return jump('jumpForward', 50000);
+    }).then(function (forward) {
+      result.jumpForward = forward;
+      return moved(4000);
+    }).then(function (plays) {
+      result.forwardPlays = plays;
+      var audios = safe(function () { return av.getTotalTrackInfo().filter(function (t) { return t.type === 'AUDIO'; }); });
+      if (!Array.isArray(audios) || audios.length < 2) { result.audioSwitch = 'fewer than 2 audio tracks'; return null; }
+      av.setSelectTrack('AUDIO', audios[1].index);
+      return wait(4000).then(function () {
+        var current = safe(function () {
+          return av.getCurrentStreamInfo().filter(function (t) { return t.type === 'AUDIO'; }).map(function (t) { return t.index; });
+        });
+        result.audioSwitch = { switched: Array.isArray(current) && current[0] === audios[1].index };
+      });
+    }).catch(function (e) {
+      result.error = String(e && (e.name || e.message) || e);
+    }).then(function () {
+      safe(function () { av.stop(); av.close(); });
+      obj.remove();
+      video.style.display = '';
+      record('avplay', result);
+    });
+  }
+
   Promise.all([drmDone, serviceDone])
     .then(function () { return play('liveHls', MEDIA + '/live/demo/demo/1.m3u8'); })
     .then(liveSeek)
@@ -181,6 +246,9 @@
     .then(function () {
       video.removeAttribute('src');
       video.load();
+      return avplay();
+    })
+    .then(function () {
       probe.done = true;
       record('done', 'media checks finished; press keys, then read the results');
     });

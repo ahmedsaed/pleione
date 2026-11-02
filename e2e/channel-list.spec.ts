@@ -8,6 +8,7 @@ import {
   routeLiveManifest,
   measureRowTextFit,
   type Page,
+  pressBack,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -149,10 +150,8 @@ test('the list follows the playing channel however it was tuned', async ({ page 
   await expect(sidebarFocused).toContainText('Channel 4');
   await expect(sidebarFocused).toHaveClass(/playing/);
 
-  await page.evaluate(() =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
-  await page.evaluate(() =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
+  await pressBack(page);
   await expect(page.locator('#view-channels')).toBeVisible();
 
   // And so does the list — not the row it was parked on before.
@@ -283,8 +282,7 @@ test('direct channel entry scrolls the list to the tuned channel and keeps it on
   await expect(page.locator('.osd-channel-number')).toHaveText('215');
 
   // Back to the list: the tuned row is focused, marked playing, and on screen.
-  await page.evaluate(() =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-channels')).toBeVisible();
 
   const focused = page.locator('.channel-main .channel-item.focused');
@@ -316,8 +314,7 @@ test('returning to a far playing channel keeps it focused under full animation',
   await page.keyboard.press('5');
   await expect(page.locator('.osd-channel-number')).toHaveText('215');
 
-  await page.evaluate(() =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-channels')).toBeVisible();
 
   // A smooth far jump would pass through windows that drop the focused row.
@@ -972,8 +969,7 @@ test('the Live tab clicked from another section shows the far channel that is pl
   await page.keyboard.press('5');
   await page.keyboard.press('0');
   await expect(page.locator('.osd-channel-number')).toHaveText('150');
-  await page.evaluate(() =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-channels')).toBeVisible();
 
   await enterTab(page, 'settings');

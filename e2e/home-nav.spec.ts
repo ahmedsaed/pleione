@@ -185,6 +185,9 @@ test('Try again checks again, keeps the banner while it fails, and a pass remove
   await expect.poll(() => seen.count).toBe(2);
   await expect(alert(page)).toBeVisible();
   await expect(homeFocus(page)).toHaveAttribute('data-key', 'alert:retry');
+  // Try again ignores OK while a check runs; wait for this one to finish.
+  await expect(alert(page).locator('.home-alert-body'))
+    .toHaveText('The server didn’t accept the username or password.');
 
   auth.value = 1;
   await press(page, 'Enter');

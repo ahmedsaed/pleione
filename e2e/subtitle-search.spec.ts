@@ -1,4 +1,4 @@
-import { test, expect, routeLiveManifest, SAMPLE_M3U, enterTab, type Page, pressAndReadPlayer } from './helpers';
+import { test, expect, routeLiveManifest, SAMPLE_M3U, enterTab, type Page, pressAndReadPlayer, pressBack, BACK_KEY } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -273,7 +273,7 @@ test('the picker opened from the controls takes the arrow keys from the search b
   await expect(menuRows.nth(1)).toHaveClass(/focused/);
   await expect(page.locator('.focused')).toHaveCount(1);
 
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(menu).not.toHaveClass(/visible/);
   await expect(page.locator('[data-ring-owner]')).toHaveAttribute('data-focus-scope', 'player.subtitle_search');
   await expect(rows.nth(2)).toHaveClass(/focused/);
@@ -358,7 +358,7 @@ test('the subtitle sync adjuster keeps the keys, and the screen edge opens no me
   expect(await menu.getAttribute('class')).not.toMatch(/visible/);
   await expect(owner).toHaveAttribute('data-focus-scope', 'player.subtitle_offset');
 
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#subtitle-offset')).toBeHidden();
   await subtitles.click();
   await expect(menu).toHaveClass(/visible/);
@@ -378,7 +378,7 @@ test('Back closes the search overlay over a shown OSD and leaves the OSD up', as
   await expect(page.locator('#subtitle-search .subs-row')).toHaveCount(1);
   await expect(page.locator('#subtitle-search .subs-search-input')).not.toBeFocused();
 
-  const s = await pressAndReadPlayer(page, [461]);
+  const s = await pressAndReadPlayer(page, [BACK_KEY]);
   expect(s).toMatchObject({ osdBefore: true, osd: true, player: true, paused: true });
   await expect(page.locator('#subtitle-search .subs-overlay')).toBeHidden();
 });
@@ -396,7 +396,7 @@ test('Back closes the subtitle sync adjuster over a shown OSD and leaves the OSD
   await expect(page.locator('#subtitle-offset:not(.hidden)')).toBeVisible();
 
   // Up (unused by the adjuster) hands the keys back from the pointer first.
-  const s = await pressAndReadPlayer(page, [38, 461]);
+  const s = await pressAndReadPlayer(page, [38, BACK_KEY]);
   expect(s).toMatchObject({ osdBefore: true, osd: true, player: true, menu: false, paused: true });
   await expect(page.locator('#subtitle-offset')).toBeHidden();
 });

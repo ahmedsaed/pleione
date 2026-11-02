@@ -24,7 +24,7 @@ Developer Mode app shows how long is left), you have to renew it from that app b
 out, and when a session expires the TV removes the apps installed this way.
 
 1. On a computer, download the latest `.ipk` file from the
-   [releases page](https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest), and
+   [releases page](https://github.com/ahmedsaed/pleione/releases/latest), and
    install the [webOS CLI tools](https://webostv.developer.lge.com/develop/tools/cli-installation)
    (`npm install -g @webos-tools/cli`).
 2. Create a free account on the [LG webOS developer site](https://webostv.developer.lge.com/).

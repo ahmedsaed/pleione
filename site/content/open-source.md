@@ -3,7 +3,7 @@
 Pleione is free software under the
 [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0). Its source code, issue
 tracker and releases are on
-[GitHub](https://github.com/ahmedsaed/pleione-webos-iptv-player).
+[GitHub](https://github.com/ahmedsaed/pleione).
 
 ## Based on webOS IPTV Player
 
@@ -13,7 +13,7 @@ Copyright 2026 lennylxx, licensed under the Apache License, Version 2.0. Merope 
 rebranded it, changed its application and service identifiers, and made further changes recorded
 in the repository's history. Most of what makes Pleione good is lennylxx's work — thank you.
 
-The full notice is in [NOTICE](https://github.com/ahmedsaed/pleione-webos-iptv-player/blob/pleione/NOTICE).
+The full notice is in [NOTICE](https://github.com/ahmedsaed/pleione/blob/pleione/NOTICE).
 
 ## The Movie Database (TMDB)
 
@@ -27,7 +27,7 @@ appears in the app, under **Settings › Data Management**.
 
 Pleione includes these components, each under its own license. The complete notices and license
 texts ship with the app and are in
-[THIRD_PARTY_NOTICES.txt](https://github.com/ahmedsaed/pleione-webos-iptv-player/blob/pleione/THIRD_PARTY_NOTICES.txt).
+[THIRD_PARTY_NOTICES.txt](https://github.com/ahmedsaed/pleione/blob/pleione/THIRD_PARTY_NOTICES.txt).
 
 | Component | Used for | License |
 |---|---|---|

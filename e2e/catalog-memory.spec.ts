@@ -1,12 +1,11 @@
-import { test, expect, enterTab, isChromium53, type Page } from './helpers';
+import { test, expect, enterTab, isChromium53, type Page, pressBack } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
 // Pages the catalog leaves must be freed: every visit rebuilds the rails, a
 // detail and a See all grid, and nothing may keep the old ones alive.
 const ROUNDS = 6;
 
-const back = (page: Page) => page.evaluate(() =>
-  document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+const back = (page: Page) => pressBack(page);
 
 async function openDetail(page: Page, section: 'movies' | 'series', id: string): Promise<void> {
   await page.locator(`#view-${section} .catalog-layer-browse .catalog-tile[data-item-id="${id}"]`).first()

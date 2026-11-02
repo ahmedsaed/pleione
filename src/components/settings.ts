@@ -82,6 +82,7 @@ import {
   PLAYBACK_ICON,
   SOURCES_ICON,
 } from './icons';
+import { isBackKey } from '../navigation/keys';
 
 const log = createLogger('Settings');
 
@@ -593,7 +594,7 @@ export class Settings {
     this.container.addEventListener('keydown', (e: KeyboardEvent) => {
       const input = e.target as HTMLInputElement;
       if (input.tagName !== 'INPUT') return;
-      const back = e.key === 'Escape' || e.keyCode === CONFIG.KEYS.BACK;
+      const back = isBackKey(e);
       const up = e.key === 'ArrowUp' || e.keyCode === CONFIG.KEYS.UP;
       const down = e.key === 'ArrowDown' || e.keyCode === CONFIG.KEYS.DOWN;
       // Left at the start (Right at the end) leaves for the control beside the

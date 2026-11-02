@@ -1,4 +1,4 @@
-import { test, expect, routeLiveManifest, neuterVideo, SAMPLE_M3U, enterTab } from './helpers';
+import { test, expect, routeLiveManifest, neuterVideo, SAMPLE_M3U, enterTab, pressBack } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -120,12 +120,10 @@ test('browse Series, open a detail, and play an episode', async ({ page }) => {
     .evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
   await page.keyboard.press('Enter');
   await expect(page.locator('#view-player')).toBeVisible();
-  // Back key (CONFIG.KEYS.BACK = 461; Backspace is unmapped); dispatch a raw
-  // keydown like the other specs do.
   await expect(page.locator('#player-osd')).toBeVisible();
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#player-osd')).toBeHidden();
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-series')).toBeVisible();
   // The detail survives the player round-trip (Series isn't re-rendered on return).
   await expect(page.locator('#view-series .episode-card[data-episode-id="10"]')).toContainText('Episode One');
@@ -203,13 +201,13 @@ test('Back walks Series detail -> browse -> Home instead of ejecting', async ({ 
   await expect(page.locator('#view-series .series-season-btn[data-season="1"]')).toContainText('Season 1');
 
   // First Back steps detail -> browse: still inside Series, not ejected to Live.
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-series')).toBeVisible();
   await expect(page.locator('#view-series .catalog-rail-title')).toContainText('Cat A');
   await expect(page.locator('#view-channels')).toBeHidden();
 
   // Second Back from the browse top level goes Home, on the Series card.
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('#view-series')).toBeHidden();
   await expect(page.locator('#view-home .focused')).toHaveAttribute('data-section', 'series');

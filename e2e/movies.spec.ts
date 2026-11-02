@@ -1,4 +1,4 @@
-import { test, expect, routeLiveManifest, neuterVideo, SAMPLE_M3U, enterTab, leaveVod, type Page, pressStepsAndReadPlayer, openGuide, seekBarGeometry } from './helpers';
+import { test, expect, routeLiveManifest, neuterVideo, SAMPLE_M3U, enterTab, leaveVod, type Page, pressStepsAndReadPlayer, openGuide, seekBarGeometry, pressBack, BACK_KEY } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -260,13 +260,13 @@ test('Back walks Movies detail -> browse -> Home instead of ejecting', async ({ 
   await expect(page.locator('#view-movies .detail-plot')).toContainText('A plot.');
 
   // First Back steps detail -> browse: still inside Movies, not ejected to Live.
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-movies')).toBeVisible();
   await expect(page.locator('#view-movies .catalog-browse')).toBeVisible();
   await expect(page.locator('#view-channels')).toBeHidden();
 
   // Second Back from the browse top level goes Home, on the Movies card.
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('#view-movies')).toBeHidden();
   await expect(page.locator('#view-home .focused')).toHaveAttribute('data-section', 'movies');
@@ -297,14 +297,14 @@ test('Back from a detail finds browse scrolled and focused as it was left', asyn
   await expect(page.locator('#view-movies .detail-plot')).toContainText('A plot.');
   // Read in the same task as Back: a rebuilt browse would sit at offset 0
   // and only glide back to the tile afterward.
-  const back = await page.evaluate(() => {
-    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true }));
+  const back = await page.evaluate((backKey) => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: backKey, bubbles: true }));
     const el = document.querySelector<HTMLElement>('#view-movies .catalog-tile[data-item-id="109"]')!;
     return {
       focused: el.classList.contains('focused'),
       scrollLeft: el.parentElement!.scrollLeft,
     };
-  });
+  }, BACK_KEY);
   expect(back).toEqual({ focused: true, scrollLeft: left });
 });
 
@@ -376,7 +376,7 @@ async function startFakeVod(page: Page): Promise<void> {
   });
 }
 
-const [ENTER, LEFT, UP, RIGHT, DOWN, BACK, YELLOW] = [13, 37, 38, 39, 40, 461, 405];
+const [ENTER, LEFT, UP, RIGHT, DOWN, BACK, YELLOW] = [13, 37, 38, 39, 40, BACK_KEY, 405];
 
 // Which dock control holds the ring, and the skip target over the bar.
 const dockState = (page: Page) => page.evaluate(() => {

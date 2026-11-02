@@ -147,9 +147,8 @@ Legend for facts: **[V]** verified against a cited source, **[I]** inferred,
   the app in one press.
 
 ### 2.6 Platform services [V unless marked]
-- **Alarms**: `tizen.alarm.add(AlarmAbsolute, appId, appControl)` launches
-  the app. Whether it wakes a closed app reliably / from standby / after
-  reboot [U].
+- **Alarms**: `tizen.alarm.add(AlarmAbsolute, appId, appControl)` can only
+  *launch* the app, full screen over whatever is playing. Not used (D5).
 - **No notification/toast API on TV** → in-app only.
 - **Lifecycle**: JS pauses on hide; `visibilitychange` fires; exit via
   `tizen.application.getCurrentApplication().exit()`; deep links via
@@ -213,8 +212,8 @@ Paths are repo-relative. Counts are non-test lines.
 | Luna target | Caller | Tizen replacement |
 |---|---|---|
 | `…pleione.service/start\|stop\|serviceEvents\|getDevMode` | `app.ts` | Tizen web service + message port / localhost (optional, §6.4) |
-| `activitymanager/create\|cancel` | `reminder-service.ts` | `tizen.alarm.add/remove` |
-| `notification/createToast\|createAlert`, `applicationManager/launch` | AM callback, bundled service | none (in-app prompt; alarm launches app) |
+| `activitymanager/create\|cancel` | `reminder-service.ts` | none: an in-app timer while the app is open (D5) |
+| `notification/createToast\|createAlert`, `applicationManager/launch` | AM callback, bundled service | none: no notification API on the TV (`tizen.notification` is undefined on 5.5); in-app prompt only |
 | `com.webos.service.drm` (PlayReady) | `playready-drm.ts`, `player-pipeline.ts` | EME via Shaka (`com.microsoft.playready`) or AVPlay `setDrm` |
 | `com.webos.media/setSubtitleEnable` | `player-tracks.ts` | native `textTracks`, or AVPlay `setSilentSubtitle`/`setSelectTrack` |
 
@@ -294,7 +293,9 @@ Interface (first cut):
   `resize` heuristic).
 - `pointerDefault: boolean` (webOS true, Tizen false → boot in
   `keyboard-nav`).
-- `scheduleReminder(id, at, payload) / cancelReminder(id)` + `deliversClosedAppAlerts`.
+- `scheduleReminder(id, at, payload) / cancelReminder(id)` +
+  `deliversClosedAppAlerts` (webOS true; Tizen false: no scheduling, the
+  in-app timer covers it).
 - `setScreenSaver(enabled)` (Tizen real; webOS no-op for now).
 - `playback`: capability record consumed by the pipeline (see §5).
 - `lanService?`: start/stop/events, absent when unsupported.
@@ -319,8 +320,10 @@ services.
 - DASH clear/Widevine/ClearKey → Shaka (already). PlayReady → Shaka with a
   new `com.microsoft.playready` mapping (server URL + custom data headers)
   instead of the Luna `PlayReadyDrm`.
-- Captions: no Luna compositor → CC row hidden; in-band 608 via
-  `textTracks` if the engine exposes it [U].
+- Captions: no Luna compositor, and the native element neither renders
+  nor exposes in-band CEA-608 (spike, HLS and DASH) → CC row hidden on the
+  native path. Shaka parses and renders 608 itself, so a stream whose
+  captions matter can go through Shaka.
 - Audio switching via `audioTracks[i].enabled` on Tizen 5.5–7; on 8+
   hide the picker for multi-audio native streams (or route those to
   Shaka/hls.js) until Stage B.
@@ -381,12 +384,18 @@ hardware pipeline the webOS build deliberately uses. Keep as fallback only.
 - On resume: re-check network, restart live stream (JS was paused).
 
 ### 6.3 Reminders
-- `tizen.alarm.add(new AlarmAbsolute(date), appId, appControl{reminderChannelKey})`;
-  cancel with `tizen.alarm.remove`. Store alarm id per reminder.
-- No system toast → when the alarm fires the app **launches** (or comes to
-  front) and shows the in-app `ReminderPrompt`. Device-verify behavior
-  when TV is in standby/off [U].
-- Decision D5 picks between launch-on-alarm and in-app-only.
+- **In-app only** (D5). Reminders fire while Pleione is open: the same
+  `ReminderPrompt` with **Watch now**, driven by a timer, as webOS does
+  in-app today. Nothing is scheduled with the system.
+- Why not `tizen.alarm`: the TV has no notification or toast API, so an
+  alarm can only launch Pleione full screen over whatever the user is
+  watching. On webOS a closed-app reminder is a passive toast and the user
+  decides; a launch takes the decision away.
+- A reminder whose air time passed while the app was closed raises
+  nothing; it is pruned once its program ends, as `ReminderService.prune`
+  does today.
+- The places that set a reminder say, on Tizen only, that reminders appear
+  while Pleione is open (copy through the `ui-copy` skill).
 
 ### 6.4 LAN phone setup / M3U upload
 - Option 1 (recommended later phase): port `bundled-service/` as a Tizen
@@ -423,7 +432,7 @@ device; Arabic shaping via Chromium [I] — verify with the `ar` locale.
   `tizen:application id="<pkg>.Pleione" package="<pkg>" required_version="4.0"`,
   `tizen:profile name="tv-samsung"`, `content src="index.html"`,
   `access origin="*" subdomains="true"`, privileges
-  (`internet`, `tv.inputdevice`, `application.launch`, `alarm`,
+  (`internet`, `tv.inputdevice`, `application.launch`,
   `network.public`, `productinfo`, `unlimitedstorage`, `tv.window`
   if AVPlay, `drmplay` if PlayReady/AVPlay DRM),
   `tizen:setting screen-orientation="landscape" context-menu="disable"
@@ -479,13 +488,14 @@ device; Arabic shaping via Chromium [I] — verify with the `ar` locale.
 ## 8. Testing
 
 - **Unit**: `src/platform/tizen/*.test.ts` with stubbed `tizen`/`webapis`
-  (keymap, registerKeys, exit, launch params, alarms, screensaver).
+  (keymap, registerKeys, exit, launch params, in-app reminders,
+  screensaver).
   `player-pipeline-tizen.test.ts` beside `player-pipeline-webos.test.ts`.
   Vitest runs both platforms (define per test file via `vi.stubGlobal` or a
   second Vitest project with `__PLATFORM__='tizen'`).
 - **E2E**: a third Playwright project `tizen-sim`: preview build with
   `--platform=tizen`, init script installing fake `tizen` (tvinputdevice,
-  application, alarm) and `webapis` (appcommon, productinfo), UA with
+  application) and `webapis` (appcommon, productinfo), UA with
   `Tizen`. Run a focused subset (startup, key nav/Back, player, reminders,
   settings without LAN). Replace literal `461` in specs with a
   `KEY.BACK` helper so specs run on both.
@@ -529,9 +539,9 @@ on the desk.
 | 1 | Platform layer (webOS only) | `__PLATFORM__`, `src/platform/`, call sites moved | All webOS unit + E2E green, no behavior change | 2–3 |
 | 2 | Tizen shell | `--platform=tizen` build, `config.xml`, keys, exit confirmation at Home, launch params, keyboard-nav default, `.wgt` packaging, `tizen.sh` | App boots, navigates, exits per Samsung's Return/Exit policy on TV | 2–3 |
 | 3 | Playback Stage A | Native path on Tizen, mpegts fallback, Shaka PlayReady, capability gates, screensaver | Live HLS/TS, VOD, catch-up, DASH play on TV; tracks where supported | 3–5 |
-| 4 | Smart Remote + reminders | On-screen paths for color-only actions, `tizen.alarm` reminders | Every action reachable without color keys; reminder fires | 2–3 |
+| 4 | Smart Remote + reminders | On-screen paths for color-only actions, in-app reminders on Tizen | Every action reachable without color keys; a reminder prompts while the app is open | 2–3 |
 | 5 | Tests, CI, docs | `tizen-sim` project, unit tests, CI `.wgt` job, docs/skills/README/site | CI green on both platforms | 2–3 |
-| 6 | LAN service (optional) | Tizen web service port | Phone setup + upload work on TV | 3–5 |
+| 6 | LAN service | Tizen web service port (Node 4.4.3 on 5.5, LAN bind confirmed) | Phone setup + upload work on TV | 3–5 |
 | 7 | AVPlay (conditional) | `MediaBackend` + `AvplayBackend` | Gaps from Stage A closed | 8–15 |
 | 8 | Samsung store | Seller Office account, `store/samsung/`, hosted demo reviewer account, submission | App passes certification and is live in the US; partnership requested for other countries | 3–5 + review time |
 
@@ -585,7 +595,8 @@ Run on both test TVs (Tizen 5.5 and the current model):
 5. Seeking within a live DVR window via `currentTime`/`seekable`.
 6. `getStartDate()` on HLS with PROGRAM-DATE-TIME.
 7. Shaka PlayReady + Widevine with a test stream.
-8. `tizen.alarm` with app closed, in standby, after reboot.
+8. ~~`tizen.alarm` with app closed, in standby, after reboot.~~ Dropped
+   with D5: reminders are in-app only.
 9. Web service: Node version, can it bind `0.0.0.0`, reachable from a phone.
 10. IndexedDB quota (`navigator.storage.estimate` / webkit quota).
 11. Font family name; Arabic rendering; symbol glyph coverage.
@@ -613,10 +624,12 @@ Decided 2026-10-30:
   first, then the **Samsung store** (Phase 8, §7.1): US as a Public
   Seller, other countries after a partnership. Optional TizenBrew module.
   *Revised 2026-11-02*: the store is in scope.
-- **D4 — LAN phone setup:** ship without it; port the bundled service as a
-  Tizen web service after the spike confirms LAN binding (Phase 6).
-- **D5 — Reminders:** `tizen.alarm` launches the app at air time and shows
-  the in-app prompt.
+- **D4 — LAN phone setup:** port the bundled service as a Tizen web
+  service (Phase 6). The spike confirmed it on 5.5: Node 4.4.3, listens on
+  `0.0.0.0`, reachable from the LAN. It can ship in v1 if Phase 6 is ready.
+- **D5 — Reminders: in-app only on Tizen.** *Revised 2026-11-02* from
+  launching the app with `tizen.alarm`: with no notification API on the
+  TV, a launch would take over the screen. See §6.3.
 - **D6 — Back at Home, per build:** webOS closes in one press (LG
   requires it; today's `closeApp()`); Tizen shows an exit confirmation and
   exits on Yes (Samsung's Return policy, §2.5). The Exit key is never

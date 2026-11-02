@@ -41,9 +41,13 @@ another TV is tested.
 - **Certificate**: the image's sample Tizen author certificate (`dev`
   profile) installs and runs on Tizen 5.5. No Samsung certificate is
   needed for this TV.
-- The probe reported its results over HTTP to a collector on the host
-  instead of through DevTools; the `sdb` + CDP flow (checklist 12) is
-  still to do.
+- The probe reported its results over HTTP to a collector on the host.
+- **DevTools (checklist 12)**: `sdb -s <tv-ip>:26101 shell 0 debug <pkg>.<Name>`
+  launches the app and prints a port; `sdb forward tcp:<local> tcp:<port>`
+  exposes it, and `http://127.0.0.1:<local>/json` lists the page. A plain
+  WebSocket `Runtime.evaluate` works, so `scripts/tizen.sh eval` can reuse
+  the CDP code. `sdb` drops the device now and then; `sdb connect` again
+  and redo the forward.
 
 ## Playback (native `<video src>`)
 
@@ -66,10 +70,32 @@ Media came from the demo Xtream server (`docs/xtream-demo-server.md`).
 | MSE / EME | Both present |
 | `canPlayType` | HLS, `video/mp2t`, `video/mp4`, `application/dash+xml`: `maybe`; H.264, HEVC, AC-3, E-AC-3: `probably` |
 
+| Native DASH (`<video src="….mpd">`, clear) | Plays |
+| CEA-608, native (HLS and DASH) | **Not rendered and not exposed** as a `TextTrack` |
+| CEA-608 through Shaka | Parsed (CC1/CC3) and rendered over the video |
+
 So the Stage A plan holds on Tizen 5.5: the native path plays HLS, TS and
 MP4, the audio picker works, and subtitles take the self-render path as
 on webOS. Live-stream detection must not rely on `duration === Infinity`,
 and catch-up/EPG alignment cannot use `getStartDate()` here.
+
+## DRM (Shaka 5.2.12 on MSE/EME)
+
+`requestMediaKeySystemAccess` grants `com.widevine.alpha`,
+`com.microsoft.playready`, and `org.w3.clearkey`
+(`com.microsoft.playready.recommendation` and `.hardware`: not supported).
+Shaka's own `isBrowserSupported()` is true.
+
+| Test vector | Result |
+|---|---|
+| Widevine, a public single-DRM DASH test stream | Decodes and plays |
+| Widevine, a public multi-DRM DASH test stream (one key) | Decodes and plays |
+| PlayReady, the same multi-DRM test stream | Decodes and plays |
+
+So PlayReady on Tizen can go through Shaka with the
+`com.microsoft.playready` key system, in place of webOS's Luna DRM
+service. Shaka 5 has no `setTextTrackVisibility`/`isTextTrackVisible`;
+selecting a text track shows it.
 
 ## Input
 
@@ -113,6 +139,19 @@ Search 10225, PreviousChannel 10190, Minus 189.
 Every unsupported feature already has a fallback for webOS 4, so Tizen
 5.5 adds no new legacy work.
 
+## Platform services
+
+| Check | 2020 TV |
+|---|---|
+| Notification / toast API | **None**: `tizen.notification` is undefined, and no `webapis` module offers one |
+| `tizen.alarm` | Present; not used, since reminders are in-app only (plan D5) |
+| Web service (`<tizen:service>`) | Starts from the app through `launchAppControl` with the `service` operation |
+| Web service Node.js | **v4.4.3** (V8 4.5, OpenSSL 1.0.2), `arm` |
+| Web service LAN bind | `listen(8099, '0.0.0.0')` works, and a computer on the LAN gets a reply |
+
+The bundled service already targets Node 0.12 (ES5/CommonJS), which runs
+on Node 4, so the LAN setup port (Phase 6) is feasible on 5.5.
+
 ## Fonts
 
 - The computed family is the generic `sans-serif`; the Samsung UI font's
@@ -123,9 +162,6 @@ Every unsupported feature already has a fallback for webOS 4, so Tizen
 
 ## Still open
 
-From the plan's §11.2 checklist, for this TV: in-band CEA-608 (1),
-Shaka PlayReady and Widevine (7), `tizen.alarm` with the app closed, in
-standby and after reboot (8), the web service's Node version and LAN bind
-(9), the `sdb` + CDP debugging flow (12), and the Exit key (15). The
-current TV needs the whole checklist, including whether a plain Tizen
-certificate is rejected there (16).
+For this TV, only the Exit key (15): this remote has none. Alarms (8) were
+dropped with plan D5. The current TV needs the whole checklist, including
+whether it rejects a plain Tizen certificate (16).

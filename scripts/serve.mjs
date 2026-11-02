@@ -4,7 +4,9 @@ import { join, extname } from 'path';
 import { LEGACY_HEADER, readLegacyAsset } from './chromium-53-simulation.mjs';
 
 const PORT = Number(process.env.PREVIEW_PORT) || 3000;
-const DIR = 'dist';
+// PREVIEW_DIR picks the build to serve: dist-720 (the webos-720 E2E project)
+// or dist-tizen (tizen-sim).
+const DIR = process.env.PREVIEW_DIR || 'dist';
 
 const MIME = {
   '.css': 'text/css',

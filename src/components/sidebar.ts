@@ -7,7 +7,6 @@ import type {
   ChannelHealthStatus,
   ChannelScope,
 } from '../types';
-import { CONFIG } from '../config';
 import { PlaylistService } from '../services/playlist-service';
 import { EpgService } from '../services/epg-service';
 import { RecentlyWatchedService, type RecentlyWatchedItem } from '../services/recently-watched';
@@ -31,6 +30,7 @@ import { ChannelHealthService } from '../services/channel-health';
 import { Focus, type FocusScope, type Via } from '../navigation/focus-scope';
 import { InputMode } from '../navigation/input-mode';
 import { uiPx } from '../utils/ui-scale';
+import { isBackKey } from '../navigation/keys';
 
 const log = createLogger('Sidebar');
 
@@ -195,7 +195,7 @@ export class Sidebar {
 
     if (overSidebar) this.resetTimer();
 
-    this.pointerAtGroupEdge = clientX <= GROUP_DWELL_EDGE && !overTabs;
+    this.pointerAtGroupEdge = clientX <= uiPx(GROUP_DWELL_EDGE) && !overTabs;
     if (!this.groupsExpanded && this.pointerAtGroupEdge && !this.opening) {
       this.startGroupDwell();
     } else {
@@ -1261,7 +1261,7 @@ export class Sidebar {
         e.preventDefault();
         e.stopPropagation();
         this.exitSearchToList();
-      } else if (e.key === 'Escape' || e.keyCode === CONFIG.KEYS.BACK) {
+      } else if (isBackKey(e)) {
         e.preventDefault();
         e.stopPropagation();
         (t as HTMLInputElement).blur();

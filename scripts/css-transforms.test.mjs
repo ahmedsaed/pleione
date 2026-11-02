@@ -288,6 +288,15 @@ describe('scaleLengths', () => {
     const css = ':root { --canvas-width: 1920px; } video::cue { font-size: 30px; } @media (min-width: 800px) { .a { color: red; } }';
     expect(scaleLengths(css, 1.3)).toBe(css);
   });
+
+  it('scales the canvas and cue text too for the 1280x720 plane', () => {
+    const css = ':root { --canvas-width: 1920px; --canvas-height: 1080px; } video::cue { font-size: 30px; } .a { width: 300px; }';
+    const out = scaleLengths(css, 2 / 3, { canvas: true, cues: true });
+    expect(out).toContain('--canvas-width: 1280px');
+    expect(out).toContain('--canvas-height: 720px');
+    expect(out).toContain('font-size: 20px');
+    expect(out).toContain('width: 200px');
+  });
 });
 
 describe('convertLegacyColorSyntax', () => {

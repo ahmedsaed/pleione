@@ -1147,6 +1147,19 @@ describe('Sidebar', () => {
       expect(el.classList.contains('groups-expanded')).toBe(true);
     });
 
+    it('scales the group edge with the Interface size', () => {
+      document.documentElement.dataset.interfaceSize = '90';
+      try {
+        // 46px is inside the 48px edge at 100% but past 43.2px at 90%.
+        sidebar.handlePointerMove(46, true);
+        finishOpening();
+        vi.advanceTimersByTime(1000);
+        expect(el.classList.contains('groups-expanded')).toBe(false);
+      } finally {
+        delete document.documentElement.dataset.interfaceSize;
+      }
+    });
+
     it('cancels group expansion when the pointer leaves the edge', () => {
       sidebar.handlePointerMove(30, true);
       finishOpening();

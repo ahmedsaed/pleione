@@ -1,4 +1,4 @@
-import { test, expect, enterTab, pressKeys, type Page } from './helpers';
+import { test, expect, enterTab, pressKeys, type Page, BACK_KEY } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
 // A section the viewer left keeps no pages: entry rebuilds them anyway.
@@ -26,7 +26,7 @@ test('Movies releases its pages on leave and restores the remembered tile on ret
   // Within the section, browse stays under a detail: Back lands on the tile.
   await page.keyboard.press('Enter');
   await expect(page.locator('#view-movies .catalog-layer-detail .detail-title')).toBeVisible();
-  await pressKeys(page, 461);
+  await pressKeys(page, BACK_KEY);
   await expect(focused).toHaveAttribute('data-item-id', remembered!);
 
   await enterTab(page, 'home');

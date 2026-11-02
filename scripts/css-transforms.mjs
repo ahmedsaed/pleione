@@ -348,10 +348,13 @@ function scaleValueLengths(value, factor) {
 
 // One Interface size's copy of a stylesheet. `--canvas-*` tokens hold the
 // fixed 1920x1080 screen, which never scales.
-export function scaleLengths(css, factor) {
+// An Interface size keeps the canvas and subtitle cues as they are; the
+// 1280x720 plane's base scale passes { canvas: true, cues: true } to reach
+// them too.
+export function scaleLengths(css, factor, { canvas = false, cues = false } = {}) {
   const root = postcss.parse(css);
   root.walkDecls((decl) => {
-    if (decl.prop.startsWith('--canvas-') || isCueRule(decl)) return;
+    if ((!canvas && decl.prop.startsWith('--canvas-')) || (!cues && isCueRule(decl))) return;
     if (!decl.value.includes('px')) return;
     decl.value = scaleValueLengths(decl.value, factor);
   });

@@ -13,6 +13,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify('0.0.0-test'),
     __SERVICE_ID__: JSON.stringify(serviceId),
     __ENABLE_PSEUDO_LOCALE__: JSON.stringify(true),
+    __UI_BASE_SCALE__: JSON.stringify(1),
+    __PLATFORM__: JSON.stringify('webos'),
   },
   test: {
     // Default to Node. DOM-dependent tests opt in per-file with:

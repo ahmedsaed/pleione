@@ -22,6 +22,7 @@ import { isIndexRetryPending } from '../workers/index-retry';
 import { createLogger } from '../utils/logger';
 import { Focus } from '../navigation/focus-scope';
 import { uiPx } from '../utils/ui-scale';
+import { isBackKey } from '../navigation/keys';
 
 const log = createLogger('ChannelEditor');
 
@@ -147,8 +148,7 @@ export class ChannelListEditor {
     this.container.addEventListener('keydown', (event: KeyboardEvent) => {
       if (!(event.target instanceof HTMLInputElement)) return;
       if (event.target.classList.contains('epg-mapping-search')
-          && (event.key === 'Escape' || event.keyCode === CONFIG.KEYS.ESC
-            || event.keyCode === CONFIG.KEYS.BACK)) {
+          && isBackKey(event)) {
         event.preventDefault();
         event.stopPropagation();
         this.handleBack();
@@ -911,7 +911,7 @@ export class ChannelListEditor {
         || target.key === candidate.target.key) return;
 
     if (!this.pointerDragging) {
-      if (!at || Math.abs(at.x - candidate.x) + Math.abs(at.y - candidate.y) < DRAG_START_DISTANCE) {
+      if (!at || Math.abs(at.x - candidate.x) + Math.abs(at.y - candidate.y) < uiPx(DRAG_START_DISTANCE)) {
         this.pendingDragOver = el;
         return;
       }

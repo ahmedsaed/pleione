@@ -457,6 +457,12 @@ html[data-theme="paper-light"] .home-view {
   margin-left: 40px;
 }
 
+/* Without phone setup beside them (no LAN service), the cards center. */
+.home-first-run-cards:first-child {
+  margin-right: auto;
+  margin-left: auto;
+}
+
 .home-first-run-cards > .home-card {
   flex: 1 1 0;
 }

@@ -506,6 +506,8 @@ export const ES_MESSAGES = {
   'app.loadingChannelsProgress': 'Cargando canales… Entradas procesadas: {processed}; conservadas: {kept}',
   'app.loadFailed': 'No se pudo cargar la lista. Revisa la URL e inténtalo de nuevo.',
   'app.saveFailed': 'No se pudieron guardar los cambios. Inténtalo de nuevo.',
+  'app.exitTitle': '¿Salir de {name}?',
+  'app.exitConfirm': 'Salir',
   'settings.storageLimited': 'Este TV limita el almacenamiento de las apps. Tu progreso y tus favoritos se siguen guardando, pero la caché no se conserva entre sesiones.',
   'weekday.0': 'Dom',
   'weekday.1': 'Lun',

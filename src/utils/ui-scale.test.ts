@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { swapInterfaceStylesheets, uiPx, uiScale } from './ui-scale';
+import { interfaceScale, swapInterfaceStylesheets, uiPx, uiScale } from './ui-scale';
 
 afterEach(() => {
   delete document.documentElement.dataset.interfaceSize;
@@ -21,6 +21,19 @@ describe('uiScale', () => {
   it('ignores an unknown size', () => {
     document.documentElement.dataset.interfaceSize = '175';
     expect(uiScale()).toBe(1);
+  });
+});
+
+describe('interfaceScale', () => {
+  it('applies the 1280x720 plane scale under every Interface size', () => {
+    expect(interfaceScale('100', 2 / 3)).toBeCloseTo(2 / 3);
+    expect(interfaceScale('120', 2 / 3)).toBeCloseTo(0.8);
+    expect(interfaceScale(undefined, 2 / 3)).toBeCloseTo(2 / 3);
+  });
+
+  it('is the Interface size alone on the 1920x1080 plane', () => {
+    expect(interfaceScale('90', 1)).toBeCloseTo(0.9);
+    expect(interfaceScale('bogus', 1)).toBe(1);
   });
 });
 

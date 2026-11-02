@@ -568,6 +568,31 @@ describe('ChannelList edit mode', () => {
     expect(container.querySelector('.grabbed')).toBeNull();
   });
 
+  it('scales the drag start distance with the Interface size', () => {
+    document.documentElement.dataset.interfaceSize = '130';
+    try {
+      enterEdit();
+      const originalElementFromPoint = document.elementFromPoint;
+      document.elementFromPoint = () => channelItems()[0];
+      Focus.pointer(100, 95);
+      channelItems()[0].dispatchEvent(new MouseEvent('mousedown', {
+        button: 0, clientX: 100, clientY: 95, bubbles: true,
+      }));
+      document.elementFromPoint = originalElementFromPoint;
+      // Over row 2, 9px is past 8px at 100% but short of 10.4px at 130%.
+      hover(channelItems()[1]);
+      Focus.pointer(100, 104);
+      expect(container.querySelector('.grabbed')).toBeNull();
+      Focus.pointer(100, 110);
+      expect(container.querySelector('.grabbed')).not.toBeNull();
+      document.dispatchEvent(new MouseEvent('mouseup', {
+        button: 0, clientX: 100, clientY: 110, bubbles: true,
+      }));
+    } finally {
+      delete document.documentElement.dataset.interfaceSize;
+    }
+  });
+
   it('drops a held press when Back leaves edit mode', () => {
     enterEdit();
     const originalElementFromPoint = document.elementFromPoint;

@@ -508,6 +508,8 @@ export const EN_MESSAGES = {
   'app.loadingChannelsProgress': 'Loading channels… {processed} processed, {kept} kept',
   'app.loadFailed': 'Unable to load the playlist. Check the URL and try again.',
   'app.saveFailed': 'Unable to save changes. Please try again.',
+  'app.exitTitle': 'Exit {name}?',
+  'app.exitConfirm': 'Exit',
   'settings.storageLimited': 'This TV limits how much the app can store. Your progress and favorites are still saved, but the cache isn’t kept between launches.',
   'weekday.0': 'Sun',
   'weekday.1': 'Mon',

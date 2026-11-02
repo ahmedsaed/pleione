@@ -15,8 +15,28 @@ import {
   scaleFontSizes,
   scaleLengths,
 } from './scripts/css-transforms.mjs';
+import { tizenConfigXml } from './scripts/tizen-config.mjs';
 
 const isPreview = process.argv.includes('--preview');
+// The TV platform this bundle is for (`__PLATFORM__`). webOS builds into
+// dist/; Samsung Tizen into dist-tizen/ (docs/tizen-port-plan.md).
+const platformArg = process.argv.find(arg => arg.startsWith('--platform='));
+const platform = platformArg ? platformArg.slice('--platform='.length) : 'webos';
+if (platform !== 'webos' && platform !== 'tizen') {
+  console.error(`Unknown --platform=${platform}; expected webos or tizen`);
+  process.exit(1);
+}
+// LG's Full HD TVs run apps on a 1280x720 plane and need their own package
+// (`"resolution": "1280x720"`). That build scales the whole 1920x1080 design
+// by 2/3 into dist-720/: every stylesheet length, the canvas, and every JS
+// length that goes through uiPx() (UI_BASE_SCALE).
+const isFhd = process.argv.includes('--resolution=720');
+if (isFhd && platform !== 'webos') {
+  console.error('--resolution=720 is the LG Full HD package; it needs --platform=webos');
+  process.exit(1);
+}
+const OUT = platform === 'tizen' ? 'dist-tizen' : isFhd ? 'dist-720' : 'dist';
+const UI_BASE_SCALE = isFhd ? 2 / 3 : 1;
 // Checked-in but regenerated on every build; never a source input.
 const GENERATED_STYLESHEET = 'legacy-webos-base.css';
 // Read version from package.json (single source of truth)
@@ -40,7 +60,7 @@ function interfaceSizes() {
 // Every non-default Interface size gets its own copy of each stylesheet in
 // css/ui-<size>/, with the px lengths already multiplied out, and every
 // stylesheet a mirrored right-to-left copy in css/rtl/ (and css/rtl/ui-<size>/).
-function transformStylesheets(outDir) {
+function transformStylesheets(outDir, baseScale) {
   const sizes = interfaceSizes();
   for (const size of sizes) {
     mkdirSync(`${outDir}/ui-${size}`, { recursive: true });
@@ -49,7 +69,10 @@ function transformStylesheets(outDir) {
   for (const file of readdirSync(outDir)) {
     if (!file.endsWith('.css')) continue;
     const path = `${outDir}/${file}`;
-    const css = scaleFontSizes(convertLegacyColorSyntax(readFileSync(path, 'utf8')));
+    const source = scaleFontSizes(convertLegacyColorSyntax(readFileSync(path, 'utf8')));
+    // The plane's own scale reaches the canvas and subtitle cues too, which
+    // an Interface size leaves alone.
+    const css = baseScale === 1 ? source : scaleLengths(source, baseScale, { canvas: true, cues: true });
     const rtl = mirrorStylesheet(css);
     writeFileSync(path, css);
     writeFileSync(`${outDir}/rtl/${file}`, rtl);
@@ -62,30 +85,49 @@ function transformStylesheets(outDir) {
 
 // Copy static assets to dist. The source HTML is the production/webOS version;
 // preview builds swap only the platform library at build time.
-mkdirSync('dist', { recursive: true });
+mkdirSync(OUT, { recursive: true });
 const indexHtml = readFileSync('index.html', 'utf8');
 const previewLibsMarker = '<!-- preview-libs -->';
-const outputIndexHtml = indexHtml.replace(
+let outputIndexHtml = indexHtml.replace(
   previewLibsMarker,
   isPreview ? '<script src="js/preview-libs.js"></script>' : '',
 );
 if (outputIndexHtml === indexHtml) {
   throw new Error('Build could not find the preview library marker in index.html.');
 }
-writeFileSync('dist/index.html', outputIndexHtml);
-cpSync('appinfo.json', 'dist/appinfo.json');
-rmSync('dist/resources', { recursive: true, force: true });
-cpSync('resources', 'dist/resources', { recursive: true });
+if (isFhd) {
+  const viewport = '<meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">';
+  if (!outputIndexHtml.includes(viewport)) throw new Error('Build could not find the viewport meta in index.html.');
+  outputIndexHtml = outputIndexHtml.replace(viewport, viewport.replace('width=1920, height=1080', 'width=1280, height=720'));
+}
+if (platform === 'tizen') {
+  // Samsung remotes have no pointer, so the app starts in key mode.
+  outputIndexHtml = outputIndexHtml.replace('<html lang="en">', '<html lang="en" class="keyboard-nav">');
+  writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version));
+  cpSync('assets/icon130.png', `${OUT}/icon.png`);
+} else {
+  writeFileSync(`${OUT}/appinfo.json`, JSON.stringify(
+    isFhd ? { ...appinfo, resolution: '1280x720' } : appinfo, null, 2) + '\n');
+  rmSync(`${OUT}/resources`, { recursive: true, force: true });
+  cpSync('resources', `${OUT}/resources`, { recursive: true });
+}
+writeFileSync(`${OUT}/index.html`, outputIndexHtml);
 // Refresh the flex-`gap` fallback; see its header for the cascade rationale.
 const sourceStylesheets = linkedStylesheets(indexHtml, readdirSync('css'), GENERATED_STYLESHEET)
   .map((file) => readFileSync(`css/${file}`, 'utf8'));
-writeFileSync(`css/${GENERATED_STYLESHEET}`, generateFlexGapFallback(sourceStylesheets));
-cpSync('css', 'dist/css', { recursive: true });
-transformStylesheets('dist/css');
-cpSync('assets/icon80.png', 'dist/icon.png');
-cpSync('assets/icon130.png', 'dist/largeIcon.png');
-cpSync('assets/group-icons', 'dist/assets/group-icons', { recursive: true });
-cpSync('assets/icons', 'dist/assets/icons', { recursive: true });
+const generatedStylesheet = generateFlexGapFallback(sourceStylesheets);
+// The 1280x720 and Tizen builds can run beside the main one (E2E servers
+// start together), so only the main webOS build rewrites the checked-in copy.
+if (platform === 'webos' && !isFhd) writeFileSync(`css/${GENERATED_STYLESHEET}`, generatedStylesheet);
+cpSync('css', `${OUT}/css`, { recursive: true });
+writeFileSync(`${OUT}/css/${GENERATED_STYLESHEET}`, generatedStylesheet);
+transformStylesheets(`${OUT}/css`, UI_BASE_SCALE);
+if (platform === 'webos') {
+  cpSync('assets/icon80.png', `${OUT}/icon.png`);
+  cpSync('assets/icon130.png', `${OUT}/largeIcon.png`);
+}
+cpSync('assets/group-icons', `${OUT}/assets/group-icons`, { recursive: true });
+cpSync('assets/icons', `${OUT}/assets/icons`, { recursive: true });
 
 // Main app bundle — playback libraries remain separate. Shaka is shipped as a
 // lazy TV bundle for Widevine and is also used by the desktop preview.
@@ -95,6 +137,8 @@ const define = {
   '__APP_ID__': JSON.stringify(appinfo.id),
   '__SERVICE_ID__': JSON.stringify(serviceId),
   '__ENABLE_PSEUDO_LOCALE__': JSON.stringify(isPreview),
+  '__PLATFORM__': JSON.stringify(platform),
+  '__UI_BASE_SCALE__': JSON.stringify(UI_BASE_SCALE),
 };
 // Target Chromium 53 — the engine on webOS 4. This down-levels newer
 // syntax (`?.`, `??`, etc.) which would otherwise fail to parse on
@@ -106,7 +150,7 @@ const TARGET = ['chrome53'];
 const appBuild = {
   entryPoints: ['src/app.ts'],
   bundle: true,
-  outfile: 'dist/js/app.js',
+  outfile: `${OUT}/js/app.js`,
   format: 'iife',
   target: TARGET,
   banner: { js: LEGACY_JS_BANNER },
@@ -116,7 +160,7 @@ const appBuild = {
 const workerBuild = {
   entryPoints: ['src/workers/app-worker.ts'],
   bundle: true,
-  outfile: 'dist/js/app-worker.js',
+  outfile: `${OUT}/js/app-worker.js`,
   format: 'iife',
   target: TARGET,
   banner: { js: LEGACY_JS_BANNER },
@@ -133,7 +177,7 @@ const bundled = await Promise.all(shippedBuilds.map(({ config }) =>
 
 const shakaBundle = readFileSync('node_modules/shaka-player/dist/shaka-player.dash.js', 'utf8');
 validateShakaBundle(shakaBundle);
-writeFileSync('dist/js/shaka-player.dash.js', shakaBundle);
+writeFileSync(`${OUT}/js/shaka-player.dash.js`, shakaBundle);
 
 // webOS 4 (Chromium 53) bundle compat gate. Down-leveling handles post-53
 // *syntax*, but not *APIs* — and dependencies get bundled in without passing
@@ -154,17 +198,17 @@ if (isPreview) {
   await esbuild.build({
     entryPoints: ['src/preview-libs.ts'],
     bundle: true,
-    outfile: 'dist/js/preview-libs.js',
+    outfile: `${OUT}/js/preview-libs.js`,
     format: 'iife',
     target: TARGET,
     minify: true,
   });
 } else {
-  rmSync('dist/js/preview-libs.js', { force: true });
+  rmSync(`${OUT}/js/preview-libs.js`, { force: true });
 }
 
 writeThirdPartyNotices({
-  outDir: 'dist',
+  outDir: OUT,
   metafiles: bundled.map(({ metafile }) => metafile),
 });
 

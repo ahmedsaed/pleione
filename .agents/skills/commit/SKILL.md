@@ -66,5 +66,5 @@ Show the final message in your reply after committing.
 
 ## Media for README or GitHub
 
-Upload with `gh image --repo ahmedsaed/pleione-webos-iptv-player -- <files>`; it
+Upload with `gh image --repo ahmedsaed/pleione -- <files>`; it
 prints ready-to-use Markdown attachment URLs.

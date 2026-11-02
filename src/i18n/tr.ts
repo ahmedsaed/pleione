@@ -494,6 +494,8 @@ export const TR_MESSAGES = {
   'app.loadingChannelsProgress': 'Kanallar yükleniyor… {processed} işlendi, {kept} tutuldu',
   'app.loadFailed': 'Oynatma listesi yüklenemedi. URL’yi kontrol edip tekrar deneyin.',
   'app.saveFailed': 'Değişiklikler kaydedilemedi. Tekrar deneyin.',
+  'app.exitTitle': '{name} uygulamasından çıkılsın mı?',
+  'app.exitConfirm': 'Çık',
   'settings.storageLimited': 'Bu TV, uygulamaların depolama alanını sınırlıyor. İzleme ilerlemeniz ve favorileriniz kaydedilmeye devam eder ancak önbellek uygulama kapatıldığında silinir.',
   'weekday.0': 'Paz',
   'weekday.1': 'Pzt',

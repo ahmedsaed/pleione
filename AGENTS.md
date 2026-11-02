@@ -82,7 +82,7 @@ npm run build                  # typecheck + esbuild bundle into dist/
 npm run preview                # build + serve dist/ at http://localhost:3000
 npm test                       # vitest run (unit/integration)
 npm run test:watch             # vitest watch
-npm run test:e2e               # Playwright, 2 projects (see legacy-engine)
+npm run test:e2e               # Playwright: webOS, simulated webOS 4 (see legacy-engine), tizen-sim
 npm run test:all               # lint + unit + e2e
 npm run screenshots            # regenerate README screenshots
 npm run xtream:demo            # demo Xtream server on :8090 (ffmpeg; docs/xtream-demo-server.md)

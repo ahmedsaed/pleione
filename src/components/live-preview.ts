@@ -63,6 +63,7 @@ export class LivePreview {
   private channelKeys = new Set<string>();
   // What the last render drew; a tick with the same one touches no DOM.
   private signature = '';
+  private refreshToken = 0;
   private progressAt = 0;
   private progressMinutes = -1;
 
@@ -147,7 +148,16 @@ export class LivePreview {
     this.options.player.enterLivePreview();
     if (!same) this.options.player.play(index, undefined, scope);
     this.options.channelList.render(false);
-    this.refresh();
+    // A re-tune is one long task on a TV: starting playback, then the pane.
+    // Drawing the pane after the next frame lets a key pressed meanwhile in.
+    this.refreshAfterFrame();
+  }
+
+  private refreshAfterFrame(): void {
+    const token = ++this.refreshToken;
+    requestAnimationFrame(() => setTimeout(() => {
+      if (token === this.refreshToken) this.refresh();
+    }, 0));
   }
 
   handleAction(action: Action): boolean {
@@ -192,6 +202,8 @@ export class LivePreview {
   }
 
   refresh(): void {
+    // Supersedes a refresh still waiting for its frame.
+    this.refreshToken++;
     this.signature = '';
     const { channelView, player } = this.options;
     const currentView = this.options.getCurrentView();
@@ -217,17 +229,19 @@ export class LivePreview {
     if (this.state) this.fitPrograms();
   }
 
-  private applyState(state: LivePlaybackSnapshot | null): void {
+  /** True when the pane re-rendered. */
+  private applyState(state: LivePlaybackSnapshot | null, fit = true): boolean {
     this.state = state;
     if (!state) {
       this.signature = '';
       hide(this.container);
       this.stopRefreshTimer();
-      return;
+      return false;
     }
     show(this.container);
-    this.render();
+    const rendered = this.render(fit);
     this.scheduleTick();
+    return rendered;
   }
 
   private scheduleTick(): void {
@@ -288,8 +302,11 @@ export class LivePreview {
 
   private show(state: LivePlaybackSnapshot): void {
     this.options.player.enterLivePreview();
-    this.applyState(state);
+    // Place the video before fitting the programs: the fit then reads an
+    // incremental layout instead of forcing a second full one.
+    const rendered = this.applyState(state, false);
     this.presentation.showPreview();
+    if (rendered) this.fitPrograms();
   }
 
   private hidePreview(
@@ -334,9 +351,10 @@ export class LivePreview {
     })}`;
   }
 
-  private render(): void {
+  /** True when the pane re-rendered; `fit` fits its programs right away. */
+  private render(fit = true): boolean {
     const state = this.state;
-    if (!state) return;
+    if (!state) return false;
     const now = new Date();
     const epgId = EpgService.findChannelId(state.channel);
     const program = epgId ? EpgService.getNowPlaying(epgId) : null;
@@ -357,7 +375,7 @@ export class LivePreview {
     ].join('\n');
     if (signature === this.signature) {
       if (program && length > 0) this.updateProgress(program, length, now);
-      return;
+      return false;
     }
     this.signature = signature;
     this.progressAt = now.getTime();
@@ -398,7 +416,8 @@ export class LivePreview {
           </div>` : program ? html`<p class="live-preview-empty">${t('preview.noUpcoming')}</p>` : ''}
       </div>
     `);
-    this.fitPrograms();
+    if (fit) this.fitPrograms();
+    return true;
   }
 
   // Moves the bar and the minutes left in place: their size never changes

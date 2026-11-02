@@ -1,4 +1,4 @@
-import { test, expect, enterTab, routeLiveManifest, neuterVideo, SAMPLE_M3U, type Page } from './helpers';
+import { test, expect, enterTab, routeLiveManifest, neuterVideo, SAMPLE_M3U, type Page, pressBack } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
 test.use({ startOn: 'live' });
@@ -111,8 +111,7 @@ async function openTitle(page: Page, section: 'movies' | 'series', id: string): 
   await expect(page.locator(`#view-${section} .catalog-layer-detail .detail-title`)).toBeVisible();
 }
 
-const back = (page: Page) => page.evaluate(() =>
-  document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+const back = (page: Page) => pressBack(page);
 
 const actionsTop = (page: Page, section = 'movies') => page.locator(`#view-${section} .detail-actions`)
   .evaluate(el => el.getBoundingClientRect().top);

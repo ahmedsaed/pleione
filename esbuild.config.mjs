@@ -15,14 +15,27 @@ import {
   scaleFontSizes,
   scaleLengths,
 } from './scripts/css-transforms.mjs';
+import { tizenConfigXml } from './scripts/tizen-config.mjs';
 
 const isPreview = process.argv.includes('--preview');
+// The TV platform this bundle is for (`__PLATFORM__`). webOS builds into
+// dist/; Samsung Tizen into dist-tizen/ (docs/tizen-port-plan.md).
+const platformArg = process.argv.find(arg => arg.startsWith('--platform='));
+const platform = platformArg ? platformArg.slice('--platform='.length) : 'webos';
+if (platform !== 'webos' && platform !== 'tizen') {
+  console.error(`Unknown --platform=${platform}; expected webos or tizen`);
+  process.exit(1);
+}
 // LG's Full HD TVs run apps on a 1280x720 plane and need their own package
 // (`"resolution": "1280x720"`). That build scales the whole 1920x1080 design
 // by 2/3 into dist-720/: every stylesheet length, the canvas, and every JS
 // length that goes through uiPx() (UI_BASE_SCALE).
 const isFhd = process.argv.includes('--resolution=720');
-const OUT = isFhd ? 'dist-720' : 'dist';
+if (isFhd && platform !== 'webos') {
+  console.error('--resolution=720 is the LG Full HD package; it needs --platform=webos');
+  process.exit(1);
+}
+const OUT = platform === 'tizen' ? 'dist-tizen' : isFhd ? 'dist-720' : 'dist';
 const UI_BASE_SCALE = isFhd ? 2 / 3 : 1;
 // Checked-in but regenerated on every build; never a source input.
 const GENERATED_STYLESHEET = 'legacy-webos-base.css';
@@ -87,23 +100,32 @@ if (isFhd) {
   if (!outputIndexHtml.includes(viewport)) throw new Error('Build could not find the viewport meta in index.html.');
   outputIndexHtml = outputIndexHtml.replace(viewport, viewport.replace('width=1920, height=1080', 'width=1280, height=720'));
 }
+if (platform === 'tizen') {
+  // Samsung remotes have no pointer, so the app starts in key mode.
+  outputIndexHtml = outputIndexHtml.replace('<html lang="en">', '<html lang="en" class="keyboard-nav">');
+  writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version));
+  cpSync('assets/icon130.png', `${OUT}/icon.png`);
+} else {
+  writeFileSync(`${OUT}/appinfo.json`, JSON.stringify(
+    isFhd ? { ...appinfo, resolution: '1280x720' } : appinfo, null, 2) + '\n');
+  rmSync(`${OUT}/resources`, { recursive: true, force: true });
+  cpSync('resources', `${OUT}/resources`, { recursive: true });
+}
 writeFileSync(`${OUT}/index.html`, outputIndexHtml);
-writeFileSync(`${OUT}/appinfo.json`, JSON.stringify(
-  isFhd ? { ...appinfo, resolution: '1280x720' } : appinfo, null, 2) + '\n');
-rmSync(`${OUT}/resources`, { recursive: true, force: true });
-cpSync('resources', `${OUT}/resources`, { recursive: true });
 // Refresh the flex-`gap` fallback; see its header for the cascade rationale.
 const sourceStylesheets = linkedStylesheets(indexHtml, readdirSync('css'), GENERATED_STYLESHEET)
   .map((file) => readFileSync(`css/${file}`, 'utf8'));
 const generatedStylesheet = generateFlexGapFallback(sourceStylesheets);
-// The 1280x720 build can run beside the main one (two E2E servers), so only
-// the main build rewrites the checked-in copy.
-if (!isFhd) writeFileSync(`css/${GENERATED_STYLESHEET}`, generatedStylesheet);
+// The 1280x720 and Tizen builds can run beside the main one (E2E servers
+// start together), so only the main webOS build rewrites the checked-in copy.
+if (platform === 'webos' && !isFhd) writeFileSync(`css/${GENERATED_STYLESHEET}`, generatedStylesheet);
 cpSync('css', `${OUT}/css`, { recursive: true });
 writeFileSync(`${OUT}/css/${GENERATED_STYLESHEET}`, generatedStylesheet);
 transformStylesheets(`${OUT}/css`, UI_BASE_SCALE);
-cpSync('assets/icon80.png', `${OUT}/icon.png`);
-cpSync('assets/icon130.png', `${OUT}/largeIcon.png`);
+if (platform === 'webos') {
+  cpSync('assets/icon80.png', `${OUT}/icon.png`);
+  cpSync('assets/icon130.png', `${OUT}/largeIcon.png`);
+}
 cpSync('assets/group-icons', `${OUT}/assets/group-icons`, { recursive: true });
 cpSync('assets/icons', `${OUT}/assets/icons`, { recursive: true });
 
@@ -115,6 +137,7 @@ const define = {
   '__APP_ID__': JSON.stringify(appinfo.id),
   '__SERVICE_ID__': JSON.stringify(serviceId),
   '__ENABLE_PSEUDO_LOCALE__': JSON.stringify(isPreview),
+  '__PLATFORM__': JSON.stringify(platform),
   '__UI_BASE_SCALE__': JSON.stringify(UI_BASE_SCALE),
 };
 // Target Chromium 53 — the engine on webOS 4. This down-levels newer

@@ -38,6 +38,7 @@ import { ReminderService } from './services/reminder-service';
 import { StartupConnection } from './services/connection-check';
 import { firstRunLanding } from './components/first-run';import { resetAppData } from './services/app-reset';
 import { ReminderPrompt } from './components/reminder-prompt';
+import { ConfirmationPrompt } from './components/confirmation-prompt';
 import { ReminderManager } from './components/reminder-manager';
 import { ParentalControls } from './components/parental-controls';
 import { ParentalPinPrompt } from './components/parental-pin-prompt';
@@ -58,7 +59,7 @@ import { $, show, hide } from './utils/dom';
 import { createLogger, installGlobalErrorHandlers, logEnvironment } from './utils/logger';
 import { FocusRing } from './navigation/focus-ring';
 import { backStep, type PlayedFrom } from './navigation/back-route';
-import { closeApp } from './utils/platform-exit';
+import { platform } from './platform';
 import { Focus, type FocusScope } from './navigation/focus-scope';
 import type {
   Action,
@@ -118,6 +119,7 @@ class App {
   private parentalPinPrompt = new ParentalPinPrompt();
   private sidebar!: Sidebar;
   private reminderPrompt = new ReminderPrompt();
+  private exitPrompt = new ConfirmationPrompt('prompt.exit');
   private reminderManager!: ReminderManager;
   private home!: Home;
   private searchBox!: SearchBox;
@@ -423,6 +425,7 @@ class App {
     });
     this.homeButton = new HomeButton(() => this.selectSection('home', 'pointer'));
 
+    platform.start();
     KeyHandler.init();
     KeyHandler.setHandler((action, event) => {
       this.handleKey(action, event);
@@ -449,7 +452,7 @@ class App {
     ReminderService.reschedulePending();
     await this.loadData(false, 'launch');
     // Cold launch from a "Watch now" alert: channels are loaded now, so tune.
-    this.handleLaunchParams(this.coldLaunchParams());
+    this.handleLaunchParams(platform.coldLaunchParams());
     // Spawning the service process can synchronously stall Luna on a cold TV.
     // Keep LAN setup off the critical path so cached channels render first.
     const bundledServiceReady = this.startBundledService();
@@ -512,13 +515,28 @@ class App {
     }
   }
 
+  // Samsung's Return policy asks before Home exits; LG requires one press.
+  private exitFromHome(): void {
+    if (!platform.confirmExitAtHome) {
+      void this.exitApp();
+      return;
+    }
+    this.exitPrompt.show({
+      title: t('app.exitTitle', { name: CONFIG.APP_NAME }),
+      confirmLabel: t('app.exitConfirm'),
+      cancelLabel: t('common.cancel'),
+      onConfirm: () => { void this.exitApp(); },
+      onCancel: () => {},
+    });
+  }
+
   private async exitApp(): Promise<void> {
     if (!await this.flushUserData('exit')) {
       showToast(t('app.saveFailed'));
       return;
     }
     this.stopBundledService();
-    closeApp();
+    platform.exit();
   }
 
   private cancelServiceEventsSubscription(): void {
@@ -1598,7 +1616,7 @@ class App {
   private goUp(view: ViewName): void {
     switch (backStep(view, this.playerReturn)) {
       case 'exit':
-        void this.exitApp();
+        this.exitFromHome();
         return;
       case 'home':
         this.goHome(view === 'player' ? null : sectionForView(view));
@@ -1759,14 +1777,7 @@ class App {
       if (document.visibilityState === 'visible') this.scanReminders();
     });
     // "Watch now" on a dev-mode reminder alert relaunches us with a channel key.
-    document.addEventListener('webOSRelaunch', (e) => {
-      this.handleLaunchParams((e as CustomEvent).detail);
-    });
-  }
-
-  private coldLaunchParams(): unknown {
-    const w = window as unknown as { PalmSystem?: { launchParams?: string } };
-    return w.PalmSystem?.launchParams;
+    platform.onRelaunch((params) => this.handleLaunchParams(params));
   }
 
   private handleLaunchParams(raw: unknown): void {

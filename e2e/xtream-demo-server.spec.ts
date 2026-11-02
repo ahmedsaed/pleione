@@ -1,5 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { test, expect, enterTab, liveAfterSave, type Page, openGuide } from './helpers';
+import { test, expect, enterTab, liveAfterSave, type Page, openGuide, pressBack } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
 test.use({ startOn: 'live' });
@@ -138,7 +138,7 @@ test('plays a live channel with audio-track and subtitle options', async ({ page
   await openPicker(page, 'audio');
   const audio = page.locator('#player-menu .menu-item[data-menu-action="__audio_track__"]');
   await expect(audio).toHaveText([/Track 1/, /Track 2/]);
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+  await pressBack(page);
   await expect(page.locator('#player-menu')).not.toHaveClass(/visible/);
 
   await openPicker(page, 'subtitles');

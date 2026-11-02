@@ -11,6 +11,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && node esbuild.config.mjs",
+    "build:tizen": "tsc --noEmit && node esbuild.config.mjs --platform=tizen",
+    "preview:tizen": "node esbuild.config.mjs --preview --platform=tizen && PREVIEW_PORT=${PREVIEW_PORT:-3002} PREVIEW_DIR=dist-tizen node scripts/serve.mjs",
     "service:typecheck": "tsc -p bundled-service/tsconfig.json --noEmit",
     "service:build": "rm -rf build/bundled-service && tsc -p bundled-service/tsconfig.json && node scripts/service-compat-gate.mjs build/bundled-service",
     "service:smoke": "npm run service:build && node scripts/run-service-smoke.mjs",

@@ -7,6 +7,7 @@ import {
   routeLiveManifest,
   SAMPLE_M3U,
   type Page,
+  BACK_KEY,
 } from './helpers';
 
 // Home loads no channels, so the first open of Live loads them. Live shows at
@@ -246,7 +247,7 @@ test('Back while Search loads goes Home, and the load does not pull Search back'
   await page.locator('.search-box-input').fill('two');
   await expect(searchLoading(page)).toBeVisible();
 
-  await pressKeys(page, 461);
+  await pressKeys(page, BACK_KEY);
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(search(page)).toBeHidden();
 
@@ -331,7 +332,7 @@ test('Back while Settings loads goes Home, and the load does not pull Settings b
   await expect(settings(page)).toBeVisible();
   await expect(page.locator('#view-home')).toBeHidden();
 
-  await pressKeys(page, 461);
+  await pressKeys(page, BACK_KEY);
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(settings(page)).toBeHidden();
 

@@ -494,6 +494,8 @@ export const ZH_CN_MESSAGES = {
   'app.loadingChannelsProgress': '正在加载频道… 已处理 {processed}，保留 {kept}',
   'app.loadFailed': '无法加载播放列表，请检查 URL 后重试。',
   'app.saveFailed': '无法保存更改，请重试。',
+  'app.exitTitle': '退出 {name}？',
+  'app.exitConfirm': '退出',
   'settings.storageLimited': '此电视限制了应用的存储空间。观看进度和收藏仍会保存，但缓存不会在下次启动时保留。',
   'weekday.0': '周日',
   'weekday.1': '周一',

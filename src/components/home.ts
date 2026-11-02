@@ -23,6 +23,7 @@ import { firstRunIntro, phoneSetupPanel } from './first-run';
 import type { ConnectionIssue } from '../services/connection-check';
 import type { ServiceInfo } from '../services/setup-client';
 import { createLogger } from '../utils/logger';
+import { platform } from '../platform';
 
 const log = createLogger('Home');
 
@@ -205,7 +206,7 @@ export class Home {
   }
 
   private renderFirstRun(): void {
-    if (this.setupInfo === undefined && !this.setupRequest) void this.refreshSetupInfo();
+    if (platform.lanSetup && this.setupInfo === undefined && !this.setupRequest) void this.refreshSetupInfo();
     const tint = this.focusScope.focusKey === 'add:playlist' ? 'epg' : 'movies';
     morph(this.container, html`
       <div class="home-view home-view-first-run" data-tint="${tint}">
@@ -214,7 +215,7 @@ export class Home {
         <div class="home-first-run">
           ${firstRunIntro()}
           <div class="home-first-run-row">
-            ${phoneSetupPanel(this.setupInfo)}
+            ${platform.lanSetup ? phoneSetupPanel(this.setupInfo) : ''}
             <div class="home-first-run-cards" data-nav-container>
               ${ADD_CARDS.map((kind) => this.addCard(kind))}
             </div>

@@ -40,6 +40,14 @@ describe('ConfirmationPrompt', () => {
     expect(onCancel).not.toHaveBeenCalled();
   });
 
+  it('leaves the message out when there is none, as the exit confirmation asks', () => {
+    prompt.hide();
+    prompt.show({ title: 'Exit Pleione?', confirmLabel: 'Exit', cancelLabel: 'Cancel', onConfirm, onCancel });
+    expect(document.querySelector('.confirmation-title')?.textContent).toBe('Exit Pleione?');
+    expect(document.querySelector('.confirmation-message')).toBeNull();
+    expect(document.querySelector('.confirmation-dialog .focused')?.getAttribute('data-key')).toBe('cancel');
+  });
+
   it('cancels on Back', () => {
     prompt.handleAction('back');
     expect(onCancel).toHaveBeenCalledTimes(1);

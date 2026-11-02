@@ -8,6 +8,7 @@ import {
   SEARCH_M3U,
   enterTab,
   type Page,
+  BACK_KEY,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -24,7 +25,7 @@ const BLUE = 406;
 const ENTER = 13;
 const UP = 38;
 const DOWN = 40;
-const BACK = 461;
+const BACK = BACK_KEY;
 
 function key(page: Page, keyCode: number): Promise<void> {
   return page.evaluate(

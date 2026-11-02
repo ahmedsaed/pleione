@@ -1,4 +1,4 @@
-import { enterTab, openGuide, openLive, pressKeys, test, expect, isChromium53, neuterVideo, routeLiveManifest, routePlaylist, type Page } from './helpers';
+import { enterTab, openGuide, openLive, pressKeys, test, expect, isChromium53, neuterVideo, routeLiveManifest, routePlaylist, type Page, pressBack, BACK_KEY } from './helpers';
 import { type Browser } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { findGappedLooseText, measureLooseText, newLegacyPage, pixelDiff } from './pixel-parity';
@@ -170,7 +170,7 @@ interface Screen {
 // Back out of the player and its panels to Live.
 async function backToLive(p: Page): Promise<void> {
   for (let i = 0; i < 4 && !(await p.locator('#view-channels').isVisible()); i++) {
-    await p.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 461, bubbles: true })));
+    await pressBack(p);
     await p.waitForTimeout(100);
   }
   await expect(p.locator('#view-channels')).toBeVisible();
@@ -224,7 +224,7 @@ const M3U_SCREENS: Screen[] = [
     name: 'guide-groups',
     budget: 0,
     go: async (p) => {
-      await pressKeys(p, 461);
+      await pressKeys(p, BACK_KEY);
       await expect(p.locator('#channel-browser .group-item.focused')).toHaveCount(1);
     },
   },

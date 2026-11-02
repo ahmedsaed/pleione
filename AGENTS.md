@@ -1,6 +1,6 @@
 # AGENTS.md
 
-IPTV player for LG webOS TVs. Vanilla TypeScript (no UI framework), bundled
+IPTV player for LG webOS TVs, with a Samsung Tizen port in progress. Vanilla TypeScript (no UI framework), bundled
 with esbuild and packaged as a webOS `.ipk`. A separate bundled webOS JS
 service (`bundled-service/`) provides LAN M3U uploads over Luna + HTTP. App
 id `com.merope.pleione`; targets webOS 4+ (Chromium 53).
@@ -82,7 +82,7 @@ npm run build                  # typecheck + esbuild bundle into dist/
 npm run preview                # build + serve dist/ at http://localhost:3000
 npm test                       # vitest run (unit/integration)
 npm run test:watch             # vitest watch
-npm run test:e2e               # Playwright, 2 projects (see legacy-engine)
+npm run test:e2e               # Playwright: webOS, simulated webOS 4 (see legacy-engine), tizen-sim
 npm run test:all               # lint + unit + e2e
 npm run screenshots            # regenerate README screenshots
 npm run xtream:demo            # demo Xtream server on :8090 (ffmpeg; docs/xtream-demo-server.md)
@@ -90,6 +90,8 @@ npm run service:smoke          # bundled service on real Node.js 0.12.2
 npm run service:smoke:matrix   # webOS 4-26 Node runtime matrix
 ./build.sh [--install [device]]  # package the IPK (see webos-device)
 PLEIONE_FHD=1 ./build.sh       # also package the 1280x720 IPK for LG Full HD TVs
+npm run build:tizen            # Samsung bundle into dist-tizen/
+TIZEN_TV=<ip> scripts/tizen.sh install  # package the .wgt and install (docs/tizen.md)
 ```
 
 Run a single test by file or name:
@@ -182,6 +184,11 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
   by `KeyHandler`.
 - **Parsers** (`src/parsers/`) — `parseM3U` / `parseXMLTV` are pure
   functions; keep them tolerant of messy real-world feeds.
+- **Platform** (`src/platform/`) — the TV platform behind one `platform`
+  adapter, picked at build time by `__PLATFORM__` (`--platform=`, default
+  `webos`): exit, launch params, relaunch, and media capabilities. Code
+  outside `src/platform/` asks it instead of checking `isWebOS()`; the
+  Samsung port adds a second adapter (`docs/tizen-port-plan.md`).
 - **Full HD package** — LG's Full HD TVs run apps on a 1280x720 plane, so
   `--resolution=720` builds the same app into `dist-720/` scaled by 2/3:
   every stylesheet length (canvas and `::cue` included) and every JS
@@ -197,8 +204,8 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
 ## Conventions
 
 - **Build-time constants** `__APP_VERSION__`, `__APP_ID__`, `__SERVICE_ID__`,
-  `__UI_BASE_SCALE__` are injected via esbuild `define`. Keep them in lockstep across
-  `esbuild.config.mjs`, `vitest.config.ts`, and `src/globals.d.ts`.
+  `__PLATFORM__`, `__UI_BASE_SCALE__` are injected via esbuild `define`. Keep them in
+  lockstep across `esbuild.config.mjs`, `vitest.config.ts`, and `src/globals.d.ts`.
 - **XSS safety.** Channel names, program titles, group titles, and logo URLs
   come from untrusted M3U/XMLTV. Always interpolate them through `html`
   (auto-escapes); wrap only genuinely trusted markup in `raw(...)`. E2E tests

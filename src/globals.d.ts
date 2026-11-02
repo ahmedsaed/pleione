@@ -2,6 +2,7 @@ declare const __APP_ID__: string;
 declare const __APP_VERSION__: string;
 declare const __SERVICE_ID__: string;
 declare const __ENABLE_PSEUDO_LOCALE__: boolean;
+declare const __PLATFORM__: 'webos' | 'tizen';
 // 1, or 2/3 in the 1280x720 package for LG's Full HD TVs.
 declare const __UI_BASE_SCALE__: number;
 

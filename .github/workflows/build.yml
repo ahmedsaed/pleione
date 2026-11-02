@@ -81,6 +81,11 @@ jobs:
       - name: Bundle
         run: node esbuild.config.mjs
 
+      # Unsigned and not packaged yet: proves the Samsung bundle builds and
+      # passes the compat gate (docs/tizen.md).
+      - name: Bundle for Tizen
+        run: node esbuild.config.mjs --platform=tizen
+
       - name: Build service
         run: |
           rm -rf build/bundled-service

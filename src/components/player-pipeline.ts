@@ -14,7 +14,7 @@ import { parseAudioRenditions } from '../utils/audio-tracks';
 import { FetchTextError, fetchLimitedText } from '../utils/fetch-helper';
 import { getLenientLoaders } from '../utils/hls-stable-loader';
 import { createLogger } from '../utils/logger';
-import { isWebOS } from '../utils/platform';
+import { platform } from '../platform';
 import { parseClosedCaptions, parseSubtitleRenditions } from '../utils/subtitle-tracks';
 import { parseVariants, type StreamVariant } from '../utils/stream-info';
 import { mediaOptionSourceType } from '../utils/webos-media-option';
@@ -256,7 +256,7 @@ export class PlayerPipeline {
     // webOS: the TV's hardware HLS/TS decoders beat MSE libraries, so play
     // natively. Explicit extensions and previously verified routes avoid a
     // probe; only a cold ambiguous route pays the bounded classification cost.
-    if (isWebOS()) {
+    if (platform.media.nativePipeline()) {
       if (opts?.direct) {
         const mime = containerMime(url);
         log.info('Selected webOS native playback', 'event=playback.path.native',

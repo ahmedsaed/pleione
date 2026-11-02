@@ -28,7 +28,7 @@ import { StallWatchdog, type StallProbe, type StallRecovery } from '../utils/sta
 import { StartupWatchdog, type StartupFailure, type StartupProbe } from '../utils/startup-watchdog';
 import { resolutionBadge, hdrLabel, frameRateLabel, pickVariant, codecName, audioSummary, subtitleSummary, type StreamVariant, type MediaInfo } from '../utils/stream-info';
 import { extFromUrl, diagnosticStreamUrl } from '../utils/url';
-import { isWebOS } from '../utils/platform';
+import { platform } from '../platform';
 import { InputMode } from '../navigation/input-mode';
 import { probeMedia } from '../services/media-probe';
 import { ChannelHealthService } from '../services/channel-health';
@@ -378,7 +378,7 @@ export class Player {
       const recovered = this.errorRetryPending;
       if (recovered) {
         this.cancelErrorAdvance();
-        if (isWebOS()) this.stallWatchdog.resume();
+        if (platform.media.nativePipeline()) this.stallWatchdog.resume();
       }
       update('playing');
       if (recovered) this.osd.render();
@@ -406,7 +406,7 @@ export class Player {
         const recovered = this.stallWatchdog.observeProgress(el.currentTime);
         if (recovered && this.errorRetryPending) {
           this.cancelErrorAdvance();
-          if (isWebOS()) this.stallWatchdog.resume();
+          if (platform.media.nativePipeline()) this.stallWatchdog.resume();
           update('playing');
           this.osd.render();
         }
@@ -706,7 +706,7 @@ export class Player {
     this.osd.deactivate();
     this.showOSD();
     if (!this.livePreviewMode) show(this.container);
-    this.stallWatchdog.start(isWebOS(), StorageService.getLiveReconnectAttempts());
+    this.stallWatchdog.start(platform.media.nativePipeline(), StorageService.getLiveReconnectAttempts());
   }
 
   isVod(): boolean { return this.vod !== null; }
@@ -1278,7 +1278,7 @@ export class Player {
       this.errorAdvanceTimer = setTimeout(() => {
         this.errorAdvanceTimer = null;
         this.errorRetryPending = false;
-        if (this.stallWatchdog.recoverFromError() && isWebOS()) {
+        if (this.stallWatchdog.recoverFromError() && platform.media.nativePipeline()) {
           this.stallWatchdog.resume();
         }
       }, 2000);

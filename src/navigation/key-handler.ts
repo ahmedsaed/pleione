@@ -6,6 +6,7 @@ import { InputMode, setCursorHidden, setInputMode, setKeyRepeat } from './input-
 import { edgeScrollTrackAt, installEdgeScroll } from './edge-scroll';
 import { caretAtEdge, caretSideOf } from './caret-edge';
 import { logicalAction } from '../utils/direction';
+import { platform } from '../platform';
 import { uiPx } from '../utils/ui-scale';
 import type { Action, NumberEvent } from '../types';
 
@@ -46,6 +47,7 @@ const ACTION_MAP: Record<number, Action> = {
   [K.STOP]: 'stop',
   [K.REWIND]: 'rewind',
   [K.FORWARD]: 'fast_forward',
+  ...platform.keys.actions,
 };
 
 // Remote-control keys that must still reach the app even when a text input has
@@ -56,7 +58,7 @@ const ACTION_MAP: Record<number, Action> = {
 // (its blinking caret) did nothing — Back couldn't exit, Red/Blue couldn't open
 // EPG/Settings, etc.
 const INPUT_PASSTHROUGH_KEYS = new Set<number>([
-  K.BACK, K.RED, K.GREEN, K.YELLOW, K.BLUE,
+  K.BACK, platform.keys.back, K.RED, K.GREEN, K.YELLOW, K.BLUE,
   K.CH_UP, K.CH_DOWN, K.PLAY, K.PAUSE, K.STOP, K.REWIND, K.FORWARD,
 ]);
 

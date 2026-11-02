@@ -32,8 +32,8 @@ open app to the front. `install` and `restart` kill it first.
 
 The image's sample certificate (profile `dev`) installs on Tizen 5.5–6.5.
 Tizen 7 and later refuse it: `install` then says the TV refused the
-signature. Make a Samsung certificate once (`docs/tizen.md`, Certificates),
-then:
+signature. Make a Samsung certificate once (`docs/tizen.md`, Certificates;
+`scripts/tizen.sh duid` gives the DUID it needs), then:
 
 ```bash
 TIZEN_CERTS=~/.config/pleione/tizen-certs TIZEN_AUTHOR_PASSWORD=... \

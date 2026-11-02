@@ -314,9 +314,9 @@ services.
 - Tizen gets the *native* branch of `player-pipeline.ts` (same as webOS)
   minus Luna bits: `<source>` + MIME routing, manifest-parsed names,
   HLS/DASH WebVTT self-render, IDB route cache, stall watchdog on.
-- HLS → native. Raw MPEG-TS over HTTP → native `video/mp2t` if the
-  device plays it [U]; else mpegts.js fallback (ship it in the Tizen
-  bundle as a lazy chunk like Shaka).
+- HLS → native. Raw MPEG-TS over HTTP → native `video/mp2t`: it plays on
+  every TV tested, so no mpegts.js fallback is planned (the probe's `liveTs`
+  check guards it).
 - DASH clear/Widevine/ClearKey → Shaka (already). PlayReady → Shaka with a
   new `com.microsoft.playready` mapping (server URL + custom data headers)
   instead of the Luna `PlayReadyDrm`.

@@ -61,6 +61,8 @@
     platformVersion: safe(function () { return tizen.systeminfo.getCapability('http://tizen.org/feature/platform.version'); }),
     model: safe(function () { return webapis.productinfo.getModel(); }),
     firmware: safe(function () { return webapis.productinfo.getFirmware(); }),
+    // What a Samsung distributor certificate lists (docs/tizen.md, Certificates).
+    duid: safe(function () { return webapis.productinfo.getDuid(); }),
     viewport: innerWidth + 'x' + innerHeight + ' @' + devicePixelRatio
   });
   record('apis', {

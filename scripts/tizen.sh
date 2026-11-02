@@ -51,10 +51,19 @@ up() {
     "$IMAGE" sleep infinity >/dev/null
 }
 
+# sdb drops the TV now and then, after an install or a debug launch above
+# all; reconnect until the device lists again.
 connect() {
   up
   local ip; ip="$(tv)"
-  in_container "sdb connect $ip" | tail -1
+  for _ in 1 2 3 4 5; do
+    if in_container "sdb connect $ip >/dev/null 2>&1; sdb devices" | grep -q "^$ip:26101"; then
+      info "Connected to $ip"
+      return
+    fi
+    sleep 2
+  done
+  error "sdb cannot reach $ip; check the TV's Developer Mode and its Host PC IP."
 }
 
 package() {
@@ -74,8 +83,9 @@ package() {
 
 restart() {
   local ip; ip="$(tv)"
+  connect >/dev/null
   # A plain launch only brings an open app to the front; kill it first.
-  in_container "sdb connect $ip >/dev/null; sdb -s $ip:26101 shell 0 was_kill $APP_ID >/dev/null 2>&1 || true; tizen run -s $ip:26101 -p $APP_ID" | tail -1
+  in_container "sdb -s $ip:26101 shell 0 was_kill $APP_ID >/dev/null 2>&1 || true; tizen run -s $ip:26101 -p $APP_ID" | tail -1
 }
 
 install() {
@@ -93,10 +103,10 @@ debug() {
   connect >/dev/null
   in_container "sdb -s $ip:26101 shell 0 was_kill $APP_ID >/dev/null 2>&1 || true"
   local port
-  port="$(in_container "timeout 30 sdb -s $ip:26101 shell 0 debug $APP_ID" | grep -o 'port: [0-9]*' | grep -o '[0-9]*')"
+  port="$(in_container "timeout 30 sdb -s $ip:26101 shell 0 debug $APP_ID" | grep -o 'port: [0-9]*' | grep -o '[0-9]*' || true)"
   [ -n "$port" ] || error "The TV did not report a debug port."
-  # sdb drops the device after a debug launch; reconnect before forwarding.
-  in_container "sdb connect $ip >/dev/null; sdb -s $ip:26101 forward --remove-all; sdb -s $ip:26101 forward tcp:$local_port tcp:$port"
+  connect >/dev/null
+  in_container "sdb -s $ip:26101 forward --remove-all; sdb -s $ip:26101 forward tcp:$local_port tcp:$port"
   info "DevTools: http://127.0.0.1:$local_port/json"
 }
 

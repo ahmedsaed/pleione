@@ -71,5 +71,8 @@ export const tizen: Platform = {
     nativePipeline: () => true,
     // No Luna compositor; the native element neither shows nor exposes 608.
     nativeCaptionCompositor: () => false,
+    // Live DVR stays off: live HLS reports a finite duration here, which
+    // dvrWindow() reads as not live, and native seeks to the live edge freeze
+    // on Tizen 5.5 (docs/tizen.md). Timeshift waits for an MSE or AVPlay path.
   },
 };

@@ -438,13 +438,15 @@ export class LivePreview {
       row.style.display = '';
     }
     for (const separator of separators) separator.style.display = '';
-    for (const row of rows) {
-      if (row.getBoundingClientRect().bottom > bounds.bottom) row.style.display = 'none';
-      else {
-        visible++;
-        lastVisible = row;
-      }
-    }
+    // Read every row in one layout, then hide: a read after each hide forced
+    // a layout per row, a TV's slowest step on a Live key press. Rows run in
+    // schedule order, so the first that overflows cuts the rest.
+    const bottoms = rows.map(row => row.getBoundingClientRect().bottom);
+    let cut = bottoms.findIndex(bottom => bottom > bounds.bottom);
+    if (cut < 0) cut = rows.length;
+    rows.forEach((row, i) => { if (i >= cut) row.style.display = 'none'; });
+    visible = cut;
+    lastVisible = cut > 0 ? rows[cut - 1] : null;
     lastVisible?.classList.add('last-visible');
     for (const separator of separators) {
       let sibling = separator.nextElementSibling;

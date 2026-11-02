@@ -299,6 +299,9 @@ export class ChannelList {
     return { group: this.currentGroup, playlist: this.currentPlaylist || undefined };
   }
 
+  private lastMarkup = '';
+  private renderedThisTask = false;
+
   render(ensureFocus = true): void {
     if (this.loadState) {
       this.renderLoadState(this.loadState);
@@ -370,7 +373,7 @@ export class ChannelList {
     }
     const groupRange = this.groupVirtualizer.getRange(groups.length, groupViewportHeight);
 
-    morph(this.container, html`
+    const view = html`
       <div class="channel-view ${guide ? 'live-guide-groups' : ''} ${editing && !managingFavorites ? 'editing' : ''} ${
         managingFavorites ? 'favorite-managing' : ''} ${
         !editing && this.currentGroup === 'builtin:favorites'
@@ -432,7 +435,17 @@ export class ChannelList {
         ) || (guide ? '' : this.renderLegend())}
         ${this.editor.renderGroupPicker()}
       </div>
-    `);
+    `;
+    // A re-tune renders twice in one task (the player's callback, then the
+    // preview's own call); the second would parse and diff the whole list
+    // again for nothing. Nothing can change the DOM between two renders of
+    // one task, so identical markup is already on screen.
+    if (!(this.renderedThisTask && view.value === this.lastMarkup)) {
+      morph(this.container, view);
+      this.lastMarkup = view.value;
+      this.renderedThisTask = true;
+      void Promise.resolve().then(() => { this.renderedThisTask = false; });
+    }
     this.editor.syncEpgPickerScroll();
 
     // Restore focus on the reused node (or fall back to a sensible default).
@@ -494,6 +507,7 @@ export class ChannelList {
   // In place of the groups and rows: the loading ring, or the failure and
   // Try again, the only target.
   private renderLoadState(state: 'loading' | 'failed'): void {
+    this.lastMarkup = '';
     this.onCount(null);
     morph(this.container, html`
       <div class="channel-view channel-load-view">

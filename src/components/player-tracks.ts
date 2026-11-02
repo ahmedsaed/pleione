@@ -40,7 +40,7 @@ import {
 } from '../utils/subtitle-tracks';
 import { channelKey, legacyChannelKey } from '../utils/channel';
 import { createLogger } from '../utils/logger';
-import { isWebOS } from '../utils/platform';
+import { platform } from '../platform';
 import { $ } from '../utils/dom';
 import { t } from '../i18n';
 import { showToast } from './toast';
@@ -624,7 +624,7 @@ export class PlayerTracks {
   // In-band CC is offered only on the native pipeline (setSubtitleEnable is a
   // webOS Luna verb) and only when the master advertises CLOSED-CAPTIONS.
   private ccAvailable(): boolean {
-    return isWebOS() && this.manifestClosedCaptions.length > 0;
+    return platform.media.nativeCaptionCompositor() && this.manifestClosedCaptions.length > 0;
   }
 
   /** Switch the active subtitle (index -1 = off, -2 = in-band CC) and remember it
@@ -662,7 +662,7 @@ export class PlayerTracks {
   // the native element once decoding starts. selectTrack is deliberately avoided:
   // it decode-freezes the video, so this is enable/disable only.
   private setNativeCC(enable: boolean): void {
-    if (!isWebOS() || this.ccPending === enable
+    if (!platform.media.nativeCaptionCompositor() || this.ccPending === enable
         || (this.ccPending === null && enable === this.ccEnabled)) return;
     const video = this.options.getVideoElement() as
       (HTMLVideoElement & { mediaId?: string }) | null;

@@ -17,6 +17,14 @@ import {
 } from './scripts/css-transforms.mjs';
 
 const isPreview = process.argv.includes('--preview');
+// The TV platform this bundle is for (`__PLATFORM__`); webOS until another
+// target lands (docs/tizen-port-plan.md).
+const platformArg = process.argv.find(arg => arg.startsWith('--platform='));
+const platform = platformArg ? platformArg.slice('--platform='.length) : 'webos';
+if (platform !== 'webos') {
+  console.error(`Unknown --platform=${platform}; expected webos`);
+  process.exit(1);
+}
 // Checked-in but regenerated on every build; never a source input.
 const GENERATED_STYLESHEET = 'legacy-webos-base.css';
 // Read version from package.json (single source of truth)
@@ -95,6 +103,7 @@ const define = {
   '__APP_ID__': JSON.stringify(appinfo.id),
   '__SERVICE_ID__': JSON.stringify(serviceId),
   '__ENABLE_PSEUDO_LOCALE__': JSON.stringify(isPreview),
+  '__PLATFORM__': JSON.stringify(platform),
 };
 // Target Chromium 53 — the engine on webOS 4. This down-levels newer
 // syntax (`?.`, `??`, etc.) which would otherwise fail to parse on

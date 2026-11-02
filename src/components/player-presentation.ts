@@ -1,5 +1,5 @@
 import { createLogger } from '../utils/logger';
-import { isWebOS } from '../utils/platform';
+import { platform } from '../platform';
 
 const log = createLogger('PlayerPresentation');
 const geometryProperties = ['left', 'top', 'width', 'height'] as const;
@@ -79,7 +79,7 @@ export class PlayerPresentation {
     writeRectangle(video, rect);
     // webOS punches a hole for its video plane; a rounded video gets a
     // clip mask that composites the hole over its own black background.
-    video.style.borderRadius = isWebOS() ? '' : getComputedStyle(slot).borderRadius || '0px';
+    video.style.borderRadius = platform.media.nativePipeline() ? '' : getComputedStyle(slot).borderRadius || '0px';
     video.style.zIndex = '';
   }
 }

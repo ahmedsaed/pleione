@@ -181,6 +181,11 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
   by `KeyHandler`.
 - **Parsers** (`src/parsers/`) — `parseM3U` / `parseXMLTV` are pure
   functions; keep them tolerant of messy real-world feeds.
+- **Platform** (`src/platform/`) — the TV platform behind one `platform`
+  adapter, picked at build time by `__PLATFORM__` (`--platform=`, default
+  `webos`): exit, launch params, relaunch, and media capabilities. Code
+  outside `src/platform/` asks it instead of checking `isWebOS()`; the
+  Samsung port adds a second adapter (`docs/tizen-port-plan.md`).
 - **Config** (`src/config.ts`) — `CONFIG` holds key codes, refresh
   intervals, and player/EPG/storage constants. Prefer it over magic numbers.
 - **Bundled service** (`bundled-service/`) — Node.js 0.12.2 CommonJS service
@@ -189,9 +194,9 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
 
 ## Conventions
 
-- **Build-time constants** `__APP_VERSION__`, `__APP_ID__`, `__SERVICE_ID__`
-  are injected via esbuild `define`. Keep all three in lockstep across
-  `esbuild.config.mjs`, `vitest.config.ts`, and `src/globals.d.ts`.
+- **Build-time constants** `__APP_VERSION__`, `__APP_ID__`, `__SERVICE_ID__`,
+  `__PLATFORM__` are injected via esbuild `define`. Keep them in lockstep
+  across `esbuild.config.mjs`, `vitest.config.ts`, and `src/globals.d.ts`.
 - **XSS safety.** Channel names, program titles, group titles, and logo URLs
   come from untrusted M3U/XMLTV. Always interpolate them through `html`
   (auto-escapes); wrap only genuinely trusted markup in `raw(...)`. E2E tests

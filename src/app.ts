@@ -58,7 +58,7 @@ import { $, show, hide } from './utils/dom';
 import { createLogger, installGlobalErrorHandlers, logEnvironment } from './utils/logger';
 import { FocusRing } from './navigation/focus-ring';
 import { backStep, type PlayedFrom } from './navigation/back-route';
-import { closeApp } from './utils/platform-exit';
+import { platform } from './platform';
 import { Focus, type FocusScope } from './navigation/focus-scope';
 import type {
   Action,
@@ -449,7 +449,7 @@ class App {
     ReminderService.reschedulePending();
     await this.loadData(false, 'launch');
     // Cold launch from a "Watch now" alert: channels are loaded now, so tune.
-    this.handleLaunchParams(this.coldLaunchParams());
+    this.handleLaunchParams(platform.coldLaunchParams());
     // Spawning the service process can synchronously stall Luna on a cold TV.
     // Keep LAN setup off the critical path so cached channels render first.
     const bundledServiceReady = this.startBundledService();
@@ -518,7 +518,7 @@ class App {
       return;
     }
     this.stopBundledService();
-    closeApp();
+    platform.exit();
   }
 
   private cancelServiceEventsSubscription(): void {
@@ -1759,14 +1759,7 @@ class App {
       if (document.visibilityState === 'visible') this.scanReminders();
     });
     // "Watch now" on a dev-mode reminder alert relaunches us with a channel key.
-    document.addEventListener('webOSRelaunch', (e) => {
-      this.handleLaunchParams((e as CustomEvent).detail);
-    });
-  }
-
-  private coldLaunchParams(): unknown {
-    const w = window as unknown as { PalmSystem?: { launchParams?: string } };
-    return w.PalmSystem?.launchParams;
+    platform.onRelaunch((params) => this.handleLaunchParams(params));
   }
 
   private handleLaunchParams(raw: unknown): void {

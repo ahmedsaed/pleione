@@ -3,9 +3,26 @@ import { LEGACY_HEADER } from './scripts/chromium-53-simulation.mjs';
 
 // The preview server (scripts/serve.mjs) listens on port 3000 unless PREVIEW_PORT is set.
 const baseURL = `http://localhost:${process.env.PREVIEW_PORT || 3000}`;
-// The 1280x720 package for LG's Full HD TVs (`npm run preview:720`).
-const fhdURL = 'http://localhost:3001';
+// The 1280x720 package for LG's Full HD TVs (`npm run preview:720`), one
+// port above the main preview.
+const fhdPort = Number(process.env.PREVIEW_PORT || 3000) + 1;
+const fhdURL = `http://localhost:${fhdPort}`;
 const FHD_SPEC = /fhd-720\.spec\.ts/;
+
+// Build and serve the 720 package only when a webos-720 test can run: no
+// --project filter or one naming it, and no spec filter that leaves it out.
+function wantsFhdServer(argv: string[]): boolean {
+  const projects: string[] = [];
+  const files: string[] = [];
+  for (let i = argv.indexOf('test') + 1; i > 0 && i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--project') projects.push(argv[++i] ?? '');
+    else if (arg.startsWith('--project=')) projects.push(arg.slice('--project='.length));
+    else if (!arg.startsWith('-')) files.push(arg);
+  }
+  if (projects.length > 0 && !projects.includes('webos-720')) return false;
+  return files.length === 0 || files.some((f) => FHD_SPEC.test(f) || !/\.spec\.ts$/.test(f));
+}
 
 // End-to-end tests drive the real app in headless Chromium (close to the
 // legacy webOS Chromium engine). The preview harness builds the app and serves
@@ -63,11 +80,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
-    {
+    ...(wantsFhdServer(process.argv) ? [{
       command: 'npm run preview:720',
       url: fhdURL,
+      env: { PREVIEW_PORT: String(fhdPort) },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-    },
+    }] : []),
   ],
 });

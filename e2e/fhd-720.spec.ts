@@ -1,5 +1,6 @@
 import {
-  test, expect, enterTab, openGuide, pressKeys, routePlaylist, seedPlaylist, type Page,
+  test, expect, enterTab, neuterVideo, openGuide, pressKeys, routeLiveManifest, routePlaylist, seedPlaylist,
+  type Page,
 } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
@@ -118,12 +119,14 @@ for (const size of ['100', '130']) {
     for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
       await page.locator(`[data-settings-target="${category}"]`).click();
       await page.waitForTimeout(150);
-      const actions = await page.locator('#save-settings').evaluate((el) => {
+      const save = await page.locator('#save-settings').evaluate((el) => {
         const r = el.getBoundingClientRect();
-        return { right: r.right, bottom: r.bottom };
+        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
       });
-      expect(actions.bottom, `${category}: Save sits on screen`).toBeLessThanOrEqual(721);
-      expect(actions.right, `${category}: Save sits on screen`).toBeLessThanOrEqual(1281);
+      expect(save.left, `${category}: Save sits on screen`).toBeGreaterThanOrEqual(-1);
+      expect(save.top, `${category}: Save sits on screen`).toBeGreaterThanOrEqual(-1);
+      expect(save.bottom, `${category}: Save sits on screen`).toBeLessThanOrEqual(721);
+      expect(save.right, `${category}: Save sits on screen`).toBeLessThanOrEqual(1281);
     }
   });
 }
@@ -173,4 +176,37 @@ test('the virtualized channel list keeps rows, D-pad, and pointer aligned at 2/3
   if (!box) throw new Error('row has no box');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
   await expect(target).toHaveClass(/focused/);
+});
+
+test('the player controls fit the plane', async ({ page }) => {
+  await seedXtream(page);
+  await routeLiveManifest(page);
+  await neuterVideo(page);
+  await page.goto('/');
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await enterTab(page, 'movies');
+  await page.locator('#view-movies .catalog-layer-browse .catalog-tile').first()
+    .evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#view-movies .catalog-layer-detail .detail-title')).toBeVisible();
+  await page.locator('#view-movies [data-action="play"]')
+    .evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#player-osd .osd-channel-name')).toBeVisible();
+  expect(await offscreenTargets(page), 'player').toEqual([]);
+});
+
+test('the mirrored layout keeps its targets on the plane', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('iptv_locale', JSON.stringify('ar')));
+  await seedXtream(page);
+  await page.goto('/');
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  expect(await offscreenTargets(page), 'Live').toEqual([]);
+  await enterTab(page, 'home');
+  await page.waitForTimeout(300);
+  expect(await offscreenTargets(page), 'Home').toEqual([]);
+  await enterTab(page, 'movies');
+  await page.waitForTimeout(300);
+  expect(await offscreenTargets(page), 'Movies').toEqual([]);
 });

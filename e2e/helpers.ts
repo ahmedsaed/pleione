@@ -1,6 +1,6 @@
 import { appendFileSync } from 'node:fs';
 import { test as base, expect, type Locator, type Page, type Route } from '@playwright/test';
-import { postTargetApis, removeApis } from '../scripts/chromium-53-simulation.mjs';
+import { LEGACY_HEADER, postTargetApis, removeApis } from '../scripts/chromium-53-simulation.mjs';
 
 export { expect, type Page };
 
@@ -262,9 +262,9 @@ export interface AppOptions {
 export const test = base.extend<AppOptions>({
   startOn: ['home', { option: true }],
   page: async ({ page, startOn }, use, testInfo) => {
-    // The simulation project strips every API Chromium 53 lacks before the app
-    // loads, so unguarded use fails here instead of on a TV.
-    if (testInfo.project.name === 'chromium-53-simulation') {
+    // A project on the simulated engine strips every API Chromium 53 lacks
+    // before the app loads, so unguarded use fails here instead of on a TV.
+    if (simulatesLegacyEngine(testInfo)) {
       await page.addInitScript(removeApis, POST_TARGET_APIS);
     }
     await stubUploadService(page);
@@ -476,7 +476,13 @@ export async function openGuide(page: Page): Promise<void> {
   await expect(page.locator('#view-channels.live-guide-mode #live-guide .guide-cell').first()).toBeVisible();
 }
 
-export const isChromium53 = (): boolean => test.info().project.name === 'chromium-53-simulation';
+// Every project that asks the preview server for the webOS 4 engine
+// (chromium-53-simulation, webos-720) gets its JS side too.
+function simulatesLegacyEngine(info: { project: { use: { extraHTTPHeaders?: Record<string, string> } } }): boolean {
+  return info.project.use.extraHTTPHeaders?.[LEGACY_HEADER] === '1';
+}
+
+export const isChromium53 = (): boolean => simulatesLegacyEngine(test.info());
 
 export interface SeekBarGeometry {
   focused: boolean;

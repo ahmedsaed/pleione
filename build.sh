@@ -65,7 +65,10 @@ if [ "$PLEIONE_FHD" = "1" ]; then
   rm -rf build/ipk-fhd && mkdir -p build/ipk-fhd
   ares-package --no-minify -e "*preview-libs.js" dist-720 build/bundled-service -o build/ipk-fhd
   for f in build/ipk-fhd/*_all.ipk; do mv "$f" "$(basename "${f%_all.ipk}")_fhd_all.ipk"; done
-  info "Built: $(ls -t *_fhd_all.ipk | head -1)"
+  FHD_IPK=$(ls -t *_fhd_all.ipk | head -1)
+  info "Built: $FHD_IPK"
+  # A Full HD TV takes the 1280x720 package.
+  IPK="$FHD_IPK"
 fi
 
 # Deploy if --install flag

@@ -911,7 +911,7 @@ export class ChannelListEditor {
         || target.key === candidate.target.key) return;
 
     if (!this.pointerDragging) {
-      if (!at || Math.abs(at.x - candidate.x) + Math.abs(at.y - candidate.y) < DRAG_START_DISTANCE) {
+      if (!at || Math.abs(at.x - candidate.x) + Math.abs(at.y - candidate.y) < uiPx(DRAG_START_DISTANCE)) {
         this.pendingDragOver = el;
         return;
       }

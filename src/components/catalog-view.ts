@@ -83,6 +83,16 @@ const DETAIL_PLOT_LINES = 3;
 
 // Matches the rail track's padding and its end spacer in catalog-view.css.
 const RAIL_EDGE_GUTTER = 12;
+
+/** How far a revealed tile stays from each end of its rail: the track's
+ *  padding, or at least the gutter at the current Interface size. */
+export function railEdgeGutters(style: { paddingLeft: string; paddingRight: string }): { lead: number; trail: number } {
+  const gutter = uiPx(RAIL_EDGE_GUTTER);
+  return {
+    lead: Math.max(gutter, parseFloat(style.paddingLeft) || 0),
+    trail: Math.max(gutter, parseFloat(style.paddingRight) || 0),
+  };
+}
 // Match .catalog-hero-body's top and the title and plot line clamps in
 // catalog-view.css.
 const HERO_TITLE_ANCHOR = 0.32;
@@ -1219,9 +1229,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     const current = scrollFromLeft(track);
     // A tile leaving on the left lines up with the rail's keyline, not the
     // screen edge the track bleeds to.
-    const style = getComputedStyle(track);
-    const lead = Math.max(RAIL_EDGE_GUTTER, parseFloat(style.paddingLeft) || 0);
-    const trail = Math.max(RAIL_EDGE_GUTTER, parseFloat(style.paddingRight) || 0);
+    const { lead, trail } = railEdgeGutters(getComputedStyle(track));
     let target: number;
     if (start - lead < current) target = Math.max(0, start - lead);
     else if (end + trail > current + track.clientWidth) {

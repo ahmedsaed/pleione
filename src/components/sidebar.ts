@@ -195,7 +195,7 @@ export class Sidebar {
 
     if (overSidebar) this.resetTimer();
 
-    this.pointerAtGroupEdge = clientX <= GROUP_DWELL_EDGE && !overTabs;
+    this.pointerAtGroupEdge = clientX <= uiPx(GROUP_DWELL_EDGE) && !overTabs;
     if (!this.groupsExpanded && this.pointerAtGroupEdge && !this.opening) {
       this.startGroupDwell();
     } else {

@@ -1263,6 +1263,21 @@ describe('KeyHandler', () => {
       expect(selects()).toBe(0);
     });
 
+    it('scales the pointer drift a long press tolerates with the Interface size', () => {
+      document.documentElement.dataset.interfaceSize = '130';
+      try {
+        // 28px of drift is past 24px at 100% but inside 31.2px at 130%.
+        tile.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
+        tile.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 38, clientY: 10 }));
+        vi.advanceTimersByTime(CONFIG.NAVIGATION.LONG_PRESS_MS);
+        expect(onLongPress).toHaveBeenCalledTimes(1);
+        tile.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+        vi.runAllTimers();
+      } finally {
+        delete document.documentElement.dataset.interfaceSize;
+      }
+    });
+
     it('keeps a short pointer press a click, and a press that moves away no long press', () => {
       tile.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
       tile.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));

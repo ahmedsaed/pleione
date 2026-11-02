@@ -1,3 +1,4 @@
+import { CONFIG } from '../config';
 import { closeApp } from '../utils/platform-exit';
 import { isWebOS } from '../utils/platform';
 import type { Platform } from './types';
@@ -6,6 +7,8 @@ import type { Platform } from './types';
 // are read per call from the engine, not fixed at build time.
 export const webos: Platform = {
   name: 'webos',
+  start(): void {},
+  keys: { back: CONFIG.KEYS.BACK, actions: {} },
   exit: closeApp,
   confirmExitAtHome: false,
   coldLaunchParams(): unknown {

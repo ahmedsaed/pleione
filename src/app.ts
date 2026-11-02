@@ -423,6 +423,7 @@ class App {
     });
     this.homeButton = new HomeButton(() => this.selectSection('home', 'pointer'));
 
+    platform.start();
     KeyHandler.init();
     KeyHandler.setHandler((action, event) => {
       this.handleKey(action, event);

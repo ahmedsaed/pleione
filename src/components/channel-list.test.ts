@@ -539,6 +539,31 @@ describe('ChannelList.render', () => {
     expect(container.querySelector('.channel-list-spacer')).toBeNull();
   });
 
+  it('redraws for a new playing channel only in Recently Watched, which marks it', () => {
+    recentMock.items = [
+      { kind: 'live', channel: data.channels[0], channelIndex: 0, updatedAt: 2000 },
+      { kind: 'live', channel: data.channels[1], channelIndex: 1, updatedAt: 1000 },
+    ];
+    list.render();
+    // A plain group draws no playing marker, so it is left alone.
+    const render = vi.spyOn(list, 'render');
+    list.setPlaying(1);
+    list.renderPlaying();
+    expect(render).not.toHaveBeenCalled();
+    render.mockRestore();
+
+    hover(container.querySelector<HTMLElement>('[data-group="builtin:recently-watched"]')!);
+    list.handleAction('select');
+    list.setPlaying(0);
+    list.renderPlaying();
+    expect(channelItems()[0].classList.contains('playing')).toBe(true);
+    expect(channelItems()[1].classList.contains('playing')).toBe(false);
+    list.setPlaying(1);
+    list.renderPlaying();
+    expect(channelItems()[0].classList.contains('playing')).toBe(false);
+    expect(channelItems()[1].classList.contains('playing')).toBe(true);
+  });
+
   it('resets a deep channel scroll before showing Recently Watched', () => {
     recentMock.items = [{
       kind: 'live',

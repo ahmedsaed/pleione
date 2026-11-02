@@ -147,7 +147,7 @@ export class LivePreview {
     }
     this.options.player.enterLivePreview();
     if (!same) this.options.player.play(index, undefined, scope);
-    this.options.channelList.render(false);
+    this.options.channelList.renderPlaying();
     // A re-tune is one long task on a TV: starting playback, then the pane.
     // Drawing the pane after the next frame lets a key pressed meanwhile in.
     this.refreshAfterFrame();

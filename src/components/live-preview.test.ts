@@ -104,6 +104,7 @@ describe('LivePreview', () => {
       playlist: '',
       highlightEntryPoint: actions.onHighlightEntryPoint,
       render: vi.fn(),
+      renderPlaying: vi.fn(),
       setPlaying: actions.onSetPlaying,
     } as unknown as ChannelList;
     preview = new LivePreview(root, {

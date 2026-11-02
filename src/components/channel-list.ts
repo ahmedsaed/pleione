@@ -836,6 +836,14 @@ export class ChannelList {
     if (moved) this.playingMoved = true;
   }
 
+  /** Redraw what a new playing channel changes. Only Recently Watched marks
+   *  it (▶); every other group's rows draw the same markup, and rebuilding
+   *  and diffing the whole list for nothing was the costliest step of a
+   *  preview re-tune on a TV. */
+  renderPlaying(): void {
+    if (this.currentGroup === 'builtin:recently-watched') this.render(false);
+  }
+
   // A channel the list itself tuned: its row already holds focus.
   private markPlaying(idx: number, catchupStart?: number | null): void {
     this.playingMoved = false;

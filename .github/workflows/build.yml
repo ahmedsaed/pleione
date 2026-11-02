@@ -86,6 +86,40 @@ jobs:
       - name: Bundle for Tizen
         run: node esbuild.config.mjs --platform=tizen
 
+      # Signed with the project's author certificate when the repository has
+      # it (secrets TIZEN_AUTHOR_P12: base64 of author.p12, and
+      # TIZEN_AUTHOR_PASSWORD), else the image's sample one; the distributor is
+      # Tizen's public one either way. The author certificate is the app's
+      # permanent identity with its package id. Users re-sign the .wgt for their
+      # TV (docs/tizen.md); Tizen 7+ needs a Samsung distributor certificate.
+      - name: Package Tizen .wgt
+        env:
+          TIZEN_AUTHOR_P12: ${{ secrets.TIZEN_AUTHOR_P12 }}
+          TIZEN_AUTHOR_PASSWORD: ${{ secrets.TIZEN_AUTHOR_PASSWORD }}
+        run: |
+          rm -rf build/tizen-certs && mkdir -p build/tizen-certs
+          if [ -n "$TIZEN_AUTHOR_P12" ]; then
+            echo "$TIZEN_AUTHOR_P12" | base64 -d > build/tizen-certs/author.p12
+          fi
+          docker run --rm -e TIZEN_AUTHOR_PASSWORD \
+            -v "$PWD/dist-tizen:/app:ro" -v "$PWD/build/tizen-certs:/certs:ro" -v "$PWD/build:/out" \
+            vitalets/tizen-webos-sdk@sha256:5107c8a83fae3128d3b9aa2b499a221f1e0188ebb0fa3ad5be01e9ba2eaf33dc \
+            bash -lc 'set -e
+              # The CLI cannot store a new profile'"'"'s passwords without a desktop
+              # keyring, so the author certificate takes the place of the sample
+              # one in the ready "dev" profile, under its password.
+              if [ -f /certs/author.p12 ]; then
+                openssl pkcs12 -in /certs/author.p12 -passin env:TIZEN_AUTHOR_PASSWORD -nodes -out /tmp/author.pem
+                openssl pkcs12 -export -in /tmp/author.pem -out "$HOME/author.p12" -passout pass:developer
+                rm /tmp/author.pem
+              fi
+              cp -r /app /tmp/app
+              tizen package -t wgt -s dev -o /tmp/out -- /tmp/app
+              cp /tmp/out/*.wgt /out/pleione.wgt'
+          version=$(node -p "require('./package.json').version")
+          mv build/pleione.wgt "Pleione_${version}_tizen.wgt"
+          rm -rf build/tizen-certs
+
       - name: Build service
         run: |
           rm -rf build/bundled-service
@@ -117,6 +151,7 @@ jobs:
           name: webos-iptv-player
           path: |
             *.ipk
+            *.wgt
             *.manifest.json
 
   release:
@@ -133,4 +168,5 @@ jobs:
         with:
           files: |
             *.ipk
+            *.wgt
             *.manifest.json

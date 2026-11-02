@@ -4,6 +4,7 @@ dist-720/
 dist-tizen/
 *.ipk
 *.wgt
+tizen-probe-*.json
 *.manifest.json
 .DS_Store
 

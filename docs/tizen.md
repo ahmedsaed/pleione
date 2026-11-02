@@ -5,6 +5,48 @@ What real Samsung TVs do, measured for the Tizen port
 measurement on a device, not a reading of the docs. Add a column when
 another TV is tested.
 
+## Develop on a Samsung TV
+
+`scripts/tizen.sh` builds, signs, installs, and debugs through a pinned
+Tizen CLI container; the `tizen-device` skill has the details.
+
+```bash
+TIZEN_TV=<tv-ip> scripts/tizen.sh install      # build, package, install, cold-start
+TIZEN_TV=<tv-ip> scripts/tizen.sh debug 9333   # DevTools on http://127.0.0.1:9333/json
+npm run xtream:demo                            # in another terminal: the probe's media
+TIZEN_TV=<tv-ip> scripts/tizen.sh probe 20     # the device checks; then press keys for 20 s
+```
+
+The TV's Developer Mode must name this computer as its Host PC IP (Apps,
+then **1 2 3 4 5**).
+
+### Certificates
+
+A Tizen 5.5–6.5 TV installs the image's sample certificate. Tizen 7 and
+later need a **Samsung** certificate: an author certificate (the app's
+identity, kept forever) and a distributor certificate that lists each TV's
+DUID. Samsung issues it only after a sign-in to a Samsung account in a
+browser, which the container cannot show, so make it on the computer once:
+
+1. Install the **Tizen** extension in VS Code, connect the TV
+   (`TIZEN_TV=<tv-ip> scripts/tizen.sh connect` makes it visible to sdb),
+   and open the extension's certificate manager.
+2. Create a **Samsung** certificate, TV profile: the author certificate
+   (name, password), then the distributor certificate with the connected
+   TV's DUID; add the other test TV's DUID too.
+3. Copy `author.p12` and `distributor.p12` to `~/.config/pleione/tizen-certs`
+   (outside the repository) and register them:
+
+   ```bash
+   TIZEN_CERTS=~/.config/pleione/tizen-certs TIZEN_AUTHOR_PASSWORD=... \
+     TIZEN_DISTRIBUTOR_PASSWORD=... TIZEN_TV=<tv-ip> scripts/tizen.sh profile samsung
+   TIZEN_PROFILE=samsung TIZEN_TV=<tv-ip> scripts/tizen.sh install
+   ```
+
+CI signs the release `.wgt` with the project's author certificate when the
+repository has the `TIZEN_AUTHOR_P12` (base64) and `TIZEN_AUTHOR_PASSWORD`
+secrets, and with the sample one otherwise.
+
 ## Test TVs
 
 | | 2020 TV | Current TV |

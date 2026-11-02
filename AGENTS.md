@@ -18,6 +18,7 @@ Procedural workflows live in `.agents/skills/` (open Agent Skills format;
 | `ui-copy` | Adding or changing any user-visible string, naming a feature, or translating. |
 | `legacy-engine` | Adding browser APIs/polyfills, editing CSS layout or `css/legacy-*.css`, writing or debugging E2E tests. |
 | `webos-device` | Installing on a TV, or debugging what only reproduces on device. |
+| `tizen-device` | Installing on a Samsung TV, signing, or probing what only reproduces there. |
 | `user-choice` | Asking the user to pick, approve, or confirm anything. |
 
 ## Key rules
@@ -254,6 +255,25 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
   not `mouseup`. Components that self-activate mark their root
   `data-self-activate` so the global click handler in `key-handler.ts`
   doesn't double-fire `select`.
+
+## Samsung Tizen gotchas
+
+The Samsung build (`--platform=tizen`, `src/platform/tizen.ts`) runs on
+Tizen 5.5+ (Chromium 69+), above the Chromium 53 gate. Findings per TV are
+in `docs/tizen.md`; use the `tizen-device` skill on a TV.
+
+- **Back is Return, 10009** (`key` `XF86Back`, `code` `Escape`): match it
+  with `isBackKey()` or `platform.keys.back`, never a literal. **Never
+  register Exit or a long press of Return**: Samsung requires the system to
+  handle both, and Return on Home must ask before exiting
+  (`platform.confirmExitAtHome`).
+- **No notification API**: reminders fire in-app only.
+- **The native player** reports a live stream's duration as finite and
+  growing, so live DVR stays off; a seek to the live edge freezes it. It
+  neither renders nor exposes CEA-608 (Shaka does), and `getStartDate()`
+  ignores PROGRAM-DATE-TIME.
+- **No phone setup yet** (`platform.lanSetup` is false): the LAN service is
+  webOS-only until it is ported.
 
 ## Workflow
 

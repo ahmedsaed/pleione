@@ -13,7 +13,8 @@
 
 Pleione plays the IPTV service you already have on your LG webOS TV: live TV
 with a program guide and catch-up, movies and series, all laid out for the
-remote. It runs on **webOS 4.0 (2018) and newer**.
+remote. It runs on **webOS 4.0 (2018) and newer**, with a preview for
+**Samsung TVs on Tizen 5.5 (2020) and newer**.
 
 Pleione does not include any channels, playlists, or content. You add a
 playlist or an account from a provider of your own, and you are responsible
@@ -104,6 +105,13 @@ Some things webOS does not allow, or that are out of scope, are listed in
   Channel:
   `https://raw.githubusercontent.com/ahmedsaed/pleione/pleione/homebrew-repository.json`
 
+- **Samsung TVs (preview)** — download the `_tizen.wgt` from
+  [Releases](https://github.com/ahmedsaed/pleione/releases/latest) and
+  install it with a tool that re-signs apps for your TV, or build and
+  install it yourself in Developer Mode (`scripts/tizen.sh`, see
+  [`docs/tizen.md`](docs/tizen.md)). Phone setup and live rewind are not
+  on Samsung yet, and reminders appear only while Pleione is open.
+
 The [setup guide](https://pleione.merope.dev/setup/) walks through every
 step, adding your first account or playlist, and finding your way around
 with the remote.
@@ -127,6 +135,10 @@ engines support natively get feature-detected fallbacks on older ones.
 
 webOS 3.x and older are not supported.
 
+On Samsung, the preview targets Tizen 5.5 (2020, Chromium 69) and newer;
+older Tizen versions are above the same Chromium 53 baseline and may work,
+but are not tested.
+
 ## Development
 
 Pleione is vanilla TypeScript bundled with esbuild, plus a small bundled
@@ -142,6 +154,7 @@ npm run test:e2e         # Playwright, including a Chromium 53 simulation
 npm run xtream:demo      # local demo Xtream server (needs ffmpeg)
 ./build.sh               # package the .ipk
 ./build.sh --install     # package, install, and cold-restart on the default TV
+TIZEN_TV=<ip> scripts/tizen.sh install   # the Samsung build, through Docker
 ```
 
 The desktop preview plays through hls.js, mpegts.js, and Shaka; on the TV

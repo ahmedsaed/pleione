@@ -87,7 +87,9 @@ Some things webOS does not allow, or that are out of scope, are listed in
 - **Developer Mode** — download the latest `.ipk` from
   [Releases](https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest)
   and install it with the
-  [webOS CLI](https://webostv.developer.lge.com/develop/tools/cli-installation):
+  [webOS CLI](https://webostv.developer.lge.com/develop/tools/cli-installation).
+  Full HD (non-4K) LG TVs, mostly 32″ and some 43″ sets, take the `_fhd`
+  file instead:
 
   ```bash
   npm install -g @webos-tools/cli

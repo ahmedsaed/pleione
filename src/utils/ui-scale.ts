@@ -1,11 +1,17 @@
 import { DEFAULT_INTERFACE_SIZE, isValidInterfaceSize } from '../config/themes';
 
 // The Interface size factor, read from the same `data-interface-size` that
-// picks the stylesheet set, so JS layout math always matches the CSS.
+// picks the stylesheet set, so JS layout math always matches the CSS. The
+// build's base scale (2/3 for LG's 1280x720 plane) applies under every size,
+// as it does in every stylesheet.
 export function uiScale(): number {
-  if (typeof document === 'undefined') return 1;
-  const size = document.documentElement.dataset.interfaceSize;
-  return isValidInterfaceSize(size) ? Number(size) / 100 : 1;
+  if (typeof document === 'undefined') return __UI_BASE_SCALE__;
+  return interfaceScale(document.documentElement.dataset.interfaceSize);
+}
+
+/** The factor for an Interface size id on a plane with `base` scale. */
+export function interfaceScale(size: string | undefined, base = __UI_BASE_SCALE__): number {
+  return base * (isValidInterfaceSize(size) ? Number(size) / 100 : 1);
 }
 
 /** A length designed in 1920x1080 px, at the current Interface size. */

@@ -58,6 +58,16 @@ info "Built: $IPK ($(du -h "$IPK" | cut -f1))"
 info "Generating Homebrew Channel manifest..."
 npm run manifest -- "$IPK"
 
+# The 1280x720 package for LG's Full HD TVs, same id and version (issue #62).
+if [ "$PLEIONE_FHD" = "1" ]; then
+  info "Packaging the Full HD (1280x720) IPK..."
+  node esbuild.config.mjs --resolution=720
+  rm -rf build/ipk-fhd && mkdir -p build/ipk-fhd
+  ares-package --no-minify -e "*preview-libs.js" dist-720 build/bundled-service -o build/ipk-fhd
+  for f in build/ipk-fhd/*_all.ipk; do mv "$f" "$(basename "${f%_all.ipk}")_fhd_all.ipk"; done
+  info "Built: $(ls -t *_fhd_all.ipk | head -1)"
+fi
+
 # Deploy if --install flag
 if [ "$1" = "--install" ]; then
   DEVICE="${2:-$(ares-setup-device -F -j 2>/dev/null | node -e "

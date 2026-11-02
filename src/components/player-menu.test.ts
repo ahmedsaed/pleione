@@ -102,6 +102,22 @@ describe('PlayerMenu', () => {
     expect(el.style.maxHeight).toBe('764px');
   });
 
+  it('scales its gap above the controls with the Interface size', () => {
+    document.documentElement.dataset.interfaceSize = '120';
+    try {
+      vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1920);
+      vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(1080);
+      container.querySelector<HTMLElement>('#player-osd')!.getBoundingClientRect = () =>
+        ({ left: 40, right: 1880, top: 860, bottom: 1060 }) as DOMRect;
+      anchor.getBoundingClientRect = () => ({ left: 1700, right: 1760, top: 990, bottom: 1050 }) as DOMRect;
+      menu.open('audio');
+      expect(el.style.bottom).toBe(`${220 + 16 * 1.2}px`);
+      expect(el.style.maxHeight).toBe(`${860 - 16 * 1.2 - 80 * 1.2}px`);
+    } finally {
+      delete document.documentElement.dataset.interfaceSize;
+    }
+  });
+
   it('moves with Up/Down and clamps at the ends', () => {
     menu.open('audio');
     menu.handleAction('up');

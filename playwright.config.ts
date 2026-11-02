@@ -3,6 +3,9 @@ import { LEGACY_HEADER } from './scripts/chromium-53-simulation.mjs';
 
 // The preview server (scripts/serve.mjs) listens on port 3000 unless PREVIEW_PORT is set.
 const baseURL = `http://localhost:${process.env.PREVIEW_PORT || 3000}`;
+// The 1280x720 package for LG's Full HD TVs (`npm run preview:720`).
+const fhdURL = 'http://localhost:3001';
+const FHD_SPEC = /fhd-720\.spec\.ts/;
 
 // End-to-end tests drive the real app in headless Chromium (close to the
 // legacy webOS Chromium engine). The preview harness builds the app and serves
@@ -22,6 +25,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: FHD_SPEC,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1920, height: 1080 },
@@ -32,17 +36,38 @@ export default defineConfig({
     // - JS: removeApis() deletes every API newer than Chromium 53 before the app loads.
     {
       name: 'chromium-53-simulation',
+      testIgnore: FHD_SPEC,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1920, height: 1080 },
         extraHTTPHeaders: { [LEGACY_HEADER]: '1' },
       },
     },
+    // LG's Full HD TVs: the whole UI scaled by 2/3 onto a 1280x720 plane,
+    // on the webOS 4 engine most of those sets run.
+    {
+      name: 'webos-720',
+      testMatch: FHD_SPEC,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: fhdURL,
+        viewport: { width: 1280, height: 720 },
+        extraHTTPHeaders: { [LEGACY_HEADER]: '1' },
+      },
+    },
   ],
-  webServer: {
-    command: 'npm run preview',
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'npm run preview',
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run preview:720',
+      url: fhdURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 });

@@ -89,6 +89,7 @@ npm run xtream:demo            # demo Xtream server on :8090 (ffmpeg; docs/xtrea
 npm run service:smoke          # bundled service on real Node.js 0.12.2
 npm run service:smoke:matrix   # webOS 4-26 Node runtime matrix
 ./build.sh [--install [device]]  # package the IPK (see webos-device)
+PLEIONE_FHD=1 ./build.sh       # also package the 1280x720 IPK for LG Full HD TVs
 ```
 
 Run a single test by file or name:
@@ -181,6 +182,12 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
   by `KeyHandler`.
 - **Parsers** (`src/parsers/`) — `parseM3U` / `parseXMLTV` are pure
   functions; keep them tolerant of messy real-world feeds.
+- **Full HD package** — LG's Full HD TVs run apps on a 1280x720 plane, so
+  `--resolution=720` builds the same app into `dist-720/` scaled by 2/3:
+  every stylesheet length (canvas and `::cue` included) and every JS
+  length through `uiPx()` (`__UI_BASE_SCALE__`). Design at 1920x1080 as
+  usual; a JS length that skips `uiPx()` comes out 1.5x too large there.
+  The `webos-720` E2E project checks it.
 - **Config** (`src/config.ts`) — `CONFIG` holds key codes, refresh
   intervals, and player/EPG/storage constants. Prefer it over magic numbers.
 - **Bundled service** (`bundled-service/`) — Node.js 0.12.2 CommonJS service
@@ -189,8 +196,8 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
 
 ## Conventions
 
-- **Build-time constants** `__APP_VERSION__`, `__APP_ID__`, `__SERVICE_ID__`
-  are injected via esbuild `define`. Keep all three in lockstep across
+- **Build-time constants** `__APP_VERSION__`, `__APP_ID__`, `__SERVICE_ID__`,
+  `__UI_BASE_SCALE__` are injected via esbuild `define`. Keep them in lockstep across
   `esbuild.config.mjs`, `vitest.config.ts`, and `src/globals.d.ts`.
 - **XSS safety.** Channel names, program titles, group titles, and logo URLs
   come from untrusted M3U/XMLTV. Always interpolate them through `html`

@@ -1,11 +1,11 @@
-import { test, expect, enterTab, routeLiveManifest, pressKeys, type Page } from './helpers';
+import { test, expect, enterTab, routeLiveManifest, pressKeys, type Page, BACK_KEY } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
 // Back goes up one level, from every page's own steps to its section, from the
 // section to Home, and from Home out of the app (LG store checklist: Back on
 // the entry page shows the TV's Home screen).
 
-const BACK = 461;
+const BACK = BACK_KEY;
 const RED = 403;
 const home = (page: Page) => page.locator('#view-home');
 const homeFocus = (page: Page) => page.locator('#view-home .focused');

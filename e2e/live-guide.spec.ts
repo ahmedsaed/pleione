@@ -6,6 +6,7 @@ import {
   routeLiveManifest,
   routePlaylist,
   type Page,
+  BACK_KEY,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -35,7 +36,7 @@ const EPG = `<tv>
   <programme channel="ch2" start="20260915113000 +0000" stop="20260915123000 +0000"><title>Program 4</title></programme>
   <programme channel="ch2" start="20260915123000 +0000" stop="20260915133000 +0000"><title>Program 5</title></programme>
 </tv>`;
-const KEY = { up: 38, down: 40, left: 37, right: 39, ok: 13, back: 461, red: 403 } as const;
+const KEY = { up: 38, down: 40, left: 37, right: 39, ok: 13, back: BACK_KEY, red: 403 } as const;
 const at = (hhmm: string) => Date.parse(`2026-09-15T${hhmm}:00Z`);
 const CELL = '#live-guide .guide-cell';
 

@@ -2,6 +2,7 @@ import {
   liveAfterSave,
   test, expect, type Page, routePlaylist, routeLiveManifest, seedPlaylist, PLAYLIST_URL, enterTab, readUserDataStore,
   isChromium53, pressKeys,
+  BACK_KEY,
 } from './helpers';
 import type { Locator } from '@playwright/test';
 import { seedXtream } from './fixtures/xtream';
@@ -817,7 +818,7 @@ test.describe('Settings text fields', () => {
 test.describe('Settings re-entry', () => {
   const RED = 403;
   const BLUE = 406;
-  const WEBOS_BACK = 461;
+  const WEBOS_BACK = BACK_KEY;
   const remoteKey = (page: Page, keyCode: number) => page.evaluate(
     (code) => document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: code, bubbles: true })),
     keyCode,
@@ -1476,7 +1477,7 @@ test.describe('Settings Xtream live categories', () => {
     await expect(second).toHaveClass(/\bfocused\b/);
     await expect(picker.locator('.focused:not(.live-category-account-slot)')).toHaveCount(1);
 
-    await press(page, 461);
+    await press(page, BACK_KEY);
     await expect(picker.locator('.account-menu')).toHaveCount(0);
     await expect(picker).toBeVisible();
     await expect(picker.locator('.account-avatar')).toHaveClass(/\bfocused\b/);
@@ -1527,7 +1528,7 @@ test.describe('Settings Xtream live categories', () => {
     const newRow = picker.locator('[data-key="new:c3"]');
     await expect(newRow.locator('.live-category-new')).toBeVisible();
     expect(await ownContrast(newRow.locator('.live-category-new'))).toBeGreaterThanOrEqual(4.5);
-    await press(page, 461);
+    await press(page, BACK_KEY);
     await expect(picker).toBeHidden();
     await expect(button.locator('.xtream-live-categories-new')).toHaveCount(0);
   });

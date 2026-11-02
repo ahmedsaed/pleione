@@ -1,6 +1,7 @@
 import {
   test, expect, type Page, routePlaylist, routeLiveManifest, LIVE_MANIFEST, enterTab, neuterVideo,
   pressStepsAndReadPlayer,
+  BACK_KEY,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -243,7 +244,7 @@ async function startFakeCatchup(page: Page): Promise<void> {
   });
 }
 
-const [ENTER, RIGHT, BACK, YELLOW] = [13, 39, 461, 405];
+const [ENTER, RIGHT, BACK, YELLOW] = [13, 39, BACK_KEY, 405];
 
 test('catch-up Back leaves playback even with the OSD up', async ({ page }) => {
   await startFakeCatchup(page);

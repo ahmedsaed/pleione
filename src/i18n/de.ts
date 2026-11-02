@@ -506,6 +506,8 @@ export const DE_MESSAGES = {
   'app.loadingChannelsProgress': 'Sender werden geladen… Verarbeitet: {processed}, übernommen: {kept}',
   'app.loadFailed': 'Die Wiedergabeliste konnte nicht geladen werden. URL überprüfen und erneut versuchen.',
   'app.saveFailed': 'Änderungen konnten nicht gespeichert werden. Bitte erneut versuchen.',
+  'app.exitTitle': '{name} beenden?',
+  'app.exitConfirm': 'Beenden',
   'settings.storageLimited': 'Dieser Fernseher begrenzt den Speicher für Apps. Ihr Fortschritt und Ihre Favoriten werden weiterhin gespeichert, der Cache bleibt aber nicht bis zum nächsten Start erhalten.',
   'weekday.0': 'So.',
   'weekday.1': 'Mo.',

@@ -1,9 +1,21 @@
+import type { Action } from '../types';
+
 // What the app needs from the TV platform it was built for (`__PLATFORM__`).
 // Everything else in the app is platform-neutral.
 export interface Platform {
   readonly name: 'webos' | 'tizen';
+  /** Boot hook, before the key handler starts (Tizen registers its remote keys). */
+  start(): void;
+  readonly keys: {
+    /** The remote's Back key code. */
+    readonly back: number;
+    /** Key codes this platform adds to the shared map in CONFIG.KEYS. */
+    readonly actions: Readonly<Record<number, Action>>;
+  };
   /** Leave the app, from Back on Home. */
   exit(): void;
+  /** The bundled LAN service is there: phone setup and playlist uploads. */
+  readonly lanSetup: boolean;
   /** Whether Back on Home asks before exiting (Samsung's Return policy) or closes at once (LG's). */
   readonly confirmExitAtHome: boolean;
   /** The parameters the app was cold-launched with (a reminder's channel), or undefined. */

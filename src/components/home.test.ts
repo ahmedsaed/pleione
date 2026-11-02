@@ -15,6 +15,7 @@ vi.mock('../services/playlist-service', () => ({
 
 import { Home, bentoRows } from './home';
 import { Focus } from '../navigation/focus-scope';
+import { platform } from '../platform';
 
 const account: PlaylistEntry = {
   id: 'x1', name: 'Alpha', url: 'http://host', source: 'xtream', xtream: { username: 'u', password: 'p' },
@@ -234,6 +235,23 @@ describe('Home first run', () => {
     expect(container.querySelector('.home-setup-code')?.textContent).toBe('1234');
     expect(Array.from(container.querySelectorAll<HTMLElement>('[data-add]')).map((el) => el.dataset.key))
       .toEqual(['add:xtream', 'add:playlist']);
+  });
+
+  it('leaves phone setup out where the platform has no LAN service', async () => {
+    const host = platform as { lanSetup: boolean };
+    host.lanSetup = false;
+    try {
+      home.setSources(false, [], null);
+      home.setFirstRun(true);
+      home.render();
+      await settle();
+      expect(container.querySelector('.home-setup')).toBeNull();
+      expect(handlers.loadSetupInfo).not.toHaveBeenCalled();
+      expect(Array.from(container.querySelectorAll<HTMLElement>('[data-add]')).map((el) => el.dataset.key))
+        .toEqual(['add:xtream', 'add:playlist']);
+    } finally {
+      host.lanSetup = true;
+    }
   });
 
   it('says so when the setup service is unavailable', async () => {

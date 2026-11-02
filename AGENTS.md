@@ -1,6 +1,6 @@
 # AGENTS.md
 
-IPTV player for LG webOS TVs. Vanilla TypeScript (no UI framework), bundled
+IPTV player for LG webOS TVs, with a Samsung Tizen port in progress. Vanilla TypeScript (no UI framework), bundled
 with esbuild and packaged as a webOS `.ipk`. A separate bundled webOS JS
 service (`bundled-service/`) provides LAN M3U uploads over Luna + HTTP. App
 id `com.merope.pleione`; targets webOS 4+ (Chromium 53).
@@ -89,6 +89,8 @@ npm run xtream:demo            # demo Xtream server on :8090 (ffmpeg; docs/xtrea
 npm run service:smoke          # bundled service on real Node.js 0.12.2
 npm run service:smoke:matrix   # webOS 4-26 Node runtime matrix
 ./build.sh [--install [device]]  # package the IPK (see webos-device)
+npm run build:tizen            # Samsung bundle into dist-tizen/
+TIZEN_TV=<ip> scripts/tizen.sh install  # package the .wgt and install (docs/tizen.md)
 ```
 
 Run a single test by file or name:

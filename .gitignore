@@ -1,6 +1,8 @@
 node_modules/
 dist/
+dist-tizen/
 *.ipk
+*.wgt
 *.manifest.json
 .DS_Store
 

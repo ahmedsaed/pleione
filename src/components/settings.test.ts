@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { platform } from '../platform';
 import type { ChannelCycleMode, ManualEpgSource, PlaylistEntry, TzMode, XtreamLiveCategorySnapshot } from '../types';
 import type { AnimationMode } from '../services/motion-service';
 import type { XtreamAccountInfo, XtreamLiveCategory } from '../services/xtream-client';
@@ -2103,6 +2104,18 @@ describe('Settings uploads section', () => {
     ];
     settings.render();
     expect(container.querySelector('#upload-entries label')!.textContent).toBe('Anon');
+  });
+
+  it('leaves Device setup and uploads out where the platform has no LAN service', () => {
+    const host = platform as { lanSetup: boolean };
+    host.lanSetup = false;
+    try {
+      settings.render();
+      expect(container.querySelector('#setup-info')).toBeNull();
+      expect(container.querySelector('#upload-entries')).toBeNull();
+    } finally {
+      host.lanSetup = true;
+    }
   });
 
   it('shows the empty-hint when there are no uploaded playlists', () => {

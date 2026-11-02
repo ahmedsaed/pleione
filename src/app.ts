@@ -38,6 +38,7 @@ import { ReminderService } from './services/reminder-service';
 import { StartupConnection } from './services/connection-check';
 import { firstRunLanding } from './components/first-run';import { resetAppData } from './services/app-reset';
 import { ReminderPrompt } from './components/reminder-prompt';
+import { ConfirmationPrompt } from './components/confirmation-prompt';
 import { ReminderManager } from './components/reminder-manager';
 import { ParentalControls } from './components/parental-controls';
 import { ParentalPinPrompt } from './components/parental-pin-prompt';
@@ -118,6 +119,7 @@ class App {
   private parentalPinPrompt = new ParentalPinPrompt();
   private sidebar!: Sidebar;
   private reminderPrompt = new ReminderPrompt();
+  private exitPrompt = new ConfirmationPrompt('prompt.exit');
   private reminderManager!: ReminderManager;
   private home!: Home;
   private searchBox!: SearchBox;
@@ -423,6 +425,7 @@ class App {
     });
     this.homeButton = new HomeButton(() => this.selectSection('home', 'pointer'));
 
+    platform.start();
     KeyHandler.init();
     KeyHandler.setHandler((action, event) => {
       this.handleKey(action, event);
@@ -510,6 +513,21 @@ class App {
       );
       return false;
     }
+  }
+
+  // Samsung's Return policy asks before Home exits; LG requires one press.
+  private exitFromHome(): void {
+    if (!platform.confirmExitAtHome) {
+      void this.exitApp();
+      return;
+    }
+    this.exitPrompt.show({
+      title: t('app.exitTitle', { name: CONFIG.APP_NAME }),
+      confirmLabel: t('app.exitConfirm'),
+      cancelLabel: t('common.cancel'),
+      onConfirm: () => { void this.exitApp(); },
+      onCancel: () => {},
+    });
   }
 
   private async exitApp(): Promise<void> {
@@ -1598,7 +1616,7 @@ class App {
   private goUp(view: ViewName): void {
     switch (backStep(view, this.playerReturn)) {
       case 'exit':
-        void this.exitApp();
+        this.exitFromHome();
         return;
       case 'home':
         this.goHome(view === 'player' ? null : sectionForView(view));

@@ -530,6 +530,8 @@ export const UK_MESSAGES = {
   'app.loadingChannelsProgress': 'Завантаження каналів… Оброблено: {processed}, залишено: {kept}',
   'app.loadFailed': 'Не вдалося завантажити плейлист. Перевірте URL і повторіть спробу.',
   'app.saveFailed': 'Не вдалося зберегти зміни. Спробуйте ще раз.',
+  'app.exitTitle': 'Вийти з {name}?',
+  'app.exitConfirm': 'Вийти',
   'settings.storageLimited': 'Цей телевізор обмежує пам’ять для застосунків. Прогрес перегляду й обране зберігаються, але кеш не зберігається між запусками.',
   'weekday.0': 'Нд',
   'weekday.1': 'Пн',

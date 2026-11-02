@@ -5,7 +5,8 @@ import { morph } from '../utils/morph';
 
 interface ConfirmationOptions {
   title: string;
-  message: string;
+  /** Left out when the title says it all. */
+  message?: string;
   confirmLabel: string;
   cancelLabel: string;
   onConfirm: () => void;
@@ -98,7 +99,7 @@ export class ConfirmationPrompt {
     morph(this.el, html`
       <div class="confirmation-dialog">
         <h2 class="confirmation-title">${this.options.title}</h2>
-        <p class="confirmation-message">${this.options.message}</p>
+        ${this.options.message ? html`<p class="confirmation-message">${this.options.message}</p>` : ''}
         <div class="confirmation-buttons">
           <button class="confirmation-btn danger" data-focusable
                   data-key="confirm" data-confirm-action="confirm">${this.options.confirmLabel}</button>

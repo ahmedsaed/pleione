@@ -10,6 +10,7 @@ export const webos: Platform = {
   start(): void {},
   keys: { back: CONFIG.KEYS.BACK, actions: {} },
   exit: closeApp,
+  lanSetup: true,
   confirmExitAtHome: false,
   coldLaunchParams(): unknown {
     const w = window as unknown as { PalmSystem?: { launchParams?: string } };

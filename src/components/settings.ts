@@ -66,6 +66,7 @@ import {
   applyAnimationMode,
   type AnimationMode,
 } from '../services/motion-service';
+import { platform } from '../platform';
 import {
   ADVANCED_ICON,
   APPEARANCE_ICON,
@@ -799,11 +800,11 @@ export class Settings {
                   </div>
                 </div>
 
-                <div class="settings-section settings-general-device">
+                ${platform.lanSetup ? html`<div class="settings-section settings-general-device">
                   <h3 class="settings-section-title">${t('settings.deviceSetup')}</h3>
                   <div class="source-box setup-box-info device-setup-card"
                        id="setup-info">${t('settings.checkingSetup')}</div>
-                </div>
+                </div>` : ''}
               </div>
               <div class="settings-section">
                 <h3 class="settings-section-title parental-entry-title">${t('settings.parentalControls')}<span
@@ -872,7 +873,7 @@ export class Settings {
                 <button class="btn btn-primary" data-focusable id="add-playlist">${t('settings.addPlaylist')}</button>
               </div>
 
-              <div class="settings-section">
+              ${platform.lanSetup ? html`<div class="settings-section">
                 <h3 class="settings-section-title">${t('settings.uploadPlaylist')}</h3>
                 <div class="source-box upload-box-list">
                   <div class="upload-entries" id="upload-entries">
@@ -881,7 +882,7 @@ export class Settings {
                       : html`<div class="empty-hint">${t('settings.noUploads')}</div>`}
                   </div>
                 </div>
-              </div>
+              </div>` : ''}
 
               <div class="settings-section" id="channel-customization-settings">
                 <h3 class="settings-section-title">${t('settings.channels')}</h3>

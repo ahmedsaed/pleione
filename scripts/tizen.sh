@@ -103,11 +103,23 @@ debug() {
   connect >/dev/null
   in_container "sdb -s $ip:26101 shell 0 was_kill $APP_ID >/dev/null 2>&1 || true"
   local port
-  port="$(in_container "timeout 30 sdb -s $ip:26101 shell 0 debug $APP_ID" | grep -o 'port: [0-9]*' | grep -o '[0-9]*' || true)"
+  for _ in 1 2 3; do
+    port="$(in_container "timeout 30 sdb -s $ip:26101 shell 0 debug $APP_ID" 2>/dev/null \
+      | grep -o 'port: [0-9]*' | grep -o '[0-9]*' || true)"
+    [ -n "$port" ] && break
+    connect >/dev/null
+  done
   [ -n "$port" ] || error "The TV did not report a debug port."
-  connect >/dev/null
-  in_container "sdb -s $ip:26101 forward --remove-all; sdb -s $ip:26101 forward tcp:$local_port tcp:$port"
-  info "DevTools: http://127.0.0.1:$local_port/json"
+  for _ in 1 2 3; do
+    connect >/dev/null
+    in_container "sdb -s $ip:26101 forward --remove-all; sdb -s $ip:26101 forward tcp:$local_port tcp:$port" \
+      >/dev/null 2>&1 || true
+    if in_container "sdb forward --list" | grep -q "tcp:$local_port"; then
+      info "DevTools: http://127.0.0.1:$local_port/json"
+      return
+    fi
+  done
+  error "Could not forward the DevTools port."
 }
 
 down() {

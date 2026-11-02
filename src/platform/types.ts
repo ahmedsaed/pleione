@@ -14,6 +14,8 @@ export interface Platform {
   };
   /** Leave the app, from Back on Home. */
   exit(): void;
+  /** The bundled LAN service is there: phone setup and playlist uploads. */
+  readonly lanSetup: boolean;
   /** Whether Back on Home asks before exiting (Samsung's Return policy) or closes at once (LG's). */
   readonly confirmExitAtHome: boolean;
   /** The parameters the app was cold-launched with (a reminder's channel), or undefined. */

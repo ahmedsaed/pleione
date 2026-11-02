@@ -60,6 +60,8 @@ export const tizen: Platform = {
     log().info('Closing the app', 'event=app.exit', 'method=tizen');
     host()?.application.getCurrentApplication().exit();
   },
+  // The LAN service is not ported yet (docs/tizen-port-plan.md, Phase 6).
+  lanSetup: false,
   confirmExitAtHome: true,
   // Reminders are in-app only on Tizen (docs/tizen-port-plan.md, D5), so
   // nothing launches the app with parameters.

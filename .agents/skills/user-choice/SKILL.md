@@ -1,6 +1,6 @@
 ---
 name: user-choice
-description: Present anything the user must choose or approve — review findings, a commit message, a design option, any decision — as main text right above the options. Use every time you ask the user to pick, approve, or confirm.
+description: Present anything the user must choose or approve — review findings, a design option, any decision — as main text right above the options. Use every time you ask the user to pick, approve, or confirm.
 ---
 
 # User choice
@@ -10,8 +10,7 @@ right above the options.
 
 ## How to ask
 
-The content is the full thing being decided: the complete commit message,
-every finding with its problem, repro, and suggested fix, or each option's
+The content is the full thing being decided: every finding with its problem, repro, and suggested fix, or each option's
 trade-offs.
 
 Pick the form by whether the turn has already made a tool call:

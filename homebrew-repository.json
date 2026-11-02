@@ -6,7 +6,7 @@
       "iconUri": "https://raw.githubusercontent.com/ahmedsaed/pleione-webos-iptv-player/pleione/assets/icon130.png",
       "manifestUrl": "https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest/download/com.merope.pleione.manifest.json",
       "fullDescriptionUrl": "https://pleione.merope.dev/",
-      "shortDescription": "An IPTV player for LG webOS TVs. Supports M3U playlists, Xtream Codes accounts, XMLTV program guides, and catch-up/timeshift playback."
+      "shortDescription": "A free IPTV player for your own M3U playlists and Xtream accounts, made for the remote."
     }
   ]
 }

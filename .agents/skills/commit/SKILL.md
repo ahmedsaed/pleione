@@ -1,12 +1,15 @@
 ---
 name: commit
-description: Stage and commit changes in this repo — tests scoped to the change first, an exact message approved by the user, no trailers, 72-column lines. Use whenever the user asks to commit.
+description: Stage and commit changes in this repo — tests scoped to the change first, no trailers, 72-column lines. Use whenever the user asks to commit.
 ---
 
 # Commit
 
-Only commit or push when the user asks. Commit **directly to `main`** — no
-feature branch, no PR.
+Only commit or push when the user asks. The default branch is `pleione`;
+never commit to it directly. Commit on a branch off `pleione` named
+`pleione-<topic>` (e.g. `pleione-readme`), and when the user asks for a PR,
+push it and open one against `pleione` with `gh pr create --base pleione`.
+If you are already on a `pleione-*` branch for the same work, commit there.
 
 ## 1. Test what the change touches
 
@@ -47,9 +50,9 @@ committing are separate, user-visible steps.
   no tool or agent attribution, even if the runtime adds one by default.
   The body ends with its last content line.
 
-## 4. Get approval, then commit
+## 4. Commit
 
-Show the exact message as a heredoc and wait for explicit approval:
+Commit with the message as a heredoc; no approval step is needed:
 
 ```bash
 git commit -F - <<'EOF'
@@ -59,11 +62,7 @@ Body
 EOF
 ```
 
-Do not run `git commit` until the user approves that exact message. If they
-edit it, show the revised version again.
-
-Ask through the `user-choice` skill, so the full heredoc shows as main
-text right above the options.
+Show the final message in your reply after committing.
 
 ## Media for README or GitHub
 

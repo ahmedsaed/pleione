@@ -1,123 +1,116 @@
 <div align="center">
   <img src="assets/icon.svg" alt="Pleione icon">
   <h1>Pleione</h1>
-  <p>An IPTV player for LG webOS TVs by Merope. Supports M3U playlists, Xtream Codes accounts, XMLTV program guides, and catch-up/timeshift playback.</p>
-  <p>English | <a href="README.zh-CN.md">简体中文</a></p>
+  <p><strong>A free IPTV player for your own M3U playlists and Xtream accounts, made for the remote.</strong></p>
   <p>
   <a href="#supported-webos-versions"><img src="https://img.shields.io/badge/webOS-4%2B-e6007e?logo=webos&logoColor=white" alt="webOS 4+"></a>
   <a href="https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest"><img src="https://img.shields.io/github/v/release/ahmedsaed/pleione-webos-iptv-player" alt="Latest release"></a>
   <a href="https://github.com/ahmedsaed/pleione-webos-iptv-player/releases"><img src="https://img.shields.io/github/downloads/ahmedsaed/pleione-webos-iptv-player/total" alt="GitHub downloads"></a>
-  <a href="https://pleione.merope.dev/"><img src="https://img.shields.io/badge/Website-222?logo=github" alt="Project website"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
   </p>
+  <p><a href="https://pleione.merope.dev/">Website</a> · <a href="https://pleione.merope.dev/setup/">Setup guide</a> · <a href="https://pleione.merope.dev/support/">Support</a> · <a href="https://pleione.merope.dev/privacy/">Privacy</a></p>
 </div>
 
-## Credits
+Pleione plays the IPTV service you already have on your LG webOS TV: live TV
+with a program guide and catch-up, movies and series, all laid out for the
+remote. It runs on **webOS 4.0 (2018) and newer**.
 
-Pleione is based on [webOS IPTV Player](https://github.com/lennylxx/webos-iptv-player)
-by lennylxx, licensed under Apache-2.0. See [NOTICE](NOTICE).
+Pleione does not include any channels, playlists, or content. You add a
+playlist or an account from a provider of your own, and you are responsible
+for having the right to watch it.
 
-## Screenshots
-
-| Channel list | Live preview |
+| Home | Live |
 | --- | --- |
-| ![Channel list](https://github.com/user-attachments/assets/adb1ff15-1da3-479f-8a2f-0486dca5b082) | ![Live preview](https://github.com/user-attachments/assets/a10915a7-cdea-4bfc-bb12-f6e3054b4b51) |
+| ![Home](store/screenshots/home.png) | ![Live](store/screenshots/live.png) |
+| **Guide** | **Player** |
+| ![Guide](store/screenshots/guide.png) | ![Player](store/screenshots/player.png) |
+| **Movie detail** | **Search** |
+| ![Movie detail](store/screenshots/movie-detail.png) | ![Search](store/screenshots/search.png) |
 
-| Recently watched | Program guide |
-| --- | --- |
-| ![Recently watched](https://github.com/user-attachments/assets/ef7aa7a1-7c3e-4b59-8825-fe4a0a441a61) | ![Program guide](https://github.com/user-attachments/assets/9928c342-c2fa-46b8-92f1-b5e815f24f19) |
+## Highlights
 
-| Catch-up resume | Channel info |
-| --- | --- |
-| ![Catch-up resume](https://github.com/user-attachments/assets/641a72bf-db7e-4757-ac71-c8add5114c7a) | ![Channel info](https://github.com/user-attachments/assets/9adf8302-750f-429b-9155-828c8c30f097) |
+**Live TV**
+- M3U/M3U8 playlists and Xtream Codes accounts, several at once
+- A program guide (XMLTV) found from your playlist or added by hand, with
+  per-source time correction
+- Catch-up for programs that already aired, and pause and rewind where the
+  stream allows it
+- A live preview beside the channel list, favorites, Recently Watched,
+  number-key tuning, and reminders that fire even with the app closed
 
-| Playback overlays | Subtitles |
-| --- | --- |
-| ![Playback overlays](https://github.com/user-attachments/assets/08c81dd7-5811-4fe3-9ed0-3e766d7124f9) | ![Subtitles](https://github.com/user-attachments/assets/5d1fab57-1087-414b-9a20-f900589eac4a) |
+**Movies and Series** (Xtream accounts)
+- Browse by category, sorted by name, date added, rating, or year
+- Detail pages with plot, cast, rating, seasons, and episodes
+- Continue Watching and a Watchlist; episodes play on into the next one
 
-| Subtitle search | Movies |
-| --- | --- |
-| ![Subtitle search](https://github.com/user-attachments/assets/4ef9c97e-131b-4e4f-bf9a-c753d66f2956) | ![Movies](https://github.com/user-attachments/assets/6d4d65c4-9719-4a2f-93a0-2fff4f8c0b2d) |
-
-| Movie detail | Series detail |
-| --- | --- |
-| ![Movie detail](https://github.com/user-attachments/assets/b1acbc3c-47f7-4cd2-9fe6-f3b3aca03768) | ![Series detail](https://github.com/user-attachments/assets/2962184e-cc95-455d-aea7-888ff3297dc4) |
-
-| Search | Settings |
-| --- | --- |
-| ![Search](https://github.com/user-attachments/assets/0c6c54e2-6fb3-4fb2-a0da-7f6459815390) | ![Settings](https://github.com/user-attachments/assets/8d47b502-ddcf-447f-a6b1-5afbf1b6b9ba) |
-
-| Theme picker | Reminder manager |
-| --- | --- |
-| ![Theme picker](https://github.com/user-attachments/assets/2e5ed981-c01b-48ab-a681-9a0ecd6431b8) | ![Reminder manager](https://github.com/user-attachments/assets/76ed121f-61eb-4c36-93a9-9aa6abdb0132) |
-
-| Parental controls | LAN setup |
-| --- | --- |
-| ![Parental controls](https://github.com/user-attachments/assets/7f22d1c3-97bf-4118-a19f-3699bf2779ba) | ![LAN setup](https://github.com/user-attachments/assets/a618e22f-6dae-474d-870e-13aebc22bf63) |
-
-## Features
-
-**Playlists & accounts**
-
-- **M3U playlists** — load multiple M3U/M3U8 lists, auto-deduplicated, and temporarily disable a source without deleting its setup
-- **Xtream Codes accounts** — add or temporarily disable accounts, or switch between accounts from the avatar on Home; playlists and EPG data are derived from their credentials
-- **LAN setup** — configure sources and online subtitle settings or upload `.m3u` files from a phone on the same network by scanning a QR code ([LAN service](docs/lan-service.md))
-
-**Live TV & on-demand**
-
-- **Program guide (EPG)** — a time grid inside Live, beside its groups (switch with the Red key), with an auto-derived date range, per-source time correction, and caching for instant reopen
-- **Channel health** — check live streams and mark them as healthy, suspect, or unavailable
-- **Reminders** — flag an upcoming program and get notified at air time, even with the app closed, to tune straight in
-- **Recently Watched** — return to recent live channels or resume partially watched catch-up programs
-- **Live preview** — keep live playback beside the channel list while browsing, with program info and quick controls
-- **Movies & Series** — browse an Xtream account's VOD catalogs, with Continue Watching and account-scoped Watchlist rails
-- **Catalog sorting** — sort Movies and Series by name, date added, rating, or year in either direction; each section remembers its choice
-- **Continue Watching & Watchlist management** — remove individual titles, clear a whole list, or clear a movie's saved progress from its details page
-- **Automatic VOD queues** — continue through series episodes or remaining Watchlist movies, removing completed titles from the Watchlist
-- **Catch-up & Live DVR** — replay past programs, and pause / rewind / return to the live edge on live streams
-- **Parental controls** — lock Live TV groups, movie and series categories, or individual titles with a PIN, with adult groups suggested for locking; locked content can stay listed with a lock or be hidden, and you choose when the PIN is asked again
+**Search**
+- One search across channels, guide programs, movies, and series
+- Arabic-aware matching that ignores differences in hamza, final letters,
+  diacritics, and digits
 
 **Playback**
+- Streams go straight to the TV's own player, so HDR10, HLG, Dolby Vision®,
+  and Dolby Atmos® pass through ([why native](docs/native-vs-hls.js.md))
+- HLS, MPEG-TS, and MPEG-DASH, including PlayReady, Widevine, and ClearKey
+  protected streams ([details](docs/mpeg-dash.md))
+- Audio and subtitle tracks, remembered per channel and per title, plus
+  optional online subtitle search
+- Automatic recovery from streams that fail to start or stall
 
-- **Native HDR & Dolby passthrough** — the stream goes straight to the TV's decoder, so HDR10, HLG, Dolby Vision®, and Dolby Atmos® pass through untouched — **[Why native instead of hls.js? See the on-device comparison](docs/native-vs-hls.js.md)**
-- **MPEG-DASH playback** — play clear and PlayReady `.mpd` channels through the native webOS pipeline, or Widevine/ClearKey through an on-demand Shaka MSE/EME path, with MPD track metadata, live DVR, and subtitle support ([details](docs/mpeg-dash.md))
-- **Native PlayReady DRM** — play protected MPEG-DASH channels on compatible webOS TVs through LG's DRM service and native hardware media pipeline, with license settings supplied by Kodi-style M3U properties ([details](docs/mpeg-dash.md))
-- **Widevine / ClearKey DRM** — load Shaka DASH-only on demand, with Kodi-style license URLs and request headers or validated inline ClearKey keys ([details](docs/mpeg-dash.md))
-- **Audio & subtitle tracks** — pick from the player controls, remembered per channel or VOD item; subtitles cover in-manifest WebVTT and CEA-608/708 (live), in-container / sidecar SRT/WebVTT/ASS (VOD), and online search (SubDL, OpenSubtitles, and Assrt) with a manual title box; online search remains available when bundled tracks exist, and subtitle timing can be adjusted live
-- **On-screen display** — program title, progress, and a live stream-info readout (resolution, HDR, frame rate, codec, audio channels)
-- **TV-style player controls** — Left/Right skip 10 seconds (hold to speed up), previous/next episode, and Audio and Subtitles buttons that appear only when the stream offers a choice; live TV adds Favorite and Channel info
-- **Automatic playback recovery** — detect streams that fail to start or stall, reload transient failures, and advance to the next live channel when recovery is exhausted
+**Make it yours**
+- 12 languages, with a fully mirrored layout for Arabic: English, العربية,
+  Deutsch, Español, Français, Italiano, Polski, Português (Brasil), Русский,
+  Türkçe, Українська, and 简体中文
+- Interface size from 90% to 130% and text size from 80% to 150%
+- Light and dark color themes
+- Parental controls with a PIN for groups, categories, or single titles
+- Full D-pad and Magic Remote support
 
-**Navigation**
+**Set up from your phone**
+- Scan the QR code on the TV, enter the pairing code, and type your account
+  details or upload an `.m3u` file on your phone instead of the remote. It
+  works on your home network, only while Pleione is open
+  ([how it works](docs/lan-service.md)).
 
-- **Home** — the first screen: large cards for Live, Movies, Series, Search, and Settings, the clock, and the account avatar; each section opens full screen and loads its own data
-- **Search** — across channels, EPG programs, movies, and series, with direct live, catch-up, and reminder actions; recent searches drop down under the search box for one-press repeat searches; the search index is prebuilt in the background and cached, so Search is ready almost instantly
-- **Channel sidebar** — press Left in the full-screen player to switch channels over the video, with current-program info, organized by group
-- **Channel customization** — reorder, hide, rename, regroup, manage favorites, and correct per-channel EPG matching or timing
-- **Genre group icons** for faster browsing
-- **Number-key channel entry** — press the remote's number keys to tune by channel number from the channel list or while watching, with on-screen digit feedback
-- **Full remote & Magic Remote** — spatial D-pad navigation and pointer control across every view
-- **Magic Remote edge scrolling** — rest the pointer near the edge of a catalog or search rail or a long list to scroll it, faster the longer it stays
-- **Color themes** — choose from light and dark app-wide themes with live previews, plus Dark or Frosted player overlays; selections persist across launches
-- **Adjustable text size** — scale text from 80%–150% without resizing controls
-- **Interface size** — scale the whole interface, text, images, and controls together, from 90%–130%
-- **Animation mode** — Essential turns off costly motion on older TVs, Reduced keeps visual effects but scrolls instantly, and Full smooth-scrolls single navigation steps
-- **Multilingual interface** — available in English, العربية, Deutsch, Español, Français, Italiano, Polski, Português (Brasil), Русский, Türkçe, Українська, and 简体中文; follows the TV language by default or can be selected explicitly in Settings
+**Private**
+- No account, no analytics, no ads. Your accounts and history stay on the
+  TV, and Pleione talks only to your own providers and the optional
+  services you turn on.
 
-**Development**
+Some things webOS does not allow, or that are out of scope, are listed in
+[unsupported features](docs/unsupported-features.md).
 
-- **Desktop preview** — browser-based playback via HLS.js, mpegts.js, and Shaka
+## Install
 
-## Unsupported features and limitations
+- **LG Content Store** — coming soon. Once listed, search for **Pleione** on
+  your TV.
+- **Developer Mode** — download the latest `.ipk` from
+  [Releases](https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest)
+  and install it with the
+  [webOS CLI](https://webostv.developer.lge.com/develop/tools/cli-installation):
 
-Some features are unavailable because of webOS platform limits or design
-choices. See the [full list](docs/unsupported-features.md).
+  ```bash
+  npm install -g @webos-tools/cli
+  ares-setup-device --add tv -i "username=prisoner" -i "host=<TV IP>" -i "port=9922"
+  ares-novacom --device tv --getkey     # enter the passphrase Developer Mode shows
+  ares-install --device tv ./com.merope.pleione_<version>_all.ipk
+  ```
+
+  A Developer Mode session expires unless you renew it in the Developer Mode
+  app, and the TV then removes sideloaded apps.
+- **Homebrew Channel** (rooted TVs) — add this repository to Homebrew
+  Channel:
+  `https://raw.githubusercontent.com/ahmedsaed/pleione-webos-iptv-player/pleione/homebrew-repository.json`
+
+The [setup guide](https://pleione.merope.dev/setup/) walks through every
+step, adding your first account or playlist, and finding your way around
+with the remote.
 
 ## Supported webOS versions
 
-The app runs on **webOS 4.0 (2018) and newer**. Its baseline is the Chromium 53
-engine on webOS 4; every later release ships a newer Chromium, so the app is
-forward-compatible. Features only newer engines support natively (flex `gap`,
-`backdrop-filter`, …) get feature-detected fallbacks on the older ones.
+The baseline is the Chromium 53 engine on webOS 4; every later release ships
+a newer Chromium, so the app is forward-compatible. Features only newer
+engines support natively get feature-detected fallbacks on older ones.
 
 | webOS version | Released | Chromium engine | Bundled service Node.js | Supported |
 | --- | --- | --- | --- | --- |
@@ -130,198 +123,56 @@ forward-compatible. Features only newer engines support natively (flex `gap`,
 | webOS 25 | 2025 | 120 | 16.20.2 | ✅ |
 | webOS 26 | 2026 | 132 | 20.12.2 | ✅ |
 
-webOS 3.x and older (Chromium 38 and earlier) are not supported.
-
-## Prerequisites
-
-Command-line installation and local builds require
-[Node.js](https://nodejs.org/) (v22+) and the
-[webOS CLI tools](https://webostv.developer.lge.com/develop/tools/cli-installation):
-
-```bash
-npm install -g @webos-tools/cli
-```
-
-## Install on your TV
-
-Pleione is coming soon to the LG Content Store. Until then, sideload it with
-LG's Developer Mode app. See also the
-[setup guide](https://pleione.merope.dev/setup/).
-
-### Developer Mode
-
-A Developer Mode session lasts a limited time. Renew it from the Developer Mode
-app before it runs out: when a session expires, the TV removes apps installed
-this way.
-
-1. **Download the app.** On your computer, open the
-   [Releases page](https://github.com/ahmedsaed/pleione-webos-iptv-player/releases/latest)
-   and download the latest `.ipk` file.
-
-2. **Turn on Developer Mode on the TV.**
-   - Create a free account at the [LG webOS Developer site](https://webostv.developer.lge.com/).
-   - On the TV, open the **LG Content Store**, search for **Developer Mode**, then
-     install and open it.
-   - Sign in with your LG developer account and switch **Dev Mode Status** to **ON**.
-     The TV restarts. Note the **IP address** and **passphrase** the app shows.
-
-3. **Register your TV.** Add it as a device named `tv` (replace the IP with your TV's):
-
-   ```bash
-   ares-setup-device --add tv -i "username=prisoner" -i "host=127.0.0.1" -i "port=9922"
-   ```
-
-   Then fetch the device key, entering the **passphrase** from the Developer Mode app when prompted:
-
-   ```bash
-   ares-novacom --device tv --getkey
-   ```
-
-4. **Install the app.**
-
-   ```bash
-   ares-install --device tv ./com.merope.pleione_<version>_all.ipk
-   ```
+webOS 3.x and older are not supported.
 
 ## Development
 
-### Setup
+Pleione is vanilla TypeScript bundled with esbuild, plus a small bundled
+webOS service for phone setup. You need [Node.js](https://nodejs.org/) 22+,
+and the webOS CLI to package or install on a TV.
 
 ```bash
 npm install
+npm run preview          # build and serve at http://localhost:3000
+npm test                 # unit and integration tests
+npm run lint             # Chromium 53 compatibility gate
+npm run test:e2e         # Playwright, including a Chromium 53 simulation
+npm run xtream:demo      # local demo Xtream server (needs ffmpeg)
+./build.sh               # package the .ipk
+./build.sh --install     # package, install, and cold-restart on the default TV
 ```
 
-### Build
+The desktop preview plays through hls.js, mpegts.js, and Shaka; on the TV
+everything plays natively. `scripts/tv.sh` streams logs, evaluates code,
+captures screenshots, sends remote keys, and collects a redacted diagnostics
+report from a TV in Developer Mode (usage is at the top of
+`scripts/tv.sh`).
 
-```bash
-./build.sh
-```
+Read [AGENTS.md](AGENTS.md) for the architecture, conventions, and webOS
+gotchas, and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull
+request.
 
-### Build & Install to TV
+### Docs
 
-```bash
-./build.sh --install [device-name]
-```
+- [Native playback vs. hls.js](docs/native-vs-hls.js.md)
+- [Audio track selection](docs/audio-track-selection.md)
+- [HLS subtitles](docs/hls-subtitles.md)
+- [VOD subtitles](docs/vod-subtitles.md)
+- [MPEG-DASH](docs/mpeg-dash.md)
+- [Storage and data](docs/storage-and-data.md)
+- [LAN setup service](docs/lan-service.md)
+- [Right-to-left layout](docs/rtl-layout.md)
+- [Demo Xtream server](docs/xtream-demo-server.md)
+- [Unsupported features](docs/unsupported-features.md)
 
-If no device name is given, the default device from `ares-setup-device` is used.
+## Credits and license
 
-### Debug on a TV
+Pleione is made by Merope and licensed under [Apache-2.0](LICENSE). It
+started as a fork of
+[webOS IPTV Player](https://github.com/lennylxx/webos-iptv-player) by
+lennylxx; see [NOTICE](NOTICE).
 
-On Windows, use WSL 2; native Windows is not supported.
-
-`scripts/tv.sh` reads the connection details for the default
-`ares-setup-device` device, so keys and passphrases do not need to be copied
-into commands.
-
-```bash
-scripts/tv.sh logs --app com.merope.pleione       # Stream the app's DevTools console
-scripts/tv.sh eval 'document.visibilityState'    # Evaluate JavaScript in the app page
-scripts/tv.sh perf --duration 30                 # Sample CPU, heap, DOM, and layout
-scripts/tv.sh diag                               # Capture a redacted diagnostics report
-scripts/tv.sh capt screenshot screen.png         # Capture video and app OSD
-scripts/tv.sh capt record screen.mp4             # Record 10 seconds, target 5 fps, no audio
-scripts/tv.sh input key down ok red              # Press remote keys
-scripts/tv.sh input click 700 450                # Move the Magic Remote pointer and click
-scripts/tv.sh input wheel 3                      # Scroll the wheel 3 notches down at the pointer
-scripts/tv.sh input key power                    # Turn the TV off
-scripts/tv.sh input wake                         # Turn the TV on (Wake-on-LAN)
-scripts/tv.sh run 'uname -a'                     # Run a TV command over SSH
-scripts/tv.sh push ./file.txt /tmp/file.txt      # Copy a local file to the TV
-scripts/tv.sh pull /tmp/file.txt ./file.txt      # Copy a TV file to this computer
-scripts/tv.sh shell                              # Open an interactive SSH session
-scripts/tv.sh reboot                             # Reboot the TV through Luna
-TV_DEVICE=tv2 scripts/tv.sh logs                 # Select a non-default configured TV
-```
-
-Run `scripts/tv.sh logs --help` (or `eval`, `perf`, `diag`, `capt`,
-`input`) for options.
-
-### Preview in Browser
-
-```bash
-npm run preview
-```
-
-Opens at http://localhost:3000. Video playback uses HLS.js, mpegts.js, and Shaka on desktop.
-
-### Demo Xtream server
-
-```bash
-npm run xtream:demo
-```
-
-Serves a synthetic Xtream catalog with real, locally generated media (needs
-ffmpeg) for testing in the preview or on a TV on your LAN. See
-[`docs/xtream-demo-server.md`](docs/xtream-demo-server.md).
-
-## Settings
-
-Open with the **Blue** key or the **Settings** card on Home. Sections:
-
-- **Language** — follow the TV's system language when supported, or choose a language explicitly.
-- **Device Setup** — scan the QR code to configure the app from a phone, or open the shown URL on a computer and enter the pairing code.
-- **Parental controls** — set a PIN; lock Live TV groups, movie and series categories, or individual titles; show locked content with a lock or hide it; and choose when the PIN is asked again.
-- **Xtream Accounts** — add, edit, remove, or temporarily disable accounts; check credentials, connection usage, and expiry; choose TS, HLS, or Auto for live streams; and pick the **Live categories** to load, optionally showing new ones automatically. The playlist and EPG are derived from the account credentials on Save.
-- **Playlists** — add, edit, remove, or temporarily disable M3U URLs. Re-applied on Save.
-- **Upload Playlists** — lists playlists uploaded through Device Setup, with controls to temporarily disable or remove each upload. New uploads appear automatically through Luna push.
-- **Channels** — check live-stream health; reorder, hide, rename, regroup, manually map entries to XMLTV channels, or correct one channel's EPG time; show hidden channels or reset customizations.
-- **Manual XMLTV sources** — add several program guide URLs, prioritized from top to bottom, and apply each to all playlists or to specific ones. Guide URLs are also discovered automatically from `url-tvg`, `x-tvg-url`, or `tvg-url` in M3U playlists.
-- **EPG time zone** — show guide times in the TV's **Device** time zone or the guide **Feed** time zone.
-- **EPG time correction** — adjust each source independently in 15-minute steps.
-- **Program reminders** — open the date-grouped Reminder Manager to review or remove upcoming reminders.
-- **Appearance** — preview an app-wide color theme, choose Dark or Frosted player overlays, set the interface size from 90% to 130%, and adjust text from 80% to 150%.
-- **Playback** — choose whether Channel Up/Down cycles the global list or
-  stays within the active group, Favorites, or playlist.
-- **Online Subtitles** — choose a preferred subtitle language and configure SubDL, OpenSubtitles, and Assrt credentials for online search. Optionally add your own TMDB API key (v3 key or v4 read access token) to show cast photos on movie and series pages; without one, the app never contacts TMDB.
-- **Advanced** — customize advanced interface, playback, and background refresh behavior.
-- **Data Management** — refresh data, clear caches or viewing lists, or reset the app.
-- **Save Changes** applies preferences and reloads playlist and guide data when their sources change. **Cancel** discards edits.
-
-## Remote Control Mapping
-
-| Key | Home | Live | Guide (in Live) | Player |
-|-----|------|------|-----------------|--------|
-| Up/Down | Move between cards | Move through groups or channels; Up from the top reaches the header | Previous/next channel; Up from the first row reaches the header | Channel +/- (live); show the controls (movies, episodes); move between rows in the controls |
-| Left/Right | Move between cards | Move between groups and channels | Earlier/later programs; Left at the earliest goes to the groups | Skip ∓10s (movies, episodes; catch-up and live DVR with the controls up), hold to skip faster; otherwise Left opens the channel sidebar |
-| OK/Enter | Open the focused section | Play the focused channel full screen | Watch, set a reminder, or play catch-up | Pause/resume and show the controls (movies, episodes); open the controls (live); press the focused control |
-| Back | Close the app | Go Home (leaves channel editing first) | Go to the groups, then Home | Close the sidebar, a picker, or the controls; then return to where playback started |
-| Red | Open the Guide | Switch to the Guide | Switch to the channel list | Open the Guide |
-| Green | — | Toggle favorite on the focused channel | — | Toggle favorite (with the sidebar or live controls up) |
-| Yellow | — | Edit the channel list | — | Show channel info |
-| Blue | Open Settings | Open Settings | Open Settings | Open Settings |
-| Stop | — | Stop the preview until focus moves | — | — |
-| Play/Pause | — | — | — | Pause/resume playback |
-| Rewind/Fast-Forward | — | — | — | To oldest / Go to live (live DVR) |
-| Ch +/- | — | Previous/next channel | Page through channels | Channel +/- |
-| 0-9 | Tune by channel number | Tune by channel number | — | Tune by channel number |
-
-Movies, Series, Search, Settings, and Reminder Manager use standard D-pad
-navigation. **Back** always goes up one level: from a detail page to its
-browse page, from a Settings sub-page to Settings, from a section to Home, and
-from Home it closes the app. Hold **OK** on a Continue Watching title to
-remove it from the list.
-
-## Docs
-
-Implementation deep-dives for contributors — the webOS-specific behavior behind
-some of the features above:
-
-- [`docs/native-vs-hls.js.md`](docs/native-vs-hls.js.md) — why on-device playback uses the native `<video>` pipeline (HDR & Dolby passthrough) instead of hls.js
-- [`docs/audio-track-selection.md`](docs/audio-track-selection.md) — how audio-track switching works on the native webOS player
-- [`docs/hls-subtitles.md`](docs/hls-subtitles.md) — how live HLS subtitles are handled on webOS (in-manifest types and their render paths)
-- [`docs/mpeg-dash.md`](docs/mpeg-dash.md) — how DASH detection, native playback, subtitles, and live DVR work
-- [`docs/vod-subtitles.md`](docs/vod-subtitles.md) — how VOD (Xtream movies & episodes) subtitles work: in-container tracks plus sidecar SRT/WebVTT/ASS, and online subtitle search (SubDL, OpenSubtitles, Assrt)
-- [`docs/storage-and-data.md`](docs/storage-and-data.md) — what the app stores, where it lives, and how user data is separated from disposable caches
-- [`docs/lan-service.md`](docs/lan-service.md) — phone setup and M3U uploads over the bundled LAN service
-- [`docs/rtl-layout.md`](docs/rtl-layout.md) — how the UI mirrors for right-to-left languages such as Arabic
-- [`docs/xtream-demo-server.md`](docs/xtream-demo-server.md) — a local demo Xtream server with a synthetic catalog and real media for manual testing
-- [`docs/unsupported-features.md`](docs/unsupported-features.md) — features that webOS does not allow or that are intentionally out of scope, with alternatives
-
-## License and third-party notices
-
-This project is licensed under [Apache-2.0](LICENSE). Third-party software and
-artwork retain their own licenses; see [the attribution inventory](THIRD_PARTY_NOTICES.txt).
-Every build includes `LICENSE`, `THIRD_PARTY_NOTICES.txt`, and a `licenses/`
-directory in `dist/`, so the notices accompany the packaged app. This inventory
-covers the production IPK, not the additional playback libraries used only for
-local desktop preview.
+Third-party software and artwork keep their own licenses, listed in
+[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Every build ships
+`LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.txt`, and `licenses/` inside the
+package.

@@ -109,8 +109,8 @@ Some things webOS does not allow, or that are out of scope, are listed in
   [Releases](https://github.com/ahmedsaed/pleione/releases/latest) and
   install it with a tool that re-signs apps for your TV, or build and
   install it yourself in Developer Mode (`scripts/tizen.sh`, see
-  [`docs/tizen.md`](docs/tizen.md)). Phone setup and live rewind are not
-  on Samsung yet, and reminders appear only while Pleione is open.
+  [`docs/tizen.md`](docs/tizen.md)). Live rewind is not on Samsung yet,
+  and reminders appear only while Pleione is open.
 
 The [setup guide](https://pleione.merope.dev/setup/) walks through every
 step, adding your first account or playlist, and finding your way around

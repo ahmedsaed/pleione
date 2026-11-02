@@ -53,12 +53,17 @@ type RuntimeBuffer = {
   from?: (input: string, inputEncoding: BufferEncoding) => Buffer;
 };
 
+// Node 4.0-4.4 (Samsung Tizen 5.5's web service runs 4.4.3) inherit
+// Buffer.from from Uint8Array.from, which reads an encoding as a map
+// function and throws; only a Buffer.from of Buffer's own takes strings.
 export function bufferFromRuntime(
   value: string,
   encoding: BufferEncoding,
   NativeBuffer: RuntimeBuffer,
+  TypedArrayFrom: unknown = typeof Uint8Array !== 'undefined'
+    ? (Uint8Array as unknown as { from?: unknown }).from : undefined,
 ): Buffer {
-  return NativeBuffer.from
+  return NativeBuffer.from && NativeBuffer.from !== TypedArrayFrom
     ? NativeBuffer.from(value, encoding)
     : new NativeBuffer(value, encoding);
 }

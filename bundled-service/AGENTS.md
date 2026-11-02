@@ -7,6 +7,12 @@ A sandbox-separate Node (CommonJS) webOS service,
 in Developer Mode, interactive program-reminder alerts. `src/index.ts` wires
 `lan/`, `setup/`, and `reminder/`.
 
+On Samsung Tizen the same build is the package's web service
+(`<pkg>.PleioneLan`), entered through `src/tizen.ts`: it serves the LAN
+feature's Luna methods over a trusted message port instead of Luna, and
+stores uploads in the app's private data folder. Its runtime is Node 4.4.3
+on Tizen 5.5, which the smoke matrix covers.
+
 **Read `docs/lan-service.md` before changing it.**
 
 ## Runtime: Node.js 0.12.2
@@ -61,5 +67,5 @@ npm run service:smoke:matrix   # webOS 4-26 representative runtimes
 published SHA-256, caches it under the user cache directory, then parses and
 exercises the compiled service with that exact runtime. CI runs the matrix
 across Node.js 0.12.2, 8.12.0, 12.21.0, 16.19.1, and 20.12.2 (webOS 4
-through 26). On Apple Silicon, Node 16/20 run as arm64 and older releases as
-x64 through Rosetta.
+through 26), and 4.4.3 (Samsung Tizen 5.5). On Apple Silicon, Node 16/20
+run as arm64 and older releases as x64 through Rosetta.

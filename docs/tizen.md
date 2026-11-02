@@ -207,8 +207,18 @@ Every unsupported feature already has a fallback for webOS 4, so Tizen
 | Web service Node.js | **v4.4.3** (V8 4.5, OpenSSL 1.0.2), `arm` |
 | Web service LAN bind | `listen(8099, '0.0.0.0')` works, and a computer on the LAN gets a reply |
 
-The bundled service already targets Node 0.12 (ES5/CommonJS), which runs
-on Node 4, so the LAN setup port (Phase 6) is feasible on 5.5.
+The bundled service runs there as Pleione's own web service: phone setup
+works on 5.5 (`docs/lan-service.md`). Node 4.4.3 inherits `Buffer.from` from
+`Uint8Array.from`, which throws on a string with an encoding; `compat.ts`
+takes the constructor there.
+
+| LAN service check | 2020 TV |
+|---|---|
+| Trusted message ports, app and service | Work both ways; the service sees the caller's app id |
+| Launch data to a service | Arrives in `getRequestedAppControl()` |
+| Writable folders | `/opt/usr/home/owner/apps_rw/<pkg>/data` and `/tmp`; not `$HOME` or the package |
+| Cold start, launch to `start` reply | ~210 ms |
+| Phone flow (pair, add a playlist, remove it) | The TV applies each within seconds |
 
 ## Fonts
 

@@ -11,6 +11,11 @@ const RELEASES = {
     'darwin-x64': '7d382f8988ea441e2918d9d935003177affd13d4d160020df6b3d8ee7d65ec2d',
     'linux-x64': '4e1578efc2a2cc67651413a05ccc4c5d43f6b4329c599901c556f24d93cd0508',
   },
+  // Samsung Tizen 5.5's web service runtime.
+  'v4.4.3': {
+    'darwin-x64': '7cbb9819926d90c9c9f31c3db4c83499a3d9518ad3c7d9915fa4c66d6d5875df',
+    'linux-x64': '28ff2b23a837526ecfea66b0db42d43ec84368949998f2cb26dd742e8988ec1f',
+  },
   'v8.12.0': {
     'darwin-x64': 'ca131b84dfcf2b6f653a6521d31f7a108ad7d83f4d7e781945b2eca8172064aa',
     'linux-x64': '3df19b748ee2b6dfe3a03448ebc6186a3a86aeab557018d77a0f7f3314594ef6',

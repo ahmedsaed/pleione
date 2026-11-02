@@ -626,9 +626,8 @@ Decided 2026-10-30:
   first, then the **Samsung store** (Phase 8, §7.1): US as a Public
   Seller, other countries after a partnership. Optional TizenBrew module.
   *Revised 2026-11-02*: the store is in scope.
-- **D4 — LAN phone setup:** port the bundled service as a Tizen web
-  service (Phase 6). The spike confirmed it on 5.5: Node 4.4.3, listens on
-  `0.0.0.0`, reachable from the LAN. It can ship in v1 if Phase 6 is ready.
+- **D4 — LAN phone setup:** the bundled service runs as a Tizen web
+  service over trusted message ports (Phase 6, done; `docs/lan-service.md`).
 - **D5 — Reminders: in-app only on Tizen.** *Revised 2026-11-02* from
   launching the app with `tizen.alarm`: with no notification API on the
   TV, a launch would take over the screen. See §6.3.

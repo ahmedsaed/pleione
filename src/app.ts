@@ -133,6 +133,7 @@ class App {
   private remindersInitialized = false;
   private bundledServiceStarting = false;
   private serviceEventsSubscription: LunaRequestHandle | null = null;
+  private unsubscribeLanEvents: (() => void) | null = null;
   private deviceSetupSync = Promise.resolve();
   private playlistRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private playlistRefreshIntervalMs: number | null | undefined;
@@ -546,6 +547,8 @@ class App {
   }
 
   private cancelServiceEventsSubscription(): void {
+    this.unsubscribeLanEvents?.();
+    this.unsubscribeLanEvents = null;
     if (!this.serviceEventsSubscription) return;
     try {
       this.serviceEventsSubscription.cancel();
@@ -563,6 +566,12 @@ class App {
    */
   private stopBundledService(): void {
     this.cancelServiceEventsSubscription();
+    const transport = platform.lanTransport();
+    if (transport) {
+      transport.stop();
+      setServicePort(null);
+      return;
+    }
     if (!isLunaAvailable()) {
       setServicePort(null);
       return;
@@ -592,6 +601,18 @@ class App {
   private async startBundledService(): Promise<boolean> {
     if (this.bundledServiceStarting) return false;
     this.bundledServiceStarting = true;
+    const transport = platform.lanTransport();
+    if (transport) {
+      const started = await transport.start();
+      this.bundledServiceStarting = false;
+      if (!started) return false;
+      if (document.visibilityState === 'hidden') {
+        this.stopBundledService();
+        return false;
+      }
+      setServicePort(started.port, started.key);
+      return true;
+    }
     if (!isLunaAvailable()) {
       this.bundledServiceStarting = false;
       log.debug('webOS Luna service bus not available — skipping bundled service start');
@@ -755,6 +776,12 @@ class App {
    * refresh calls that bundled-service initialization runs on open.
    */
   private subscribeToServiceEvents(): void {
+    const transport = platform.lanTransport();
+    if (transport) {
+      this.cancelServiceEventsSubscription();
+      this.unsubscribeLanEvents = transport.subscribe(event => this.onServiceEvent(event));
+      return;
+    }
     if (!isLunaAvailable()) {
       log.debug('Luna unavailable — service event subscription skipped');
       return;
@@ -766,19 +793,7 @@ class App {
         method: 'serviceEvents',
         subscribe: true,
         parameters: {},
-        onSuccess: (resp: unknown) => {
-          log.info('serviceEvents push:', JSON.stringify(resp));
-          if (resp && typeof resp === 'object' &&
-              (resp as { subscribed?: unknown }).subscribed === true) return;
-          if (resp && typeof resp === 'object' &&
-              (resp as { event?: unknown }).event === 'setup-changed') {
-            void this.queueDeviceSetupSync();
-            return;
-          }
-          void this.settings.refreshUploads()
-            .then(() => this.loadChannelsAfterFirstUpload())
-            .catch(err => log.error('Upload event refresh failed:', err));
-        },
+        onSuccess: (resp: unknown) => this.onServiceEvent(resp),
         onFailure: (err: unknown) => {
           log.warn('serviceEvents subscription failed:', JSON.stringify(err));
         },
@@ -786,6 +801,20 @@ class App {
     } catch (e) {
       log.warn('serviceEvents subscribe threw:', e);
     }
+  }
+
+  private onServiceEvent(resp: unknown): void {
+    log.info('serviceEvents push:', JSON.stringify(resp));
+    if (resp && typeof resp === 'object' &&
+        (resp as { subscribed?: unknown }).subscribed === true) return;
+    if (resp && typeof resp === 'object' &&
+        (resp as { event?: unknown }).event === 'setup-changed') {
+      void this.queueDeviceSetupSync();
+      return;
+    }
+    void this.settings.refreshUploads()
+      .then(() => this.loadChannelsAfterFirstUpload())
+      .catch(err => log.error('Upload event refresh failed:', err));
   }
 
   /**

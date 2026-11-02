@@ -272,8 +272,10 @@ in `docs/tizen.md`; use the `tizen-device` skill on a TV.
   growing, so live DVR stays off; a seek to the live edge freezes it. It
   neither renders nor exposes CEA-608 (Shaka does), and `getStartDate()`
   ignores PROGRAM-DATE-TIME.
-- **No phone setup yet** (`platform.lanSetup` is false): the LAN service is
-  webOS-only until it is ported.
+- **Phone setup runs as the package's web service** (Node 4.4.3 on Tizen
+  5.5): `bundled-service/src/tizen.ts` serves the Luna methods over a
+  trusted message port, which `src/platform/tizen-lan.ts` calls. Node 4.0–4.4
+  inherit `Buffer.from` from `Uint8Array.from`; use `compat.ts`.
 
 ## Workflow
 

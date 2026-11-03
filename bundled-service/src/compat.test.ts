@@ -77,6 +77,18 @@ describe('service runtime compatibility', () => {
     expect({ native, fallback }).toEqual({ native: 'Alpha', fallback: 'Bravo' });
   });
 
+  it('takes the constructor where Buffer.from is Uint8Array.from, as on Node 4.4', () => {
+    const inherited = (() => { throw new TypeError('utf8 is not a function'); }) as unknown;
+    const Node44Buffer = function (value: string, encoding: BufferEncoding): Buffer {
+      return Buffer.from(value, encoding);
+    } as unknown as {
+      new (value: string, encoding: BufferEncoding): Buffer;
+      from: (value: string, encoding: BufferEncoding) => Buffer;
+    };
+    Node44Buffer.from = inherited as typeof Node44Buffer.from;
+    expect(bufferFromRuntime('Charlie', 'utf-8', Node44Buffer, inherited).toString('utf-8')).toBe('Charlie');
+  });
+
   it('parses absolute and request URLs through the runtime URL implementation', () => {
     const absolute = parseUrl('https://host/a?token=abc');
     const request = parseUrl('/uploads?name=Alpha%20Bravo', 'http://host:1234');

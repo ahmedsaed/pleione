@@ -4,9 +4,15 @@
 export const TIZEN_PACKAGE_ID = 'meropeDevs';
 export const TIZEN_APP_ID = `${TIZEN_PACKAGE_ID}.PleioneIPTV`;
 
+// The LAN setup service (bundled-service/src/tizen.ts), the package's web
+// service; src/platform/tizen.ts launches it by this name.
+export const TIZEN_LAN_SERVICE_ID = `${TIZEN_PACKAGE_ID}.PleioneLan`;
+
 const PRIVILEGES = [
   'http://tizen.org/privilege/internet',
   'http://tizen.org/privilege/tv.inputdevice',
+  // launchAppControl, to start the LAN service.
+  'http://tizen.org/privilege/application.launch',
 ];
 
 export function tizenConfigXml(version) {
@@ -20,6 +26,14 @@ export function tizenConfigXml(version) {
   <name>Pleione</name>
   <access origin="*" subdomains="true"/>
 ${PRIVILEGES.map((p) => `  <tizen:privilege name="${p}"/>`).join('\n')}
+  <feature name="http://tizen.org/feature/web.service"/>
+  <tizen:service id="${TIZEN_LAN_SERVICE_ID}" auto-restart="false" on-boot="false">
+    <tizen:content src="service/tizen.js"/>
+    <tizen:name>PleioneLan</tizen:name>
+    <tizen:description>Phone setup and playlist uploads on the home network</tizen:description>
+    <tizen:metadata key="meta-key" value="meta-value"/>
+    <tizen:category name="http://tizen.org/category/service"/>
+  </tizen:service>
   <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>
 `;

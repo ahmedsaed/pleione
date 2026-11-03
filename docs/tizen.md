@@ -22,19 +22,33 @@ then **1 2 3 4 5**).
 
 ### Certificates
 
-A Tizen 5.5–6.5 TV installs the image's sample certificate. Tizen 7 and
-later need a **Samsung** certificate: an author certificate (the app's
-identity, kept forever) and a distributor certificate that lists each TV's
-DUID. Samsung issues it only after a sign-in to a Samsung account in a
-browser, which the container cannot show, so make it on the computer once:
+Every `.wgt` carries two signatures:
 
-1. Install the **Tizen** extension in VS Code, connect the TV
-   (`TIZEN_TV=<tv-ip> scripts/tizen.sh connect` makes it visible to sdb),
-   and open the extension's certificate manager.
-2. Create a **Samsung** certificate, TV profile: the author certificate
-   (name, password), then the distributor certificate with the connected
-   TV's DUID; add the other test TV's DUID too.
-3. Copy `author.p12` and `distributor.p12` to `~/.config/pleione/tizen-certs`
+- **Author**: who made the app. With the package id (`meropeDevs`) it is
+  the app's permanent identity: an update must carry the same author
+  certificate, or the TV treats it as a different app. Make it once and
+  keep it and its password safe (not in the repository).
+- **Distributor**: who may install it where. The image's sample one is
+  Tizen's public test distributor, which a Tizen 5.5–6.5 TV in Developer
+  Mode accepts. **Tizen 7 and later accept only a Samsung distributor
+  certificate**, which lists the DUIDs (device ids) of the TVs it may
+  install on. The store re-signs with Samsung's own distributor when it
+  publishes, so this one is for development and sideloading.
+
+Samsung issues its certificates only after a sign-in to a Samsung account
+in a browser, which the container cannot show, so make them on the computer
+once:
+
+1. Note each test TV's **DUID**: `TIZEN_TV=<tv-ip> scripts/tizen.sh duid`
+   (it needs only Developer Mode, no installed app).
+2. Stop the container (`scripts/tizen.sh down`): the extension below runs
+   its own `sdb`, which would clash with the container's on the same port.
+3. Install Samsung's **Tizen** extension in VS Code (or Tizen Studio's
+   Certificate Manager), and create a **Samsung** certificate for TV:
+   - the author certificate: a name, and a password you keep;
+   - the distributor certificate: sign in with the Samsung account when
+     the browser opens, then enter the DUIDs of every test TV.
+4. Copy `author.p12` and `distributor.p12` to `~/.config/pleione/tizen-certs`
    (outside the repository) and register them:
 
    ```bash
@@ -43,9 +57,51 @@ browser, which the container cannot show, so make it on the computer once:
    TIZEN_PROFILE=samsung TIZEN_TV=<tv-ip> scripts/tizen.sh install
    ```
 
+Adding a TV later needs a new distributor certificate with its DUID added;
+the author certificate stays.
+
 CI signs the release `.wgt` with the project's author certificate when the
 repository has the `TIZEN_AUTHOR_P12` (base64) and `TIZEN_AUTHOR_PASSWORD`
-secrets, and with the sample one otherwise.
+secrets, and with the sample one otherwise. Use the same author certificate
+there and on the computer: `base64 -w0 author.p12` gives the secret.
+
+### Testing a new Samsung TV
+
+What to do on a TV that has not been through the checks yet (the second
+test TV is one). Bring a computer with Docker and this repository onto the
+TV's network.
+
+1. **Developer Mode on the TV**: Apps, then **1 2 3 4 5** (the Smart
+   Remote's **123** button gives digits), switch Developer mode on, enter
+   this computer's address *on this network* as the Host PC IP, restart.
+   Note the TV's IP (Settings › General › Network › Network status).
+2. **Media for the checks**, in a terminal of its own: `npm run xtream:demo`.
+3. **The checks**: `TIZEN_TV=<tv-ip> scripts/tizen.sh probe 20`. When the
+   media checks finish (about a minute), press each remote key once within
+   20 seconds: arrows, OK, the four colors, digits, Play/Pause if there is
+   one, CH+ and CH−, Info, Guide, Return. It writes
+   `tizen-probe-<time>.json`.
+   - "The TV refused the signature": the TV needs a Samsung certificate.
+     Make one (above, with this TV's DUID from `scripts/tizen.sh duid`),
+     register it with `scripts/tizen.sh profile samsung`, and rerun with
+     `TIZEN_PROFILE=samsung`.
+4. **Pleione itself**: `TIZEN_TV=<tv-ip> scripts/tizen.sh install` (with
+   the same `TIZEN_PROFILE`), then by hand: how it looks, how fast keys
+   feel, Live and the Guide, a movie's Audio and Subtitles buttons, typing
+   in Search with the TV keyboard, Arabic, Return on Home (asks first), the
+   Exit key (leaves at once), and phone setup from a phone (pair, add a
+   playlist).
+5. **Record it**: add the TV as a column in "Test TVs" and the sections
+   below, from the probe's JSON.
+
+Two decisions wait on this TV's results:
+
+- **AVPlay** (`avplay` in the probe, and `audioSwitch` under `liveHls`):
+  if native audio switching fails here and AVPlay's works, an AVPlay
+  backend is worth building for Tizen 8+; if both behave as on Tizen 5.5,
+  AVPlay is worth it only for live rewind (plan §5.1, Stage B).
+- **Native MPEG-TS** (`liveTs`): it plays on every TV tested so far, so no
+  mpegts.js fallback is planned; this check keeps it that way.
 
 ## Test TVs
 
@@ -223,8 +279,18 @@ Every unsupported feature already has a fallback for webOS 4, so Tizen
 | Web service Node.js | **v4.4.3** (V8 4.5, OpenSSL 1.0.2), `arm` |
 | Web service LAN bind | `listen(8099, '0.0.0.0')` works, and a computer on the LAN gets a reply |
 
-The bundled service already targets Node 0.12 (ES5/CommonJS), which runs
-on Node 4, so the LAN setup port (Phase 6) is feasible on 5.5.
+The bundled service runs there as Pleione's own web service: phone setup
+works on 5.5 (`docs/lan-service.md`). Node 4.4.3 inherits `Buffer.from` from
+`Uint8Array.from`, which throws on a string with an encoding; `compat.ts`
+takes the constructor there.
+
+| LAN service check | 2020 TV |
+|---|---|
+| Trusted message ports, app and service | Work both ways; the service sees the caller's app id |
+| Launch data to a service | Arrives in `getRequestedAppControl()` |
+| Writable folders | `/opt/usr/home/owner/apps_rw/<pkg>/data` and `/tmp`; not `$HOME` or the package |
+| Cold start, launch to `start` reply | ~210 ms |
+| Phone flow (pair, add a playlist, remove it) | The TV applies each within seconds |
 
 ## Fonts
 
@@ -236,6 +302,6 @@ on Node 4, so the LAN setup port (Phase 6) is feasible on 5.5.
 
 ## Still open
 
-For this TV, only the Exit key (15): this remote has none. Alarms (8) were
-dropped with plan D5. The current TV needs the whole checklist, including
-whether it rejects a plain Tizen certificate (16).
+For the 2020 TV, only the Exit key (15): its remote has none. Alarms (8)
+were dropped with plan D5. The second TV needs the whole set: follow
+"Testing a new Samsung TV" above.

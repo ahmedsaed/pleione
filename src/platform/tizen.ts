@@ -1,5 +1,10 @@
 import { createLogger } from '../utils/logger';
-import type { Platform } from './types';
+import { createTizenLanTransport } from './tizen-lan';
+import type { LanTransport, Platform } from './types';
+
+// The web service's name in config.xml (scripts/tizen-config.mjs).
+const TIZEN_LAN_SERVICE = 'PleioneLan';
+let transport: LanTransport | null = null;
 
 // Created on use, so a webOS bundle can drop this module whole.
 const log = () => createLogger('Platform');
@@ -60,8 +65,14 @@ export const tizen: Platform = {
     log().info('Closing the app', 'event=app.exit', 'method=tizen');
     host()?.application.getCurrentApplication().exit();
   },
-  // The LAN service is not ported yet (docs/tizen-port-plan.md, Phase 6).
-  lanSetup: false,
+  // The LAN service runs as this package's web service (config.xml).
+  lanSetup: true,
+  lanTransport(): LanTransport | null {
+    const api = host();
+    if (!api) return null;
+    if (!transport) transport = createTizenLanTransport(api as unknown as Parameters<typeof createTizenLanTransport>[0], TIZEN_LAN_SERVICE);
+    return transport;
+  },
   confirmExitAtHome: true,
   // Reminders are in-app only on Tizen (docs/tizen-port-plan.md, D5), so
   // nothing launches the app with parameters.

@@ -1,5 +1,20 @@
 import type { Action } from '../types';
 
+export interface LanServiceStart {
+  port: number;
+  /** The app key that unlocks the service's app-only HTTP routes. */
+  key: string | null;
+}
+
+/** The app's line to the LAN setup service where it is not Luna (webOS). */
+export interface LanTransport {
+  /** Start (or reach) the service; null when it cannot. */
+  start(): Promise<LanServiceStart | null>;
+  stop(): void;
+  /** The service's change events (`{event}`); returns the unsubscribe. */
+  subscribe(onEvent: (event: unknown) => void): () => void;
+}
+
 // What the app needs from the TV platform it was built for (`__PLATFORM__`).
 // Everything else in the app is platform-neutral.
 export interface Platform {
@@ -16,6 +31,8 @@ export interface Platform {
   exit(): void;
   /** The bundled LAN service is there: phone setup and playlist uploads. */
   readonly lanSetup: boolean;
+  /** How the app reaches that service; null where it is Luna (webOS). */
+  lanTransport(): LanTransport | null;
   /** Whether Back on Home asks before exiting (Samsung's Return policy) or closes at once (LG's). */
   readonly confirmExitAtHome: boolean;
   /** The parameters the app was cold-launched with (a reminder's channel), or undefined. */

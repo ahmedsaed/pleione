@@ -25,6 +25,25 @@ on newer TVs and supplies focused fallbacks for Node 0.12.
 - **Luna bus** — in-process IPC between the app and the service.
 - **HTTP** — `0.0.0.0:<ephemeral>` for phones, `127.0.0.1:<same>` for the app's reconcile fetches.
 
+### On Samsung Tizen
+
+The same service ships in the `.wgt` as the package's web service,
+`<pkg>.PleioneLan` (`config.xml`), entered through
+`bundled-service/src/tizen.ts`. Luna's place is taken by a **trusted message
+port**, which only apps signed with the package's certificate can reach, so
+the app key stays as private as on webOS: no web page, not even the TV's
+browser, can ask for it.
+
+- The app (`src/platform/tizen-lan.ts`) launches the service with
+  `launchAppControl`, then sends `start`, `stop`, and `serviceEvents` over
+  the port `pleione.lan`; replies and pushed events come back on
+  `pleione.app`. Each message is a list of `{key, value}` pairs: `method`,
+  `id`, and `subscribe` one way, `id` and the JSON `payload` the other.
+- The service takes messages only from its own package's apps.
+- Uploads live in the app's private folder,
+  `/opt/usr/home/owner/apps_rw/<pkg>/data/iptv-uploads`.
+- The HTTP routes, pairing, tokens, and the setup queue are unchanged.
+
 ## APIs
 
 The service exposes the Luna methods and HTTP routes below.

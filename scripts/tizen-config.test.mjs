@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TIZEN_APP_ID, TIZEN_PACKAGE_ID, tizenConfigXml } from './tizen-config.mjs';
+import { TIZEN_APP_ID, TIZEN_LAN_SERVICE_ID, TIZEN_PACKAGE_ID, tizenConfigXml } from './tizen-config.mjs';
 
 describe('tizenConfigXml', () => {
   it('keeps the permanent package id and derives the app id from it', () => {
@@ -19,6 +19,14 @@ describe('tizenConfigXml', () => {
     expect(xml).toContain('http://tizen.org/privilege/internet');
     expect(xml).toContain('http://tizen.org/privilege/tv.inputdevice');
     expect(xml).toContain('hwkey-event="enable"');
+  });
+
+  it('declares the LAN service the app launches, and the privilege to launch it', () => {
+    const xml = tizenConfigXml('2.1.0');
+    expect(TIZEN_LAN_SERVICE_ID).toBe(`${TIZEN_PACKAGE_ID}.PleioneLan`);
+    expect(xml).toContain(`<tizen:service id="${TIZEN_LAN_SERVICE_ID}"`);
+    expect(xml).toContain('<tizen:content src="service/tizen.js"/>');
+    expect(xml).toContain('http://tizen.org/privilege/application.launch');
   });
 
   it('rejects a version Tizen cannot read', () => {

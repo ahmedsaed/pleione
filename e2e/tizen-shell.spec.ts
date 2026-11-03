@@ -11,12 +11,13 @@ const OK = 13;
 interface TizenRecord {
   registered: string[];
   exits: number;
+  launches: string[];
 }
 
 // The parts of window.tizen the app calls, recording what it asks for.
 async function stubTizen(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    const record: TizenRecord = { registered: [], exits: 0 };
+    const record: TizenRecord = { registered: [], exits: 0, launches: [] };
     (window as unknown as { __tizen: TizenRecord }).__tizen = record;
     const supported = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
       'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue',
@@ -28,8 +29,14 @@ async function stubTizen(page: Page): Promise<void> {
         registerKey: (name: string) => { record.registered.push(name); },
       },
       application: {
-        getCurrentApplication: () => ({ exit: () => { record.exits++; } }),
+        getCurrentApplication: () => ({ exit: () => { record.exits++; }, appInfo: { packageId: 'pkgAAAAAAA' } }),
+        // The LAN service does not run here: the launch is recorded and fails.
+        launchAppControl: (_control: unknown, appId: string, _ok: () => void, fail: (e: Error) => void) => {
+          record.launches.push(appId);
+          fail(new Error('no service in the simulation'));
+        },
       },
+      ApplicationControl: function ApplicationControl() {},
     };
   });
 }
@@ -77,17 +84,16 @@ test('Return walks back to Home, where it asks before exiting', async ({ page })
   await expect.poll(async () => (await tizenRecord(page)).exits).toBe(1);
 });
 
-test('the first run and Settings leave phone setup out', async ({ page }) => {
+test('phone setup launches the package\'s LAN service, and says when it cannot', async ({ page }) => {
   await stubTizen(page);
   await page.goto('/');
   await expect(page.locator('#view-home [data-add]')).toHaveCount(2);
-  await expect(page.locator('#view-home .home-setup')).toHaveCount(0);
+  await expect(page.locator('#view-home .home-setup')).toContainText('currently unavailable');
+  expect((await tizenRecord(page)).launches).toContain('pkgAAAAAAA.PleioneLan');
 
   await seedXtream(page);
   await page.goto('/');
   await enterTab(page, 'settings');
   await expect(page.locator('#view-settings')).toBeVisible();
-  await expect(page.locator('#setup-info')).toHaveCount(0);
-  await page.locator('[data-settings-target="sources"]').click();
-  await expect(page.locator('#upload-entries')).toHaveCount(0);
+  await expect(page.locator('#setup-info')).toContainText('currently unavailable');
 });

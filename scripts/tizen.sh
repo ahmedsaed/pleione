@@ -12,6 +12,7 @@
 #   scripts/tizen.sh uninstall           # remove Pleione from the TV
 #   scripts/tizen.sh probe [key-seconds] # run the device checks (needs npm run xtream:demo)
 #   scripts/tizen.sh profile <name>      # register $TIZEN_CERTS/author.p12 + distributor.p12
+#   scripts/tizen.sh duid                # the TV's DUID, for a Samsung distributor certificate
 #   scripts/tizen.sh down                # stop and remove the container
 #
 # TIZEN_TV        the TV's IP address (required for everything that talks to it)
@@ -225,6 +226,12 @@ profile() {
   info "Use it with: TIZEN_PROFILE=$name scripts/tizen.sh install"
 }
 
+duid() {
+  local ip; ip="$(tv)"
+  connect >/dev/null
+  in_container "sdb -s $ip:26101 shell 0 getduid" | tr -d '\r' | head -1
+}
+
 down() {
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 }
@@ -239,6 +246,7 @@ case "${1:-}" in
   uninstall) uninstall ;;
   probe) probe "$2" ;;
   profile) profile "$2" ;;
+  duid) duid ;;
   down) down ;;
-  *) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

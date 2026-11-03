@@ -16,6 +16,7 @@ import {
   scaleLengths,
 } from './scripts/css-transforms.mjs';
 import { tizenConfigXml } from './scripts/tizen-config.mjs';
+import { execFileSync } from 'child_process';
 
 const isPreview = process.argv.includes('--preview');
 // The TV platform this bundle is for (`__PLATFORM__`). webOS builds into
@@ -105,6 +106,12 @@ if (platform === 'tizen') {
   outputIndexHtml = outputIndexHtml.replace('<html lang="en">', '<html lang="en" class="keyboard-nav">');
   writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version));
   cpSync('assets/icon130.png', `${OUT}/icon.png`);
+  // The LAN setup service ships as the package's web service: the same ES5
+  // build as webOS's, entered through bundled-service/src/tizen.ts.
+  rmSync(`${OUT}/service`, { recursive: true, force: true });
+  execFileSync('npx', ['tsc', '-p', 'bundled-service/tsconfig.json', '--outDir', `${OUT}/service`], { stdio: 'inherit' });
+  cpSync('bundled-service/src/setup/setup-page.html', `${OUT}/service/setup/setup-page.html`);
+  execFileSync('node', ['scripts/service-compat-gate.mjs', `${OUT}/service`], { stdio: 'inherit' });
 } else {
   writeFileSync(`${OUT}/appinfo.json`, JSON.stringify(
     isFhd ? { ...appinfo, resolution: '1280x720' } : appinfo, null, 2) + '\n');

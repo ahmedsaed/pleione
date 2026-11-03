@@ -1,7 +1,8 @@
 # Setup guide
 
-Pleione runs on LG TVs with **webOS 4.0 (2018) or newer**. It ships no channels: you need a
-playlist or an account from an IPTV provider of your own. On this page:
+Pleione runs on LG TVs with **webOS 4.0 (2018) or newer**, and on Samsung TVs from **2020
+(Tizen 5.5)** on. It ships no channels: you need a playlist or an account from an IPTV provider
+of your own. On this page:
 
 1. [Install Pleione](#install-pleione)
 2. [Add an Xtream account](#add-an-xtream-account)
@@ -47,6 +48,33 @@ out, and when a session expires the TV removes the apps installed this way.
 
 To keep Pleione installed, open the Developer Mode app now and then and extend the session. To
 update, download the new `.ipk` from the releases page and run `ares-install` again.
+
+### Samsung TVs
+
+Pleione is coming to Samsung's app store, in the US first. Until then, you can sideload it with
+the TV's **Developer Mode** and Samsung's Tizen tools on a computer on the same network.
+
+1. On a computer, download the latest `Pleione_<version>_tizen.wgt` from the
+   [releases page](https://github.com/ahmedsaed/pleione/releases/latest), and install
+   [Tizen Studio](https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/installing-tv-sdk.html)
+   with its TV extension, which gives you the `sdb` and `tizen` commands.
+2. On the TV, open **Apps** and press **1 2 3 4 5** on the remote (the Smart Remote's **123**
+   button shows the number keys). Switch **Developer mode** on, enter the computer's IP
+   address as **Host PC IP**, and restart the TV.
+3. Connect to the TV (use your TV's IP address, from its network settings) and install Pleione,
+   with the device name that `sdb devices` lists:
+
+   ```bash
+   sdb connect 192.168.1.20
+   sdb devices
+   tizen install -n Pleione_<version>_tizen.wgt -t <device name>
+   ```
+
+TVs from **2023 on** (Tizen 7 and later) install only apps signed for that TV. There, make a
+free Samsung certificate that lists the TV's device id in Tizen Studio's Certificate Manager,
+and sign the `.wgt` with it before installing: the
+[Samsung TV notes](https://github.com/ahmedsaed/pleione/blob/pleione/docs/tizen.md#certificates)
+walk through it. To update, install the new `.wgt` the same way.
 
 ## Add an Xtream account
 
@@ -99,12 +127,13 @@ Pleione opens on **Home**, with cards for **Live**, **Movies**, **Series**, **Se
   reminder, and on an earlier one plays it from the start where your provider offers catch-up.
 - **Movies** and **Series** open a detail page with **Play**, **Resume** where you stopped,
   **Play from start**, the episodes, the cast, and more like this.
-- **Back** goes back one step, and from Home it closes Pleione.
+- **Back** goes back one step, and from Home it closes Pleione. On a Samsung TV, **Return** on
+  Home asks first.
 
 | Remote key | What it does |
 |---|---|
 | Arrows and **OK** | Move and select, everywhere |
-| **Back** | Go back one step; on Home, close Pleione |
+| **Back** (**Return** on Samsung) | Go back one step; on Home, close Pleione |
 | **Red** | Open the Guide; in the Guide, back to the channel list |
 | **Green** | Add or remove the selected channel from Favorites, in Live |
 | **Yellow** | Edit the channel list in Live; show the player controls while watching |
@@ -112,8 +141,10 @@ Pleione opens on **Home**, with cards for **Live**, **Movies**, **Series**, **Se
 | **Up** / **Down**, **CH +/−** | Change channel while watching live TV |
 | **Left** / **Right** | Skip back or forward in movies and episodes |
 | Number keys | Tune a channel by its number |
+| **Play/Pause**, **Info**, **Guide** | Where the remote has them: pause or resume a movie, episode or catch-up program; show the player controls; open the Guide |
 
-The Magic Remote's pointer works everywhere too: point and click, and use the Home button at the
+On a Samsung Smart Remote, the **123** button shows the color and number keys. On LG, the Magic
+Remote's pointer works everywhere too: point and click, and use the Home button at the
 top left of each section to return to Home.
 
 Something not working? See [Support](/support/).

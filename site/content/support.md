@@ -18,7 +18,7 @@ Pleione is made by one developer at Merope, in the open. Here is the fastest way
 ## Report a bug or ask for a feature
 
 Open an issue on [GitHub](https://github.com/ahmedsaed/pleione/issues). Say
-which TV model and webOS version you have (both are in the TV's own settings), which version of
+which TV model and webOS or Tizen version you have (both are in the TV's own settings), which version of
 Pleione (Settings › Data Management, at the bottom), what
 you did, and what happened. Please leave out your provider's address, username and password, and
 any channel names: they are not needed to find a bug.

@@ -36,8 +36,8 @@ provided **"as is", without warranties or conditions of any kind**, and to the e
 allows, Merope is not liable for any damages arising from its use, including from content you
 play with it or the availability of any provider.
 
-Pleione is not made, endorsed or supported by LG Electronics. LG and webOS are trademarks of
-their owners.
+Pleione is not made, endorsed or supported by LG Electronics or Samsung Electronics. LG, webOS,
+Samsung and Tizen are trademarks of their owners.
 
 ## Changes
 

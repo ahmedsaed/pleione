@@ -1,25 +1,31 @@
 // Read the Tizen probe's results over DevTools once its checks finish.
-//   node scripts/tizen-probe/collect.mjs <devtools-port> [out.json] [keySeconds]
+//   node scripts/tizen-probe/collect.mjs <devtools> [out.json] [keySeconds]
+// <devtools> is a port on 127.0.0.1, or host:port, or several, comma-separated,
+// tried in turn: Docker Desktop's sdb forward is not reachable from the host.
 // keySeconds (default 0) keeps listening for remote keys after the checks.
 import { writeFileSync } from 'node:fs';
 
 const [port, out, keySecondsArg] = process.argv.slice(2);
+const candidates = (port || '').split(',').filter(Boolean)
+  .map((c) => (c.includes(':') ? c : `127.0.0.1:${c}`));
 const keySeconds = Number(keySecondsArg || 0);
 if (!port) {
-  console.error('usage: collect.mjs <devtools-port> [out.json] [keySeconds]');
+  console.error('usage: collect.mjs <devtools> [out.json] [keySeconds]');
   process.exit(2);
 }
 
 async function target() {
   for (let i = 0; i < 20; i++) {
-    try {
-      const pages = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-      const page = pages.find((p) => p.type === 'page');
-      if (page) return page;
-    } catch { /* the forward comes up a moment after the launch */ }
+    for (const devtools of candidates) {
+      try {
+        const res = await fetch(`http://${devtools}/json`, { signal: AbortSignal.timeout(2000) });
+        const page = (await res.json()).find((p) => p.type === 'page');
+        if (page) return page;
+      } catch { /* the forward comes up a moment after the launch */ }
+    }
     await new Promise((r) => setTimeout(r, 1000));
   }
-  throw new Error(`No DevTools page on port ${port}`);
+  throw new Error(`No DevTools page on ${candidates.join(' or ')}`);
 }
 
 const page = await target();

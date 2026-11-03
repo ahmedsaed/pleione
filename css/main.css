@@ -581,6 +581,41 @@ button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggl
   display: block;
 }
 
+/* Samsung's AVPlay draws on the video plane under the page
+   (src/platform/tizen-avplay.ts), so the page lets it through. */
+html.avplay-active,
+html.avplay-active body,
+html.avplay-active #video-player {
+  background: transparent;
+}
+
+html.avplay-active #video-player {
+  pointer-events: none;
+}
+
+/* rtl:ignore -- the rectangle is the video's, measured on screen.
+   The view over a playing preview opens its backdrop where the picture is;
+   until then, its loading or error message shows instead. */
+html.avplay-playing .view[data-backdrop]:not(.hidden) {
+  /* stylelint-disable-next-line plugin/no-unsupported-browser-features -- Tizen only (Chromium 69+) */
+  clip-path: polygon(evenodd,
+    0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+    var(--avplay-left) var(--avplay-top),
+    calc(var(--avplay-left) + var(--avplay-width)) var(--avplay-top),
+    calc(var(--avplay-left) + var(--avplay-width)) calc(var(--avplay-top) + var(--avplay-height)),
+    var(--avplay-left) calc(var(--avplay-top) + var(--avplay-height)),
+    var(--avplay-left) var(--avplay-top));
+}
+
+.avplay-surface {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  pointer-events: none;
+}
+
 /* Program-reminder & catch-up resume prompts — overlay modals */
 .reminder-prompt,
 .catchup-resume-prompt,

@@ -17,7 +17,7 @@ interface RemotePort { sendMessage(data: MessageData[], local?: LocalPort): void
 interface LocalPort { addMessagePortListener(listener: (data: MessageData[]) => void): number }
 interface TizenLanApi {
   application: {
-    getCurrentApplication(): { appInfo: { packageId: string } };
+    getCurrentApplication(): { appInfo: { id: string; packageId: string } };
     launchAppControl(control: unknown, appId: string, onSuccess: () => void, onError: (e: Error) => void): void;
   };
   ApplicationControl: new (operation: string) => unknown;
@@ -35,7 +35,8 @@ function field(data: MessageData[], key: string): string | null {
 }
 
 export function createTizenLanTransport(api: TizenLanApi, serviceName: string): LanTransport {
-  const serviceId = `${api.application.getCurrentApplication().appInfo.packageId}.${serviceName}`;
+  const appInfo = api.application.getCurrentApplication().appInfo;
+  const serviceId = `${appInfo.packageId}.${serviceName}`;
   const pending = new Map<string, (payload: unknown) => void>();
   let local: LocalPort | null = null;
   let next = 0;
@@ -58,13 +59,17 @@ export function createTizenLanTransport(api: TizenLanApi, serviceName: string): 
   }
 
   // The service's port exists only once its onStart ran, a moment after the
-  // launch reports success: retry until it does or the time runs out.
+  // launch reports success: retry until it does or the time runs out. The
+  // app names itself instead of passing its port, which Tizen 9's service
+  // runtime cannot resolve (bundled-service/src/tizen.ts).
   function send(fields: Record<string, string>, deadline: number): Promise<void> {
-    const data = Object.keys(fields).map(key => ({ key, value: fields[key] }));
+    const data = [{ key: 'from', value: appInfo.id }]
+      .concat(Object.keys(fields).map(key => ({ key, value: fields[key] })));
     return new Promise((resolve, reject) => {
       const attempt = (): void => {
         try {
-          api.messageport.requestTrustedRemoteMessagePort(serviceId, SERVICE_PORT).sendMessage(data, localPort());
+          localPort();
+          api.messageport.requestTrustedRemoteMessagePort(serviceId, SERVICE_PORT).sendMessage(data);
           resolve();
         } catch (e) {
           if (Date.now() + PORT_RETRY_MS > deadline) reject(e);

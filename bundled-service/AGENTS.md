@@ -10,7 +10,12 @@ in Developer Mode, interactive program-reminder alerts. `src/index.ts` wires
 On Samsung Tizen the same build is the package's web service
 (`<pkg>.PleioneLan`), entered through `src/tizen.ts`: it serves the LAN
 feature's Luna methods over a trusted message port instead of Luna, and
-stores uploads in the app's private data folder. Its runtime is Node 4.4.3
+stores uploads in the app's private data folder. The caller names itself in
+a `from` field, since Tizen 9 drops messages that carry a reply port, and
+replies go to that app's trusted port. So any app signed with the same
+certificate can *send* a command as Pleione (it never sees the reply):
+a method that acts without needing its reply is open to every app under
+that certificate, the Tizen probe included. Its runtime is Node 4.4.3
 on Tizen 5.5, which the smoke matrix covers.
 
 **Read `docs/lan-service.md` before changing it.**

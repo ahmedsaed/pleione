@@ -36,7 +36,14 @@ if (isFhd && platform !== 'webos') {
   console.error('--resolution=720 is the LG Full HD package; it needs --platform=webos');
   process.exit(1);
 }
-const OUT = platform === 'tizen' ? 'dist-tizen' : isFhd ? 'dist-720' : 'dist';
+// The Samsung store package: the same app without the LAN web service, which
+// Seller Office takes only from Partner sellers (scripts/tizen-config.mjs).
+const isStore = process.argv.includes('--store');
+if (isStore && platform !== 'tizen') {
+  console.error('--store is the Samsung store package; it needs --platform=tizen');
+  process.exit(1);
+}
+const OUT = platform === 'tizen' ? (isStore ? 'dist-tizen-store' : 'dist-tizen') : isFhd ? 'dist-720' : 'dist';
 const UI_BASE_SCALE = isFhd ? 2 / 3 : 1;
 // Checked-in but regenerated on every build; never a source input.
 const GENERATED_STYLESHEET = 'legacy-webos-base.css';
@@ -108,14 +115,16 @@ if (platform === 'tizen') {
   const appScript = '<script src="js/app.js"></script>';
   if (!outputIndexHtml.includes(appScript)) throw new Error('Build could not find the app script in index.html.');
   outputIndexHtml = outputIndexHtml.replace(appScript, `<script src="$WEBAPIS/webapis/webapis.js"></script>\n  ${appScript}`);
-  writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version));
+  writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version, { service: !isStore }));
   cpSync('assets/icon130.png', `${OUT}/icon.png`);
   // The LAN setup service ships as the package's web service: the same ES5
   // build as webOS's, entered through bundled-service/src/tizen.ts.
   rmSync(`${OUT}/service`, { recursive: true, force: true });
-  execFileSync('npx', ['tsc', '-p', 'bundled-service/tsconfig.json', '--outDir', `${OUT}/service`], { stdio: 'inherit' });
-  cpSync('bundled-service/src/setup/setup-page.html', `${OUT}/service/setup/setup-page.html`);
-  execFileSync('node', ['scripts/service-compat-gate.mjs', `${OUT}/service`], { stdio: 'inherit' });
+  if (!isStore) {
+    execFileSync('npx', ['tsc', '-p', 'bundled-service/tsconfig.json', '--outDir', `${OUT}/service`], { stdio: 'inherit' });
+    cpSync('bundled-service/src/setup/setup-page.html', `${OUT}/service/setup/setup-page.html`);
+    execFileSync('node', ['scripts/service-compat-gate.mjs', `${OUT}/service`], { stdio: 'inherit' });
+  }
 } else {
   writeFileSync(`${OUT}/appinfo.json`, JSON.stringify(
     isFhd ? { ...appinfo, resolution: '1280x720' } : appinfo, null, 2) + '\n');
@@ -216,6 +225,16 @@ if (isPreview) {
   });
 } else {
   rmSync(`${OUT}/js/preview-libs.js`, { force: true });
+}
+
+// Seller Office's pre-test flags any `alert(` in a Samsung package as the
+// Alert API, a method named alert included.
+if (platform === 'tizen') {
+  for (const file of readdirSync(`${OUT}/js`).filter(name => name.endsWith('.js'))) {
+    if (/\balert\(/.test(readFileSync(`${OUT}/js/${file}`, 'utf8'))) {
+      throw new Error(`${OUT}/js/${file} contains alert(, which Samsung's pre-test reports`);
+    }
+  }
 }
 
 writeThirdPartyNotices({

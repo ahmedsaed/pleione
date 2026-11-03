@@ -92,3 +92,31 @@ describe('tizen adapter', () => {
     expect(tizen.coldLaunchParams()).toBeUndefined();
   });
 });
+
+describe('tizen adapter, LAN service detection', () => {
+  async function freshAdapter(getAppInfo?: (id: string) => unknown) {
+    vi.resetModules();
+    (window as Host).tizen = {
+      application: {
+        getCurrentApplication: () => ({ exit: vi.fn(), appInfo: { packageId: 'pkgAAAAAAA' } }),
+        ...(getAppInfo ? { getAppInfo } : {}),
+      },
+    };
+    return (await import('./tizen')).tizen;
+  }
+
+  it('offers phone setup when the package carries the LAN service', async () => {
+    const getAppInfo = vi.fn(() => ({ id: 'pkgAAAAAAA.PleioneLan' }));
+    const adapter = await freshAdapter(getAppInfo);
+    expect(adapter.lanSetup).toBe(true);
+    expect(getAppInfo).toHaveBeenCalledWith('pkgAAAAAAA.PleioneLan');
+  });
+
+  it('hides phone setup and starts no service in the store package, which has none', async () => {
+    const getAppInfo = vi.fn(() => { throw new Error('NotFoundError'); });
+    const adapter = await freshAdapter(getAppInfo);
+    expect(adapter.lanSetup).toBe(false);
+    expect(adapter.lanTransport()).toBeNull();
+    expect(getAppInfo).toHaveBeenCalledOnce();
+  });
+});

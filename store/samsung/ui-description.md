@@ -30,15 +30,15 @@ Home ──┬── Live ──── channel list ─┬── full-screen pla
        ├── Movies ── detail page ────── player (movie)
        ├── Series ── detail page ────── player (episode)
        ├── Search ── results ─────────── detail page / player
-       └── Settings ─ General (language, phone setup, parental controls), Sources,
+       └── Settings ─ General (language, parental controls), Sources,
                       Program Guide, Appearance, Playback, Online Subtitles,
                       Advanced, Data Management
 ```
 
 Return goes up one level on every screen, back along the arrows above, and asks before exiting
 on Home. Screenshots for each screen: Home, Live, the Guide, the live player with its controls,
-Movies, a movie's detail page, Series, an episode list, Search, Settings, and the phone setup
-panel. `store/screenshots/` holds a capture of each.
+Movies, a movie's detail page, Series, an episode list, Search, and Settings.
+`store/screenshots/` holds a capture of each.
 
 ## Remote control keys
 
@@ -60,7 +60,17 @@ panel. `store/screenshots/` holds a capture of each.
 | **Blue** | Open Settings |
 
 On the Smart Remote, the **123** button opens the on-screen keypad with the number and color
-keys.
+keys. Every color-key action also has a path with the arrows and **OK** alone:
+
+| Color key | The same with the arrows and OK |
+|---|---|
+| **Red**, Guide | The **Guide** button in Live's header (**Up** from the list) |
+| **Green**, Favorite in Live | **OK** to watch the channel, **OK** for the controls, then **Toggle Favorite** |
+| **Green**, Favorite while watching | **Toggle Favorite** in the player controls |
+| **Yellow**, edit the channel list | The **Edit Channel List** button in Live's header (**Up** from the list) |
+| **Yellow**, player controls | **OK** |
+| **Blue**, Settings | **Return** to Home, then **Settings** |
+| Colors in the channel editor, favorites, parental controls and Live categories | The buttons in each screen's footer, which take focus and **OK** |
 
 ## Language switching
 
@@ -70,10 +80,10 @@ Chinese. The choice applies at once; Arabic mirrors the interface right to left.
 
 ## Use cases
 
-Sections 0 to 8 and 10 of [`../ux-scenario.md`](../ux-scenario.md): the test account, first
+Sections 0 to 7 and 10 of [`../ux-scenario.md`](../ux-scenario.md): the test account, first
 launch and adding the account, Home, Live TV and the Guide, the player controls, Movies and
-Series, Search, Settings with parental controls, phone setup, and the resolution and network
-checks. One slide per section; each step names the keys and buttons it uses.
+Series, Search, Settings with parental controls, and the resolution and network checks. Leave
+out section 8 and the phone setup panel of section 1: the store package has no phone setup. One slide per section; each step names the keys and buttons it uses.
 
 ## Samsung differences
 

@@ -44,13 +44,16 @@ The files are generated, never edited by hand.
 
 ## What is left for a human
 
-1. **Seller Office account.** Register Merope as a seller at
-   [seller.samsungapps.com/tv](https://seller.samsungapps.com/tv), with the support email from
-   `site/content/privacy.md`. A Public Seller can launch only in the US; request Partner Seller
+1. **Seller Office account.** Register as an **Individual** seller at
+   [seller.samsungapps.com/tv](https://seller.samsungapps.com/tv), under the name Merope, with
+   the support email from `site/content/privacy.md`; an individual needs no registration number. A Public Seller can launch only in the US; request Partner Seller
    status (an offline contract with Samsung) to reach other countries
    (`docs/tizen-port-plan.md`, §7.1).
-2. **The package.** Upload the `.wgt` from the GitHub release, signed with the Merope author
-   certificate (`docs/tizen.md`, "Certificates"). Its package id `PleioneMrp` and that
+2. **The package.** Upload `Pleione_<version>_tizen_store.wgt` from the GitHub release, signed
+   with the author certificate (`docs/tizen.md`, "Certificates"). It is the store package: the
+   same app without the LAN web service, since Seller Office takes a `<tizen:service>` only from
+   Partner sellers, so it has no phone setup. The `_tizen.wgt` beside it, with the service, is
+   for sideloading. Its package id `PleioneMrp` and that
    certificate are the app's identity for good: a different id is a different app, and a
    different author certificate cannot update this one.
 3. **The UI description.** Download the template from Samsung's
@@ -72,8 +75,8 @@ Samsung certifies these; each is covered in the app, and needs a check on the bu
 - **Return and Exit.** Return goes back one level and, on Home, asks before exiting; Exit and a
   long press of Return are left to the TV (`docs/tizen.md`).
 - **The Smart Remote.** It has no color keys of its own; its **123** button opens the on-screen
-  keypad with the color and number keys. Check that every color-key action in
-  `ui-description.md` also has an on-screen path, as `docs/tizen-port-plan.md` §3.1 lists.
+  keypad with the color and number keys, and every color-key action also has a path with the
+  arrows and **OK** (the table in `ui-description.md`). Walk that table on the TV.
 - **Hidden and resumed.** Leave the app with Home and come back: playback picks up again.
 - **Screensaver.** It stays off while a video plays and comes back when playback pauses or stops.
 - **No source.** A fresh install shows Home's welcome cards, never a blank screen or an error.

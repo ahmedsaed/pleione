@@ -47,9 +47,6 @@ MAKE IT YOURS
 • Light and dark color themes
 • Parental controls with a PIN
 
-SET UP FROM YOUR PHONE
-Scan the QR code in Settings, enter the pairing code, and type your account details on your phone instead of the remote. It works on your home network, only while Pleione is open.
-
 PRIVATE
 No account, no analytics, no ads. Your accounts and history stay on the TV, and Pleione talks only to your own providers and the optional services you turn on.
 
@@ -59,9 +56,10 @@ Pleione is free software under the Apache-2.0 license, based on webOS IPTV Playe
 Setup guide: https://pleione.merope.dev/setup/
 ```
 
-It differs from the LG text where the Samsung build does: reminders show only while the app is
-open (no TV notification API, `docs/tizen.md`), and live pause and rewind are off on Samsung's
-native player.
+It differs from the LG text where the Samsung store package does: no phone setup, which needs
+the LAN web service that Seller Office takes only from Partner sellers (`README.md`);
+reminders show only while the app is open (no TV notification API, `docs/tizen.md`); and live
+pause and rewind are off on Samsung's native player.
 
 ## Tags (at least 3, comma-separated)
 
@@ -77,7 +75,9 @@ IPTV, M3U, Xtream, EPG, live TV, catch-up, player
 | Age rating | The questionnaire's lowest that fits an app with no content of its own |
 | Supported languages | English, Arabic, German, Spanish, French, Italian, Polish, Portuguese (Brazil), Russian, Turkish, Ukrainian, Chinese (Simplified) |
 | Privacy policy URL | https://pleione.merope.dev/privacy/ |
-| Seller name | Merope |
+| Seller type | Individual: no company registration number |
+| Seller name | Merope (the name shown on the listing) |
+| Representative, phone, mailing address | The individual seller's own, entered in Seller Office only |
 | Customer support email | the address in `site/content/privacy.md` |
 | Homepage URL | https://pleione.merope.dev |
 | Service country | United States (the only one open to a Public Seller) |

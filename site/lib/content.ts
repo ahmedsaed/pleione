@@ -9,7 +9,8 @@ const slug = (html: string) =>
   html
     .replace(/<[^>]+>/g, '')
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
+    // Letters of any script, so a translated page's headings get ids too.
+    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
     .trim()
     .replace(/\s+/g, '-');
 

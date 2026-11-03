@@ -5,7 +5,8 @@ describe, so a change to what leaves the TV and a change to the policy land in t
 
 | File | Becomes | Used by |
 |---|---|---|
-| [privacy.md](privacy.md) | `pleione.merope.dev/privacy/` | LG Seller Lounge › privacy policy URL |
+| [privacy.md](privacy.md) | `pleione.merope.dev/privacy/` | LG Seller Lounge › privacy policy URL; Samsung Seller Office › English privacy policy URL |
+| [privacy-ko.md](privacy-ko.md) | `pleione.merope.dev/privacy/ko/` | Samsung Seller Office › Korean privacy policy URL. A translation of `privacy.md`: change both together |
 | [terms.md](terms.md) | `pleione.merope.dev/terms/` | LG Seller Lounge › terms of use, if asked |
 | [setup.md](setup.md) | `pleione.merope.dev/setup/` | the listing's long description links here |
 | [support.md](support.md) | `pleione.merope.dev/support/` | LG Seller Lounge › support URL |

@@ -6,7 +6,8 @@
 
 # Pleione — Privacy Policy
 
-**Effective October 31, 2026** · Pleione is made by Merope ([merope.dev](https://merope.dev)).
+**Effective November 3, 2026** · Pleione is made by Merope ([merope.dev](https://merope.dev)) ·
+[한국어](/privacy/ko/)
 
 ## The short version
 
@@ -79,6 +80,7 @@ requests is governed by its own terms and privacy policy.
 
 So you can type addresses and passwords on a phone instead of a TV remote, Pleione includes a
 small setup service that runs **on the TV** while the app is open, and stops when you leave it.
+Pleione from Samsung's app store does not include it.
 
 - It serves a setup page to devices on **your home network** (it is not reachable from the
   internet unless your router is set up to forward it). The TV shows its address, a QR code, and
@@ -107,8 +109,8 @@ reminder shows only while Pleione is open.
 None. Pleione contains no analytics, advertising, tracking, crash-reporting or remote-logging
 code, does not check for updates, and does not contact any server of Merope's. Its logs stay in
 the TV's developer console. It asks only for the standard webOS permissions to schedule
-reminders, launch the app, and play DRM-protected video, and on Samsung TVs for internet access,
-the remote's keys, and starting its own phone-setup service.
+reminders, launch the app, and play DRM-protected video, and on Samsung TVs for internet access
+and the remote's keys, plus, outside Samsung's app store, starting its own phone-setup service.
 
 This website is static pages; it sets no cookies and runs no analytics either.
 

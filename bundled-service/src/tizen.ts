@@ -6,8 +6,12 @@
  * key it hands out stays as private as it is over Luna on webOS.
  *
  * Messages are arrays of {key, value} pairs, Tizen's message format:
- *   app -> service  method, id, [subscribe "1"]   or   method "cancel", id
+ *   app -> service  from, method, id, [subscribe "1"]   or   from, method "cancel", id
  *   service -> app  id, payload (the JSON a Luna handler would respond)
+ *
+ * The app names itself in `from` rather than passing a reply port: Tizen 9's
+ * service runtime drops a message that carries one (docs/tizen.md). Replies
+ * go to the app's trusted APP_PORT, which only reaches this certificate.
  */
 
 import * as path from 'path';
@@ -29,6 +33,7 @@ export interface TizenServiceApi {
   application: { getCurrentApplication(): { appInfo: { id: string; packageId: string } } };
   messageport: {
     requestTrustedLocalMessagePort(name: string): LocalMessagePort;
+    requestTrustedRemoteMessagePort(appId: string, name: string): RemoteMessagePort;
   };
 }
 
@@ -57,10 +62,11 @@ export function serveOverMessagePort(api: TizenServiceApi, dataDir: string): voi
   }, dataDir);
 
   const local = api.messageport.requestTrustedLocalMessagePort(SERVICE_PORT);
-  local.addMessagePortListener((data, remote) => {
+  local.addMessagePortListener((data) => {
     // The trusted port already limits callers to this certificate; take
     // only this package's own apps on top.
-    if (!remote || remote.appId.indexOf(self.packageId + '.') !== 0) return;
+    const from = field(data, 'from');
+    if (!from || from.indexOf(self.packageId + '.') !== 0) return;
     const method = field(data, 'method');
     const id = field(data, 'id');
     if (!method || !id) return;
@@ -73,9 +79,10 @@ export function serveOverMessagePort(api: TizenServiceApi, dataDir: string): voi
     const handler = handlers[method];
     const reply = (payload: unknown): void => {
       try {
-        remote.sendMessage([{ key: 'id', value: id }, { key: 'payload', value: JSON.stringify(payload) }]);
+        api.messageport.requestTrustedRemoteMessagePort(from, APP_PORT)
+          .sendMessage([{ key: 'id', value: id }, { key: 'payload', value: JSON.stringify(payload) }]);
       } catch (e) {
-        console.warn('[tizen] reply to ' + remote.appId + ' failed:', e);
+        console.warn('[tizen] reply to ' + from + ' failed:', e);
         throw e;
       }
     };

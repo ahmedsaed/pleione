@@ -12,7 +12,7 @@ function fakeTizen() {
   const launches: string[] = [];
   const api = {
     application: {
-      getCurrentApplication: () => ({ appInfo: { packageId: 'pkgAAAAAAA' } }),
+      getCurrentApplication: () => ({ appInfo: { id: 'pkgAAAAAAA.Pleione', packageId: 'pkgAAAAAAA' } }),
       launchAppControl: (_c: unknown, appId: string, ok: () => void) => { launches.push(appId); ok(); },
     },
     ApplicationControl: class { constructor(public operation: string) {} },
@@ -22,7 +22,9 @@ function fakeTizen() {
         if (!serviceUp) throw new Error('NotFoundError');
         expect([appId, name]).toEqual(['pkgAAAAAAA.PleioneLan', 'pleione.lan']);
         return {
-          sendMessage: (data: Data[]) => {
+          // Tizen 9's service runtime drops a message that carries a reply port.
+          sendMessage: (data: Data[], local?: unknown) => {
+            if (local !== undefined) return;
             toService.push(Object.fromEntries(data.map(d => [d.key, String(d.value)])));
           },
         };
@@ -47,7 +49,7 @@ describe('createTizenLanTransport', () => {
     expect(tz.toService).toEqual([]);
     tz.up();
     await vi.advanceTimersByTimeAsync(200);
-    expect(tz.toService).toEqual([{ method: 'start', id: 'r1' }]);
+    expect(tz.toService).toEqual([{ from: 'pkgAAAAAAA.Pleione', method: 'start', id: 'r1' }]);
     tz.reply('r1', { running: true, port: 4242, key: 'k1' });
     await expect(started).resolves.toEqual({ port: 4242, key: 'k1' });
   });
@@ -68,7 +70,7 @@ describe('createTizenLanTransport', () => {
     const events: unknown[] = [];
     const unsubscribe = transport.subscribe(e => events.push(e));
     await Promise.resolve();
-    expect(tz.toService).toEqual([{ method: 'serviceEvents', id: 'ev1', subscribe: '1' }]);
+    expect(tz.toService).toEqual([{ from: 'pkgAAAAAAA.Pleione', method: 'serviceEvents', id: 'ev1', subscribe: '1' }]);
     tz.reply('ev1', { subscribed: true });
     tz.reply('ev1', { event: 'setup-changed' });
     expect(events).toEqual([{ event: 'setup-changed' }]);
@@ -76,6 +78,6 @@ describe('createTizenLanTransport', () => {
     await Promise.resolve();
     tz.reply('ev1', { event: 'uploads-changed' });
     expect(events).toEqual([{ event: 'setup-changed' }]);
-    expect(tz.toService.at(-1)).toEqual({ method: 'cancel', id: 'ev1' });
+    expect(tz.toService.at(-1)).toEqual({ from: 'pkgAAAAAAA.Pleione', method: 'cancel', id: 'ev1' });
   });
 });

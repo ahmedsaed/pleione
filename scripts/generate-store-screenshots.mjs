@@ -21,7 +21,12 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 
 const ROOT = process.cwd();
-const OUT = join(ROOT, 'store/screenshots');
+// --samsung captures the screens that differ in the Samsung store package
+// into store/samsung/captures/: live playback without a seek bar (Samsung
+// TVs do not pause live TV) and Settings without phone setup, drawn by the
+// store build itself (scripts/tizen-config.mjs).
+const SAMSUNG = process.argv.includes('--samsung');
+const OUT = join(ROOT, SAMSUNG ? 'store/samsung/captures' : 'store/screenshots');
 const XTREAM = (process.env.XTREAM_DEMO_URL || 'http://127.0.0.1:8090').replace(/\/$/, '');
 const USERNAME = process.env.XTREAM_DEMO_USERNAME || 'demo';
 const PASSWORD = process.env.XTREAM_DEMO_PASSWORD || 'demo';
@@ -33,8 +38,8 @@ const MIME = {
   '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml',
 };
 
-function startServer() {
-  const dist = join(ROOT, 'dist');
+function startServer(dir = 'dist') {
+  const dist = join(ROOT, dir);
   const server = createServer(async (req, res) => {
     const url = req.url === '/' ? '/index.html' : req.url.split('?')[0];
     try {
@@ -115,10 +120,12 @@ async function openLive(page) {
 await checkDemoServer();
 console.log('Building app (esbuild)...');
 execSync('node esbuild.config.mjs --preview', { cwd: ROOT, stdio: 'inherit' });
+if (SAMSUNG) execSync('node esbuild.config.mjs --preview --platform=tizen --store', { cwd: ROOT, stdio: 'inherit' });
 await mkdir(OUT, { recursive: true });
 
 const { server, port } = await startServer();
 const base = `http://127.0.0.1:${port}`;
+const store = SAMSUNG ? await startServer('dist-tizen-store') : null;
 const browser = await chromium.launch();
 
 // The LAN setup service is a webOS JS service the browser cannot run; fake its
@@ -154,10 +161,35 @@ async function fakeLanService(page) {
   await page.route(`http://127.0.0.1:${LAN_PORT}/uploads`, json([]));
 }
 
-async function newPage(extra = {}) {
+// The Tizen Web Device API as the store package sees it: no LAN service.
+async function fakeTizenStore(page) {
+  await page.addInitScript(() => {
+    window.tizen = {
+      tvinputdevice: { getSupportedKeys: () => [], registerKey: () => {} },
+      application: {
+        getCurrentApplication: () => ({ exit: () => {}, appInfo: { packageId: 'PleioneMrp' } }),
+        getAppInfo: (id) => { throw Object.assign(new Error(id + ' is not installed'), { name: 'NotFoundError' }); },
+      },
+    };
+  });
+}
+
+// Samsung's native player has no live window (src/platform/tizen.ts), while
+// mpegts.js here buffers one that reads as live DVR; an empty seekable range
+// draws the live controls as a Samsung TV does, with no seek bar.
+async function noLiveWindow(page) {
+  await page.addInitScript(() => {
+    const none = { length: 0, start: () => 0, end: () => 0 };
+    Object.defineProperty(HTMLMediaElement.prototype, 'seekable', { configurable: true, get: () => none });
+  });
+}
+
+async function newPage(extra = {}, { liveWindow = true, tizenStore = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const page = await context.newPage();
-  await fakeLanService(page);
+  if (tizenStore) await fakeTizenStore(page);
+  else await fakeLanService(page);
+  if (!liveWindow) await noLiveWindow(page);
   await page.addInitScript(({ account, extra }) => {
     localStorage.setItem('iptv_playlists', JSON.stringify([account]));
     for (const [key, value] of Object.entries(extra)) localStorage.setItem(key, JSON.stringify(value));
@@ -165,110 +197,133 @@ async function newPage(extra = {}) {
     account: { id: 'demo', name: 'Demo', url: XTREAM, source: 'xtream', xtream: { username: USERNAME, password: PASSWORD } },
     extra,
   });
-  await page.goto(base + '/');
+  await page.goto((tizenStore ? `http://127.0.0.1:${store.port}` : base) + '/');
   await page.locator('#view-home').waitFor({ state: 'visible', timeout: 30_000 });
   await page.waitForTimeout(1500);
   return { context, page };
 }
 
 try {
-  // Home: the five section tiles.
-  {
-    const { context, page } = await newPage();
-    await shoot(page, 'home.png');
-    await context.close();
-  }
+  if (SAMSUNG) {
+    // Live playback with no live window, so no seek bar, as on Samsung.
+    {
+      const { context, page } = await newPage({}, { liveWindow: false });
+      await openLive(page);
+      await remote(page, KEY.ENTER);
+      await page.locator('#player-osd .osd-programme-title').waitFor({ state: 'visible', timeout: 20_000 });
+      await page.waitForTimeout(4000);
+      await remote(page, KEY.ENTER);
+      await shoot(page, 'player.png');
+      await context.close();
+    }
+    // Settings from the store build: General without phone setup.
+    {
+      const { context, page } = await newPage({}, { tizenStore: true });
+      await enterSection(page, 'settings');
+      await page.waitForTimeout(2500);
+      await shoot(page, 'settings.png');
+      await context.close();
+    }
+  } else {
+    // Home: the five section tiles.
+    {
+      const { context, page } = await newPage();
+      await shoot(page, 'home.png');
+      await context.close();
+    }
 
-  // Live: a group of channels, the first one playing in the live preview.
-  {
-    const { context, page } = await newPage();
-    await openLive(page);
-    await remote(page, KEY.LEFT);
-    await remote(page, KEY.DOWN, 4); // All, Favorites, Recently Watched, Group 1 -> Group 2
-    await remote(page, KEY.ENTER);
-    await page.waitForTimeout(1500);
-    await shoot(page, 'live.png');
-    await context.close();
-  }
+    // Live: a group of channels, the first one playing in the live preview.
+    {
+      const { context, page } = await newPage();
+      await openLive(page);
+      await remote(page, KEY.LEFT);
+      await remote(page, KEY.DOWN, 4); // All, Favorites, Recently Watched, Group 1 -> Group 2
+      await remote(page, KEY.ENTER);
+      await page.waitForTimeout(1500);
+      await shoot(page, 'live.png');
+      await context.close();
+    }
 
-  // Guide: Red from Live.
-  {
-    const { context, page } = await newPage();
-    await openLive(page);
-    await remote(page, KEY.RED);
-    await page.locator('#live-guide .guide-cell.live').first().waitFor({ state: 'visible', timeout: 20_000 });
-    await shoot(page, 'guide.png');
-    await context.close();
-  }
+    // Guide: Red from Live.
+    {
+      const { context, page } = await newPage();
+      await openLive(page);
+      await remote(page, KEY.RED);
+      await page.locator('#live-guide .guide-cell.live').first().waitFor({ state: 'visible', timeout: 20_000 });
+      await shoot(page, 'guide.png');
+      await context.close();
+    }
 
-  // Player: a live channel with the controls up.
-  {
-    const { context, page } = await newPage();
-    await openLive(page);
-    await remote(page, KEY.ENTER);
-    await page.locator('#player-osd .osd-programme-title').waitFor({ state: 'visible', timeout: 20_000 });
-    await page.waitForTimeout(4000);
-    await remote(page, KEY.ENTER);
-    await shoot(page, 'player.png');
-    await context.close();
-  }
+    // Player: a live channel with the controls up.
+    {
+      const { context, page } = await newPage();
+      await openLive(page);
+      await remote(page, KEY.ENTER);
+      await page.locator('#player-osd .osd-programme-title').waitFor({ state: 'visible', timeout: 20_000 });
+      await page.waitForTimeout(4000);
+      await remote(page, KEY.ENTER);
+      await shoot(page, 'player.png');
+      await context.close();
+    }
 
-  // Movies: the catalog.
-  {
-    const { context, page } = await newPage();
-    await enterSection(page, 'movies');
-    await page.locator('#view-movies [data-focusable]').first().waitFor({ state: 'visible', timeout: 30_000 });
-    await page.waitForTimeout(1500);
-    await shoot(page, 'movies.png');
-    // Movie detail.
-    await remote(page, KEY.RIGHT, 2);
-    await remote(page, KEY.ENTER);
-    await page.waitForTimeout(2000);
-    await shoot(page, 'movie-detail.png');
-    await context.close();
-  }
+    // Movies: the catalog.
+    {
+      const { context, page } = await newPage();
+      await enterSection(page, 'movies');
+      await page.locator('#view-movies [data-focusable]').first().waitFor({ state: 'visible', timeout: 30_000 });
+      await page.waitForTimeout(1500);
+      await shoot(page, 'movies.png');
+      // Movie detail.
+      await remote(page, KEY.RIGHT, 2);
+      await remote(page, KEY.ENTER);
+      await page.waitForTimeout(2000);
+      await shoot(page, 'movie-detail.png');
+      await context.close();
+    }
 
-  // Series detail: seasons and episodes.
-  {
-    const { context, page } = await newPage();
-    await enterSection(page, 'series');
-    await page.locator('#view-series [data-focusable]').first().waitFor({ state: 'visible', timeout: 30_000 });
-    await page.waitForTimeout(1500);
-    await shoot(page, 'series.png');
-    await remote(page, KEY.RIGHT);
-    await remote(page, KEY.ENTER);
-    await page.waitForTimeout(2500);
-    await shoot(page, 'series-detail.png');
-    await context.close();
-  }
+    // Series detail: seasons and episodes.
+    {
+      const { context, page } = await newPage();
+      await enterSection(page, 'series');
+      await page.locator('#view-series [data-focusable]').first().waitFor({ state: 'visible', timeout: 30_000 });
+      await page.waitForTimeout(1500);
+      await shoot(page, 'series.png');
+      await remote(page, KEY.RIGHT);
+      await remote(page, KEY.ENTER);
+      await page.waitForTimeout(2500);
+      await shoot(page, 'series-detail.png');
+      await context.close();
+    }
 
-  // Search: one query across channels, programs, movies, and series.
-  {
-    const { context, page } = await newPage();
-    await enterSection(page, 'search');
-    await page.waitForTimeout(1500);
-    await page.keyboard.type('Bravo', { delay: 60 });
-    await page.waitForTimeout(2500);
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
-    await shoot(page, 'search.png');
-    await context.close();
-  }
+    // Search: one query across channels, programs, movies, and series.
+    {
+      const { context, page } = await newPage();
+      await enterSection(page, 'search');
+      await page.waitForTimeout(1500);
+      await page.keyboard.type('Bravo', { delay: 60 });
+      await page.waitForTimeout(2500);
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(2000);
+      await shoot(page, 'search.png');
+      await context.close();
+    }
 
-  // Settings.
-  {
-    const { context, page } = await newPage();
-    await enterSection(page, 'settings');
-    await page.waitForTimeout(2500);
-    await shoot(page, 'settings.png');
-    await remote(page, KEY.LEFT); // the page list, on General
-    await remote(page, KEY.DOWN, 3); // Sources, Program Guide -> Appearance
-    await page.waitForTimeout(1500);
-    await shoot(page, 'appearance.png');
-    await context.close();
+    // Settings.
+    {
+      const { context, page } = await newPage();
+      await enterSection(page, 'settings');
+      await page.waitForTimeout(2500);
+      await shoot(page, 'settings.png');
+      await remote(page, KEY.LEFT); // the page list, on General
+      await remote(page, KEY.DOWN, 3); // Sources, Program Guide -> Appearance
+      await page.waitForTimeout(1500);
+      await shoot(page, 'appearance.png');
+      await context.close();
+    }
   }
 } finally {
   await browser.close();
   server.close();
+  store?.server.close();
 }
 console.log(`Screenshots written to ${OUT}`);

@@ -37,7 +37,14 @@ const mark = svg.replace(/<rect width="80" height="80" fill="#0b0d2e"\/>\s*/, ''
 const stars = STARS.map(([x, y, r], i) =>
   `<i style="left:${x}px;top:${y}px;width:${r * 2}px;height:${r * 2}px;background:${STAR_COLORS[i % 3]}"></i>`).join('');
 
+const shot = async (name) =>
+  `data:image/png;base64,${(await readFile(join(ROOT, 'store/screenshots', `${name}.png`))).toString('base64')}`;
+
 const page = (body, background = 'transparent') => `<!doctype html><html><head><style>
+  .shot { position: absolute; border-radius: 22px; border: 2px solid rgba(255,255,255,.14);
+    box-shadow: 0 40px 120px rgba(0,0,0,.6); }
+  .front { left: 900px; top: 250px; width: 1180px; height: 664px; }
+  .back { left: 1180px; top: 110px; width: 900px; height: 506px; opacity: .55; }
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: ${background}; }
   .fill { position: absolute; inset: 0; background-image: ${SKY}; }
   i { position: absolute; border-radius: 50%; opacity: .35; }
@@ -64,10 +71,14 @@ const FILES = [
     html: page(`<div class="fill"></div>${sized(mark, 340, 'left:86px;top:41px')}`, '#0b0d2e'),
   },
   {
-    // Seller Office darkens the left 40% under its own text, so the mark sits
-    // in the right 60%, as on the LG launcher background.
+    // The store's detail page behind the app's name and description. Seller
+    // Office darkens the left 40% under its own text, so the app itself fills
+    // the right 60%: Live and Movies, as a TV shows them, running off the
+    // edge, with no words of our own.
     name: 'background-1920x1080.jpg', width: 1920, height: 1080, limit: 2_000_000,
-    html: page(`<div class="fill"></div>${stars}${sized(svg, 420, 'left:1110px;top:330px;border-radius:96px')}`),
+    html: page(`<div class="fill"></div>${stars}
+      <img class="shot back" src="${await shot('movies')}">
+      <img class="shot front" src="${await shot('live')}">`),
   },
 ];
 
@@ -95,8 +106,18 @@ for (const file of FILES) {
     { jpeg: file.name.endsWith('.jpg'), limit: file.limit, opaque: file.opaque });
 }
 
+// A screen that differs in the store package comes from its Samsung capture
+// (`npm run screenshots:store -- --samsung`), when there is one.
+const capture = async (name) => {
+  try {
+    return await readFile(join(ROOT, 'store/samsung/captures', `${name}.png`));
+  } catch {
+    return readFile(join(ROOT, 'store/screenshots', `${name}.png`));
+  }
+};
+
 for (const [i, shot] of SAMSUNG_SHOTS.entries()) {
-  const png = await readFile(join(ROOT, 'store/screenshots', `${shot}.png`));
+  const png = await capture(shot);
   const html = page(`<img src="data:image/png;base64,${png.toString('base64')}" width="1920" height="1080">`);
   await draw(1920, 1080, html, join(OUT, `screenshot-${i + 1}.jpg`), { jpeg: true, limit: 500_000 });
 }

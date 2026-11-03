@@ -381,6 +381,8 @@ export type Action =
   | 'red' | 'green' | 'yellow' | 'blue'
   | 'channel_up' | 'channel_down'
   | 'play' | 'pause' | 'stop'
+  // Keys only some remotes have (Samsung's): one Play/Pause key, Info, Guide.
+  | 'play_pause' | 'info' | 'guide'
   | 'rewind' | 'fast_forward'
   | 'number' | 'number_input' | 'number_cancel';
 

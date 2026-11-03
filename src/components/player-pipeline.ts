@@ -259,10 +259,10 @@ export class PlayerPipeline {
     if (platform.media.nativePipeline()) {
       if (opts?.direct) {
         const mime = containerMime(url);
-        log.info('Selected webOS native playback', 'event=playback.path.native',
+        log.info('Selected native playback', 'event=playback.path.native',
           this.callbacks.playbackLabel(token),
           'reason=direct', 'url=', safeUrl,
-          '| webOS native VOD | MIME', mime || '(sniffed)');
+          '| native VOD | MIME', mime || '(sniffed)');
         this.playNative(url, mime);
         return;
       }
@@ -271,10 +271,10 @@ export class PlayerPipeline {
           : isTsUrl ? 'video/mp2t'
           : isDashUrl ? 'application/dash+xml'
           : 'application/vnd.apple.mpegurl';
-        log.info('Selected webOS native playback', 'event=playback.path.native',
+        log.info('Selected native playback', 'event=playback.path.native',
           this.callbacks.playbackLabel(token),
           'reason=url', 'url=', safeUrl,
-          '| webOS native | catchup:', this.callbacks.isCatchup(), '| MIME', mime);
+          '| native | catchup:', this.callbacks.isCatchup(), '| MIME', mime);
         if (isDashUrl) {
           this.loadNativeDash(url, extras, token);
           return;
@@ -289,10 +289,10 @@ export class PlayerPipeline {
       void getCachedStreamMime(routeKey).then(cachedMime => {
         if (token !== this.loadToken || !this.videoEl) return;
         if (cachedMime) {
-          log.info('Selected webOS native playback', 'event=playback.path.native',
+          log.info('Selected native playback', 'event=playback.path.native',
             this.callbacks.playbackLabel(token),
             'reason=cache', 'url=', safeUrl,
-            '| webOS native | cached MIME', cachedMime,
+            '| native | cached MIME', cachedMime,
             '| catchup:', this.callbacks.isCatchup());
           if (cachedMime === 'application/vnd.apple.mpegurl') {
             void this.loadManifest(url, this.manifestSeq, token);
@@ -310,10 +310,10 @@ export class PlayerPipeline {
               contentType.split(';')[0].trim() !== 'application/octet-stream') {
             void setCachedStreamMime(routeKey, mime);
           }
-          log.info('Selected webOS native playback', 'event=playback.path.native',
+          log.info('Selected native playback', 'event=playback.path.native',
             this.callbacks.playbackLabel(token),
             'reason=probe', 'url=', safeUrl,
-            '| webOS native | content-type:', contentType || '(none)',
+            '| native | content-type:', contentType || '(none)',
             '| catchup:', this.callbacks.isCatchup(), '| MIME', mime || '(auto)');
           if (mime === 'application/vnd.apple.mpegurl') {
             void this.loadManifest(url, this.manifestSeq, token);

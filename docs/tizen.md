@@ -24,7 +24,7 @@ then **1 2 3 4 5**).
 
 Every `.wgt` carries two signatures:
 
-- **Author**: who made the app. With the package id (`meropeDevs`) it is
+- **Author**: who made the app. With the package id (`PleioneMrp`) it is
   the app's permanent identity: an update must carry the same author
   certificate, or the TV treats it as a different app. Make it once and
   keep it and its password safe (not in the repository).
@@ -43,19 +43,34 @@ once:
    (it needs only Developer Mode, no installed app).
 2. Stop the container (`scripts/tizen.sh down`): the extension below runs
    its own `sdb`, which would clash with the container's on the same port.
-3. Install Samsung's **Tizen** extension in VS Code (or Tizen Studio's
-   Certificate Manager), and create a **Samsung** certificate for TV:
+3. Install Samsung's **Tizen** extension in VS Code. It downloads its
+   tools (a ~180 MB server from `download.tizen.org`, which can crawl
+   for minutes) into the folder it asks for; pick one you will delete.
+   Open its **Certificate Manager** and create a profile:
+   - type **Samsung**, for **TV**;
    - the author certificate: a name, and a password you keep;
-   - the distributor certificate: sign in with the Samsung account when
-     the browser opens, then enter the DUIDs of every test TV.
-4. Copy `author.p12` and `distributor.p12` to `~/.config/pleione/tizen-certs`
-   (outside the repository) and register them:
+   - the distributor certificate: privilege **Public**, and the DUIDs of
+     every test TV; **Create** signs in to the Samsung account in the
+     browser.
+
+   Both certificates are valid for a year. Renew the author one from the
+   same key (**Import an existing author key file**) rather than making a
+   new one, so updates keep the same author: an update signed by another
+   author cannot replace the installed app.
+4. Copy the files from `~/SamsungCertificate/<profile>` to
+   `~/.config/pleione/tizen-certs` (outside the repository), uninstall the
+   extension, delete its folder, `~/SamsungCertificate`,
+   `~/.tizen.path.config`, and its `tizen-studio` keyring entries
+   (`secret-tool clear tool certificate-manager`), and register the
+   certificates; `profile` asks for the passwords:
 
    ```bash
-   TIZEN_CERTS=~/.config/pleione/tizen-certs TIZEN_AUTHOR_PASSWORD=... \
-     TIZEN_DISTRIBUTOR_PASSWORD=... TIZEN_TV=<tv-ip> scripts/tizen.sh profile samsung
+   TIZEN_CERTS=~/.config/pleione/tizen-certs TIZEN_TV=<tv-ip> scripts/tizen.sh profile samsung
    TIZEN_PROFILE=samsung TIZEN_TV=<tv-ip> scripts/tizen.sh install
    ```
+
+   Without a `distributor.p12`, `profile` signs with Tizen's public test
+   distributor, which Tizen 5.5–6.5 accept.
 
 Adding a TV later needs a new distributor certificate with its DUID added;
 the author certificate stays.
@@ -159,7 +174,8 @@ Media came from the demo Xtream server (`docs/xtream-demo-server.md`).
 | `getStartDate()` with `PROGRAM-DATE-TIME` | **Invalid Date**: the engine ignores PDT |
 | Live MPEG-TS over HTTP | Plays; `duration` null, no seekable range |
 | MP4 VOD | Plays and seeks |
-| MKV | `canPlayType('video/x-matroska')` is `""`; playback not tried |
+| MKV | **Plays** (H.264 + AAC, and HEVC + AC-3, from an untyped `src`), though `canPlayType('video/x-matroska')` is `""`: the app sets no MIME type for `.mkv` (`containerMime`), so the TV sniffs it |
+| MP4 with its `moov` at the end | Decode error (code 3) from a server without Range requests; plays once `moov` comes first |
 | `audioTracks`, HLS | One per rendition; `language` set (`l1`/`l2`), `label` empty |
 | `audioTracks`, TS and MP4 | One per stream; `language` `und`, `label` empty |
 | Audio switch via `enabled` | Works on HLS, TS and MP4: the audio changes and playback continues |
@@ -253,6 +269,9 @@ Search 10225, PreviousChannel 10190, Minus 189.
   keydown reaches the page; the next launch is a cold start.
 - **Exit key**: not tested (no Exit key on this remote).
 
+The app maps Play/Pause to one toggle, Info to the player controls (as
+Yellow), and Guide to the Guide (as Red), for remotes that have them.
+
 ## Engine and layout
 
 | Check | 2020 TV |
@@ -278,6 +297,7 @@ Every unsupported feature already has a fallback for webOS 4, so Tizen
 | Web service (`<tizen:service>`) | Starts from the app through `launchAppControl` with the `service` operation |
 | Web service Node.js | **v4.4.3** (V8 4.5, OpenSSL 1.0.2), `arm` |
 | Web service LAN bind | `listen(8099, '0.0.0.0')` works, and a computer on the LAN gets a reply |
+| Screensaver | The app switches it off through `webapis.appcommon.setScreenSaver` while a video plays, and back on when it pauses, ends, or stops (`platform.media.keepAwake`). `webapis.js` loads in the app, and both states succeed |
 
 The bundled service runs there as Pleione's own web service: phone setup
 works on 5.5 (`docs/lan-service.md`). Node 4.4.3 inherits `Buffer.from` from

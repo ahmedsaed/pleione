@@ -115,6 +115,7 @@ export class LiveHeader {
         this.leave();
         break;
       case 'red':
+      case 'guide':
         this.leave(false);
         this.handlers.onMode(this.mode === 'list' ? 'guide' : 'list');
         break;

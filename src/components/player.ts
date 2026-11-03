@@ -315,7 +315,11 @@ export class Player {
       if (this.liveSessionActive && !this.vod) this.rememberLiveAudio();
       update();
     });
-    onCurrent('error', () => this.onError(el.error?.code === 4 ? 'unsupported' : undefined));
+    onCurrent('error', () => {
+      // MEDIA_ERR_DECODE: a retry may step down to a variant the TV decodes.
+      if (el.error?.code === 3) this.pipeline.noteDecodeError();
+      this.onError(el.error?.code === 4 ? 'unsupported' : undefined);
+    });
     // Resource selection starts here. Until then readyState/networkState still
     // describe the previous stream — on webOS the content-type probe can defer
     // the attach by up to MANIFEST_TIMEOUT — and recreateVideoEl() loads a

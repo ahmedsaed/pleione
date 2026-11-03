@@ -713,6 +713,19 @@ describe('Player live playback', () => {
     expect(keepAwake).toHaveBeenLastCalledWith(false);
   });
 
+  it('tells the pipeline when the TV fails to decode the stream, so a retry can step down', async () => {
+    const decode = vi.spyOn(
+      (player as unknown as { pipeline: { noteDecodeError(): void } }).pipeline, 'noteDecodeError');
+    player.play(0);
+    await flush();
+    Object.defineProperty(video, 'error', { value: { code: 4 }, configurable: true });
+    video.dispatchEvent(new Event('error'));
+    expect(decode).not.toHaveBeenCalled();
+    Object.defineProperty(video, 'error', { value: { code: 3 }, configurable: true });
+    video.dispatchEvent(new Event('error'));
+    expect(decode).toHaveBeenCalledOnce();
+  });
+
   it('hands the screensaver back when a stalled Live preview gives up', async () => {
     const keepAwake = vi.spyOn(platform.media, 'keepAwake');
     const internals = player as unknown as { livePreviewMode: boolean; liveSessionActive: boolean; failLivePreview(): boolean };

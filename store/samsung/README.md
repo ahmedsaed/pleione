@@ -9,7 +9,7 @@ guide; Seller Office's own form is the authority when they differ.
 | What | Where |
 |---|---|
 | Title, description, tags, category, service, feature and verification answers | [`listing.md`](listing.md) |
-| The UI description the testers follow (Samsung's PPTX template) | [`ui-description.md`](ui-description.md) |
+| The UI description the testers follow (Samsung's PPTX template) | [`ui-description.pptx`](ui-description.pptx), built from [`ui-description.md`](ui-description.md) |
 | Icons, background image and 4 screenshots | this folder, written by `npm run store:samsung` |
 
 ## Images
@@ -56,11 +56,14 @@ The files are generated, never edited by hand.
    for sideloading. Its package id `PleioneMrp` and that
    certificate are the app's identity for good: a different id is a different app, and a
    different author certificate cannot update this one.
-3. **The UI description.** Download the template from Samsung's
+3. **The UI description.** [`ui-description.pptx`](ui-description.pptx) is Samsung's
    [Application UI description](https://developer.samsung.com/tv-seller-office/checklists-for-distribution/application-ui-description.html)
-   page, fill it in from [`ui-description.md`](ui-description.md) without changing the
-   template's structure, add a labeled screenshot for each screen, and upload it as PPTX. Update
-   and upload it again with every app update.
+   template filled in from [`ui-description.md`](ui-description.md), with a labeled screenshot
+   of each screen (the Player and Settings captures come from `captures/`, written by
+   `node scripts/generate-store-screenshots.mjs --samsung`). Before uploading it, replace the
+   three test-account placeholders on the "Use Cases – Test Account" slide, **[Server URL]**,
+   **[Username]** and **[Password]**, with the account from step 4, and never commit the filled-in
+   copy. Update it, and upload it again, with every app update.
 4. **The testers' accounts.** Host the demo Xtream server on an address Samsung's testers can
    reach, as for LG (`store/README.md`, "The reviewers' test account"), and enter its URL,
    username and password in Seller Office's test account fields. Never commit them here. Samsung

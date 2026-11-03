@@ -44,6 +44,8 @@ export interface Platform {
     nativePipeline(): boolean;
     /** The TV draws in-band captions (CEA-608/708) itself, switched through the platform. */
     nativeCaptionCompositor(): boolean;
+    /** PlayReady goes through the platform's own DRM service (webOS Luna), not EME. */
+    nativePlayReady(): boolean;
     /** Hold off the TV's screensaver while a video plays (Samsung's is the app's to switch). */
     keepAwake(on: boolean): void;
   };

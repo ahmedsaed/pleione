@@ -94,7 +94,7 @@ provider's), no ads, no Smart View, and no external devices.
 | Container | HLS (MPEG-TS and fMP4 segments), MPEG-TS, MP4, MKV, MPEG-DASH |
 | Video codec | H.264, HEVC |
 | Audio codec | AAC, AC-3, E-AC-3 |
-| DRM | None (pending a DRM check of the Samsung build on a TV) |
+| DRM | Widevine Modular, PlayReady (MPEG-DASH, through Shaka Player on the TV's EME) |
 | Subtitle format | WebVTT (in HLS), SRT, WebVTT and ASS/SSA files for movies and episodes |
 
 The codecs are the ones `canPlayType` reports as playable on the 2020 TV (`docs/tizen.md`);

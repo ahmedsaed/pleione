@@ -84,6 +84,7 @@ describe('tizen adapter', () => {
   it('plays natively and has no caption compositor', () => {
     expect(tizen.media.nativePipeline()).toBe(true);
     expect(tizen.media.nativeCaptionCompositor()).toBe(false);
+    expect(tizen.media.nativePlayReady()).toBe(false);
   });
 
   it('does nothing at boot outside a Tizen engine', () => {

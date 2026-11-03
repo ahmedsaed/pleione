@@ -524,8 +524,11 @@ export class PlayerPipeline {
     const seq = this.manifestSeq;
     const configured = parseDrmConfig(extras);
     void this.loadManifest(url, seq, loadToken, 'dash', parsed => {
+      const playReady = configured?.type === 'playready'
+        || (!configured && parsed?.drm?.type === 'playready');
       if (isShakaDrmConfig(configured)
-          || (!configured && (parsed?.drm?.type === 'widevine' || parsed?.drm?.type === 'clearkey'))) {
+          || (!configured && (parsed?.drm?.type === 'widevine' || parsed?.drm?.type === 'clearkey'))
+          || (playReady && !platform.media.nativePlayReady())) {
         this.msePending = true;
       }
     }).then(parsed => {
@@ -561,6 +564,11 @@ export class PlayerPipeline {
             customData: '',
             unsupportedOptions: [],
           };
+      // Without the platform's DRM service, PlayReady goes through EME.
+      if (!platform.media.nativePlayReady()) {
+        this.loadWithShaka(url, loadToken, config);
+        return;
+      }
       if (config.unsupportedOptions.length) {
         log.warn('Ignoring unsupported native PlayReady options',
           'event=playback.dash.drm.options.unsupported',
@@ -694,7 +702,7 @@ export class PlayerPipeline {
   private loadWithShaka(
     url: string,
     loadToken: number,
-    drm: ShakaDrmConfig | null = null,
+    drm: ShakaDrmConfig | PlayReadyConfig | null = null,
   ): void {
     if (!this.videoEl) return;
     this.msePending = true;
@@ -714,7 +722,12 @@ export class PlayerPipeline {
         streaming: { bufferingGoal: CONFIG.PLAYER.BUFFER_LENGTH },
       };
       if (drm) {
-        const keySystem = drm.type === 'clearkey' ? 'org.w3.clearkey' : 'com.widevine.alpha';
+        const keySystem = drm.type === 'clearkey' ? 'org.w3.clearkey'
+          : drm.type === 'playready' ? 'com.microsoft.playready' : 'com.widevine.alpha';
+        const headers = drm.type === 'playready' ? {} : drm.headers;
+        // EME takes no PlayReady CustomData; the CDM writes the challenge.
+        const unsupportedOptions = drm.type === 'playready' && drm.customData
+          ? [...drm.unsupportedOptions, 'custom data'] : drm.unsupportedOptions;
         config.drm = {
           preferredKeySystems: [keySystem],
           servers: drm.licenseUrl
@@ -726,22 +739,22 @@ export class PlayerPipeline {
         const licenseType =
           shaka.net?.NetworkingEngine?.RequestType?.LICENSE;
         const networking = player.getNetworkingEngine();
-        if (Object.keys(drm.headers).length && (licenseType === undefined || !networking)) {
+        if (Object.keys(headers).length && (licenseType === undefined || !networking)) {
           throw new Error('Shaka license request filters are unavailable');
         }
-        if (licenseType !== undefined && networking && Object.keys(drm.headers).length) {
+        if (licenseType !== undefined && networking && Object.keys(headers).length) {
           networking.registerRequestFilter((type, request) => {
             if (type !== licenseType) return;
-            for (const name in drm.headers) {
-              request.headers[name] = drm.headers[name];
+            for (const name in headers) {
+              request.headers[name] = headers[name];
             }
           });
         }
-        if (drm.unsupportedOptions.length) {
+        if (unsupportedOptions.length) {
           log.warn('Ignoring unsupported Shaka DRM options',
             'event=playback.dash.drm.options.unsupported',
             this.callbacks.playbackLabel(loadToken),
-            `options=${drm.unsupportedOptions.join(',')}`);
+            `options=${unsupportedOptions.join(',')}`);
         }
       }
       if (!player.configure(config)) {
@@ -806,7 +819,8 @@ export class PlayerPipeline {
         const keySystem = player.getDrmInfo?.()?.keySystem;
         this.activeDrm = drm?.type === 'clearkey' || (!drm && keySystem === 'org.w3.clearkey')
           ? 'ClearKey'
-          : drm?.type === 'widevine' || keySystem === 'com.widevine.alpha' ? 'Widevine' : '';
+          : drm?.type === 'widevine' || keySystem === 'com.widevine.alpha' ? 'Widevine'
+            : drm?.type === 'playready' || keySystem === 'com.microsoft.playready' ? 'PlayReady' : '';
         log.info('Shaka stream loaded', 'event=playback.dash.load.completed',
           label, `elapsedMs=${Date.now() - startedAt}`,
           `keySystem=${keySystem || 'none'}`, `mediaKeys=${Boolean(videoEl.mediaKeys)}`,

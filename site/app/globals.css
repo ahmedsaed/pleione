@@ -546,3 +546,8 @@ tr:last-child td {
     max-width: none;
   }
 }
+
+/* Korean wraps between words, not between syllables. */
+[lang="ko"] {
+  word-break: keep-all;
+}

@@ -55,8 +55,8 @@ jobs:
       - name: Refuse to publish placeholders
         if: github.event_name != 'pull_request'
         run: |
-          if grep -nE '\[[A-Z][A-Z ]+\]' content/privacy.md; then
-            echo "::error::content/privacy.md still has placeholders (above). Fill them in before the site is published."
+          if grep -nE '\[[A-Z][A-Z ]+\]' content/privacy.md content/privacy-ko.md; then
+            echo "::error::A privacy policy still has placeholders (above). Fill them in before the site is published."
             exit 1
           fi
 

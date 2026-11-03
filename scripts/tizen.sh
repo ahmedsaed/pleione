@@ -157,6 +157,7 @@ debug_app() {
     connect >/dev/null
   done
   [ -n "$port" ] || error "The TV did not report a debug port."
+  DEBUG_PORT="$port"
   for _ in 1 2 3; do
     connect >/dev/null
     in_container "sdb -s $ip:26101 forward --remove-all; sdb -s $ip:26101 forward tcp:$local_port tcp:$port" \
@@ -199,7 +200,7 @@ probe() {
   debug_app "$PROBE_ID" 9339
   local out; out="tizen-probe-$(date +%Y%m%d-%H%M%S).json"
   info "Running the checks (about a minute)..."
-  node scripts/tizen-probe/collect.mjs 9339 "$out" "$key_seconds"
+  node scripts/tizen-probe/collect.mjs "9339,$ip:$DEBUG_PORT" "$out" "$key_seconds"
   info "Wrote $out"
 }
 

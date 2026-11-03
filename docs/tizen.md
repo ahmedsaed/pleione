@@ -149,16 +149,21 @@ Two decisions wait on this TV's results:
 
 ## Test TVs
 
-| | 2020 TV | Current TV |
+| | 2020 TV | 2025 TV |
 |---|---|---|
-| Model year / series | 2020, T series | not tested yet |
-| Tizen / engine | 5.5, Chromium 69 (`69.0.3497.106`) | |
-| Firmware | 2743 | |
-| `webapis` version | 3.5 | |
-| CPU | armv7 | |
-| Viewport | 1920×1080, `devicePixelRatio` 1 | |
-| Remote | classic remote (color and number keys, no Play/Pause) | |
-| Tested | 2026-11-02 | |
+| Model year / series | 2020, T series | 2025, U8000F (`UA50U8000FUXEG`) |
+| Tizen / engine | 5.5, Chromium 69 (`69.0.3497.106`) | 9.0, Chromium 120 (`120.0.6099.5`) |
+| Firmware | 2743 | `T-KSU2EFUABC-0090-1300.9` |
+| `webapis` version | 3.5 | not read |
+| CPU | armv7 | armv7 |
+| Viewport | 1920×1080, `devicePixelRatio` 1 | 1920×1080, `devicePixelRatio` 1 |
+| Remote | classic remote (color and number keys, no Play/Pause) | Smart Remote (**123** pad for colors and digits, no Play/Pause) |
+| Signing | Tizen test distributor | Samsung distributor certificate with its DUID |
+| Tested | 2026-11-02 | 2026-11-03 |
+
+The DUID a Samsung distributor certificate needs is the one `sdb`
+reports (`scripts/tizen.sh duid`); on the 2025 TV
+`webapis.productinfo.getDuid()` returns a different value.
 
 ## Toolchain
 
@@ -195,27 +200,27 @@ Two decisions wait on this TV's results:
 
 Media came from the demo Xtream server (`docs/xtream-demo-server.md`).
 
-| Check | 2020 TV |
-|---|---|
-| Live HLS (master + 2 audio renditions + WebVTT) | Plays |
-| Live HLS `duration` | **Finite and growing** (300 → 308 s), not `Infinity` |
-| Live HLS `seekable` / DVR | Sliding window (e.g. 8–308 s); seeking 30 s back works |
-| `getStartDate()` with `PROGRAM-DATE-TIME` | **Invalid Date**: the engine ignores PDT |
-| Live MPEG-TS over HTTP | Plays; `duration` null, no seekable range |
-| MP4 VOD | Plays and seeks |
-| MKV | **Plays** (H.264 + AAC, and HEVC + AC-3, from an untyped `src`), though `canPlayType('video/x-matroska')` is `""`: the app sets no MIME type for `.mkv` (`containerMime`), so the TV sniffs it |
-| MP4 with its `moov` at the end | Decode error (code 3) from a server without Range requests; plays once `moov` comes first |
-| `audioTracks`, HLS | One per rendition; `language` set (`l1`/`l2`), `label` empty |
-| `audioTracks`, TS and MP4 | One per stream; `language` `und`, `label` empty |
-| Audio switch via `enabled` | Works on HLS, TS and MP4: the audio changes and playback continues |
-| In-manifest HLS WebVTT | Listed in `textTracks`, but **0 cues** when `showing`: not rendered natively |
-| Self-rendered `addTextTrack` + `VTTCue` | Draws over the video |
-| MSE / EME | Both present |
-| `canPlayType` | HLS, `video/mp2t`, `video/mp4`, `application/dash+xml`: `maybe`; H.264, HEVC, AC-3, E-AC-3: `probably` |
+| Check | 2020 TV | 2025 TV |
+|---|---|---|
+| Live HLS (master + 2 audio renditions + WebVTT) | Plays | Plays |
+| Live HLS `duration` | **Finite and growing** (300 → 308 s), not `Infinity` | Finite (300 s), as on 5.5 |
+| Live HLS `seekable` / DVR | Sliding window (e.g. 8–308 s); seeking 30 s back works | Window 0–300 s; 60 s back and back to the edge both play on (probe) |
+| `getStartDate()` with `PROGRAM-DATE-TIME` | **Invalid Date**: the engine ignores PDT | not checked |
+| Live MPEG-TS over HTTP | Plays; `duration` null, no seekable range | **Does not play**: `readyState` 4 and 640×360, but 0 frames decoded and `currentTime` stays 0. AVPlay plays the same stream |
+| MP4 VOD | Plays and seeks | Plays |
+| MKV | **Plays** (H.264 + AAC, and HEVC + AC-3, from an untyped `src`), though `canPlayType('video/x-matroska')` is `""`: the app sets no MIME type for `.mkv` (`containerMime`), so the TV sniffs it | not checked |
+| MP4 with its `moov` at the end | Decode error (code 3) from a server without Range requests; plays once `moov` comes first | not checked |
+| `audioTracks`, HLS | One per rendition; `language` set (`l1`/`l2`), `label` empty | **Empty** (0 tracks), with 2 renditions in the master |
+| `audioTracks`, TS and MP4 | One per stream; `language` `und`, `label` empty | **Empty** on MP4 |
+| Audio switch via `enabled` | Works on HLS, TS and MP4: the audio changes and playback continues | **Impossible**: no tracks to switch |
+| In-manifest HLS WebVTT | Listed in `textTracks`, but **0 cues** when `showing`: not rendered natively | Not listed: `textTracks` is empty |
+| Self-rendered `addTextTrack` + `VTTCue` | Draws over the video | not checked |
+| MSE / EME | Both present | Both present |
+| `canPlayType` | HLS, `video/mp2t`, `video/mp4`, `application/dash+xml`: `maybe`; H.264, HEVC, AC-3, E-AC-3: `probably` | Same as 5.5 |
 
-| Native DASH (`<video src="….mpd">`, clear) | Plays |
-| CEA-608, native (HLS and DASH) | **Not rendered and not exposed** as a `TextTrack` |
-| CEA-608 through Shaka | Parsed (CC1/CC3) and rendered over the video |
+| Native DASH (`<video src="….mpd">`, clear) | Plays | not checked |
+| CEA-608, native (HLS and DASH) | **Not rendered and not exposed** as a `TextTrack` | not checked |
+| CEA-608 through Shaka | Parsed (CC1/CC3) and rendered over the video | not checked |
 
 ### Live seeking (in the app, through the Tizen build)
 
@@ -249,10 +254,40 @@ stays off (above).
 | `jumpBackward` 60 s / `jumpForward` to near the edge | Both play on | n/a |
 | Audio-track switch | Does not switch (stays on the first) | Switches |
 
-So on Tizen 5.5 AVPlay trades audio-track switching for live rewind. The
-plan's Stage B (an AVPlay backend) waits for the same checks on a Tizen 8+
-TV, where native audio switching is reported broken: `scripts/tizen.sh
-probe` runs them.
+So on Tizen 5.5 AVPlay trades audio-track switching for live rewind.
+
+On the 2025 TV (Tizen 9, AVPlay 7.0) AVPlay does everything the native
+element cannot:
+
+| Check | AVPlay, 2025 TV | Native `<video>`, 2025 TV |
+|---|---|---|
+| Live HLS | Plays; live window 8000–308000 ms | Plays |
+| Audio tracks | Listed (`und`, `l2`) and **switch** | None listed |
+| `jumpBackward` / `jumpForward` on live | Both play on | n/a |
+| Live MPEG-TS over HTTP | Plays (2 audio tracks listed) | 0 frames decoded |
+
+So on Tizen 9 the native path loses multi-audio and raw TS, and AVPlay
+covers both.
+
+The app plays raw TS through AVPlay where the TV needs it
+(`src/platform/tizen-avplay.ts`). The first TS stream plays natively; if
+the element loads it (a frame size, `readyState` 2+) but decodes no frame
+for 4 s, the TV is marked (`iptv_native_ts_playback`,
+`event=playback.native_ts.checked`) and the stream moves to AVPlay
+(`event=playback.path.platform reason=detected`); later TS streams go
+straight there (`reason=remembered`). A TV whose element plays TS, like
+the 2020 one, is marked `ok` and stays native. While AVPlay plays, the
+player's `<video>` stays in place as its stand-in: it reads its state from
+AVPlay and fires the media events Player listens to, the page turns
+transparent over the video plane (`html.avplay-active`), and the display
+rectangle follows the element, the Live preview included. AVPlay's tracks
+fill the audio picker. HLS still plays natively here, so its audio picker
+stays empty on this TV, and live rewind stays off; both wait for routing
+more streams through AVPlay.
+
+AVPlay reports a buffering start and end around every live TS segment
+(about every 4 s on the demo server); the stand-in reports a `waiting`
+only once a pause lasts a second.
 
 ## DRM (Shaka 5.2.12 on MSE/EME)
 
@@ -300,6 +335,10 @@ every key the plan maps registered without error:
 | Guide | 458 | `XF86ChannelGuide` |
 | Return | 10009 | `XF86Back` (`code` `Escape`) |
 
+The 2025 TV lists the same 46 keys and delivered every one pressed:
+arrows, OK, CH±, Return, and, from the Smart Remote's **123** pad,
+digits, Info (457) and the four colors (403–406).
+
 Listed but not pressed (this remote has no such keys): media keys
 (Play 415, Pause 19, PlayPause 10252, Stop 413, Rewind 412,
 FastForward 417, Previous 10232, Next 10233), Exit 10182, Caption 10221,
@@ -316,16 +355,16 @@ Yellow), and Guide to the Guide (as Red), for remotes that have them.
 
 ## Engine and layout
 
-| Check | 2020 TV |
-|---|---|
-| RTL `scrollLeft` model | Old Chromium model: starts at the maximum (800) and runs down to 0. `src/utils/direction.ts` handles it |
-| `CSS.supports('gap', …)` | `true`, which in Chromium 69 means grid gap only; flex `gap` still needs `engine-quirks.ts` to measure it |
-| `:focus-visible` | Not supported (invalid selector) |
-| `inert` | Not supported |
-| `backdrop-filter` | Not supported |
-| `IntersectionObserver`, `ResizeObserver`, `fetch`, `VTTCue` | Present |
-| IndexedDB quota (`navigator.storage.estimate`) | About 92 MB |
-| `tizen.alarm`, `tizen.tvinputdevice`, `webapis.avplay`, `webapis.appcommon` | Present |
+| Check | 2020 TV | 2025 TV |
+|---|---|---|
+| RTL `scrollLeft` model | Old Chromium model: starts at the maximum (800) and runs down to 0. `src/utils/direction.ts` handles it | Spec model: 0 down to negative. `src/utils/direction.ts` handles it |
+| `CSS.supports('gap', …)` | `true`, which in Chromium 69 means grid gap only; flex `gap` still needs `engine-quirks.ts` to measure it | `true` |
+| `:focus-visible` | Not supported (invalid selector) | Supported |
+| `inert` | Not supported | not checked |
+| `backdrop-filter` | Not supported | not checked |
+| `IntersectionObserver`, `ResizeObserver`, `fetch`, `VTTCue` | Present | not checked |
+| IndexedDB quota (`navigator.storage.estimate`) | About 92 MB | About 84 MB |
+| `tizen.alarm`, `tizen.tvinputdevice`, `webapis.avplay`, `webapis.appcommon` | Present | `tizen.alarm`, `webapis.avplay` present; the app uses the rest |
 
 Every unsupported feature already has a fallback for webOS 4, so Tizen
 5.5 adds no new legacy work.
@@ -337,17 +376,27 @@ privacy policy inside the app: the Tizen build asks **Your privacy** before a fi
 added (`platform.privacyConsent`, `src/components/privacy-notice.ts`), and every build shows
 the policy in **Settings › Data Management**.
 
-| Check | 2020 TV |
-|---|---|
-| Notification / toast API | **None**: `tizen.notification` is undefined, and no `webapis` module offers one |
-| `tizen.alarm` | Present; not used, since reminders are in-app only (plan D5) |
-| Web service (`<tizen:service>`) | Starts from the app through `launchAppControl` with the `service` operation |
-| Web service Node.js | **v4.4.3** (V8 4.5, OpenSSL 1.0.2), `arm` |
-| Web service LAN bind | `listen(8099, '0.0.0.0')` works, and a computer on the LAN gets a reply |
-| Screensaver | The app switches it off through `webapis.appcommon.setScreenSaver` while a video plays, and back on when it pauses, ends, or stops (`platform.media.keepAwake`). `webapis.js` loads in the app, and both states succeed |
+| Check | 2020 TV | 2025 TV |
+|---|---|---|
+| Notification / toast API | **None**: `tizen.notification` is undefined, and no `webapis` module offers one | None |
+| `tizen.alarm` | Present; not used, since reminders are in-app only (plan D5) | Present |
+| Web service (`<tizen:service>`) | Starts from the app through `launchAppControl` with the `service` operation | Starts the same way |
+| Web service Node.js | **v4.4.3** (V8 4.5, OpenSSL 1.0.2), `arm` | **v18.18.2**, `arm` |
+| Web service LAN bind | `listen(8099, '0.0.0.0')` works, and a computer on the LAN gets a reply | Works: a computer on the LAN gets a reply on 8099 |
+| Screensaver | The app switches it off through `webapis.appcommon.setScreenSaver` while a video plays, and back on when it pauses, ends, or stops (`platform.media.keepAwake`). `webapis.js` loads in the app, and both states succeed | not checked |
 
 The bundled service runs there as Pleione's own web service: phone setup
-works on 5.5 (`docs/lan-service.md`). Node 4.4.3 inherits `Buffer.from` from
+works on 5.5 (`docs/lan-service.md`).
+
+On the 2025 TV, a message from the app that carries a reply port never
+reaches the service: Samsung's service runner throws `NotFoundError: The
+port of the target application is not found` while resolving that port,
+and drops the message, so phone setup could not start
+(`event=lan.start.failed reason=unreachable`). Without a reply port the
+message arrives. So the app names itself in a `from` field, and the
+service replies through a trusted port it opens to that app
+(`bundled-service/src/tizen.ts`); trusted ports keep both directions to
+this certificate. The setup page then answers from the LAN. Node 4.4.3 inherits `Buffer.from` from
 `Uint8Array.from`, which throws on a string with an encoding; `compat.ts`
 takes the constructor there.
 
@@ -370,5 +419,7 @@ takes the constructor there.
 ## Still open
 
 For the 2020 TV, only the Exit key (15): its remote has none. Alarms (8)
-were dropped with plan D5. The second TV needs the whole set: follow
-"Testing a new Samsung TV" above.
+were dropped with plan D5. For the 2025 TV: the hands-on checks in
+Pleione (steps 4 and 5 of "Testing a new Samsung TV"), including how
+AVPlay's picture looks full screen and in the Live preview, CEA-608, DRM
+in the app, fonts, and the Exit key (its remote has none either).

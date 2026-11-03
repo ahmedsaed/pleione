@@ -24,6 +24,7 @@ interface ShakaVariantTrack {
   channelsCount: number | null;
   frameRate: number | null;
   hdr: string | null;
+  height?: number | null;
   videoCodec: string | null;
   spatialAudio?: boolean;
 }

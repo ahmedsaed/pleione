@@ -92,6 +92,7 @@ interface ShakaNamespace extends ShakaNamespaceLike {
         BAD_HTTP_STATUS?: number;
         LICENSE_REQUEST_FAILED?: number;
         LICENSE_RESPONSE_REJECTED?: number;
+        VIDEO_ERROR?: number;
       };
     };
   };
@@ -136,6 +137,11 @@ export class PlayerPipeline {
   private hls: InstanceType<HlsType> | null = null;
   private mpegtsPlayer: { destroy(): void } | null = null;
   private engine: MseEngine | null = null;
+  // Per stream, the tallest variant left after the TV failed to decode a
+  // taller one; Shaka's own capability checks pass variants a TV then
+  // cannot play (docs/tizen.md).
+  private readonly variantCaps = new Map<string, number>();
+  private shakaVariants: { url: string; active: number; heights: number[] } | null = null;
   private engineTeardown: { promise: Promise<void>; label: string } | null = null;
   private msePending = false;
   private loadToken = 0;
@@ -195,6 +201,7 @@ export class PlayerPipeline {
     if (!videoEl) return;
     const token = ++this.loadToken;
     const label = this.callbacks.playbackLabel(token);
+    this.shakaVariants = null;
     this.cancelManifest();
     this.destroyLoaders();
     this.videoLoadLabels.set(videoEl, label);
@@ -699,6 +706,33 @@ export class PlayerPipeline {
     }
   }
 
+  /**
+   * The TV failed to decode the playing stream. When Shaka plays it and a
+   * shorter variant exists, the next load of the stream leaves out the
+   * variant that failed, so a retry steps down instead of failing the same
+   * way.
+   */
+  noteDecodeError(): void {
+    const state = this.shakaVariants;
+    if (!state || !state.active) return;
+    const lower = state.heights.filter(height => height > 0 && height < state.active);
+    if (!lower.length) return;
+    const cap = Math.max(...lower);
+    if ((this.variantCaps.get(state.url) ?? Infinity) <= cap) return;
+    this.variantCaps.set(state.url, cap);
+    log.warn('Capping variants after a decode error', 'event=playback.dash.variant.capped',
+      this.callbacks.playbackLabel(this.loadToken), `failedHeight=${state.active}`, `maxHeight=${cap}`);
+  }
+
+  private rememberVariants(url: string, player: ShakaPlayerLike): void {
+    const tracks = player.getVariantTracks();
+    this.shakaVariants = {
+      url,
+      active: tracks.find(track => track.active)?.height ?? 0,
+      heights: tracks.map(track => track.height ?? 0),
+    };
+  }
+
   private loadWithShaka(
     url: string,
     loadToken: number,
@@ -721,6 +755,8 @@ export class PlayerPipeline {
       const config: Record<string, unknown> = {
         streaming: { bufferingGoal: CONFIG.PLAYER.BUFFER_LENGTH },
       };
+      const cap = this.variantCaps.get(url);
+      if (cap !== undefined) config.restrictions = { maxHeight: cap };
       if (drm) {
         const keySystem = drm.type === 'clearkey' ? 'org.w3.clearkey'
           : drm.type === 'playready' ? 'com.microsoft.playready' : 'com.widevine.alpha';
@@ -764,6 +800,7 @@ export class PlayerPipeline {
       }
       const notifyAudioTracks = (event: Event) => {
         if (loadToken === this.loadToken && this.engine === engine) {
+          this.rememberVariants(url, player);
           const info = engine.streamInfo();
           log.info('Shaka variant changed', 'event=playback.dash.variant.changed',
             label, `reason=${event.type}`,
@@ -804,6 +841,10 @@ export class PlayerPipeline {
         const error = (event as CustomEvent<ShakaError>).detail;
         log.warn('Shaka error', 'event=playback.dash.error',
           this.callbacks.playbackLabel(loadToken), shakaErrorDetail(error));
+        if (error?.code === (shaka.util.Error.Code?.VIDEO_ERROR ?? 3016)
+            && loadToken === this.loadToken) {
+          this.noteDecodeError();
+        }
         if (error?.severity === shaka.util.Error.Severity.CRITICAL) {
           reportCriticalError(error);
         }

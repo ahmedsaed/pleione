@@ -20,6 +20,15 @@ TIZEN_TV=<tv-ip> scripts/tizen.sh probe 20     # the device checks; then press k
 The TV's Developer Mode must name this computer as its Host PC IP (Apps,
 then **1 2 3 4 5**).
 
+### The store package
+
+`node esbuild.config.mjs --platform=tizen --store` builds `dist-tizen-store/`
+(`TIZEN_STORE=1 scripts/tizen.sh install` puts it on a TV): the same app
+without the LAN web service, since Seller Office's pre-test takes a
+`<tizen:service>` only from Partner sellers. The app finds the service
+missing (`tizen.application.getAppInfo` throws) and hides phone setup. CI
+releases it as `_tizen_store.wgt`, beside the sideload `_tizen.wgt`.
+
 ### Certificates
 
 Every `.wgt` carries two signatures:

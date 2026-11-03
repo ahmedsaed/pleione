@@ -81,9 +81,13 @@ jobs:
       - name: Bundle
         run: node esbuild.config.mjs
 
-      # The Samsung bundle (docs/tizen.md), packaged into the .wgt below.
+      # The Samsung bundles (docs/tizen.md), packaged into the .wgt files
+      # below: the sideload one, and the store one without the LAN web
+      # service, which Seller Office takes only from Partner sellers.
       - name: Bundle for Tizen
-        run: node esbuild.config.mjs --platform=tizen
+        run: |
+          node esbuild.config.mjs --platform=tizen
+          node esbuild.config.mjs --platform=tizen --store
 
       # Signed with the project's author certificate when the repository has
       # it (secrets TIZEN_AUTHOR_P12: base64 of author.p12, and
@@ -101,7 +105,8 @@ jobs:
             echo "$TIZEN_AUTHOR_P12" | base64 -d > build/tizen-certs/author.p12
           fi
           docker run --rm -e TIZEN_AUTHOR_PASSWORD \
-            -v "$PWD/dist-tizen:/app:ro" -v "$PWD/build/tizen-certs:/certs:ro" -v "$PWD/build:/out" \
+            -v "$PWD/dist-tizen:/app:ro" -v "$PWD/dist-tizen-store:/store:ro" \
+            -v "$PWD/build/tizen-certs:/certs:ro" -v "$PWD/build:/out" \
             vitalets/tizen-webos-sdk@sha256:5107c8a83fae3128d3b9aa2b499a221f1e0188ebb0fa3ad5be01e9ba2eaf33dc \
             bash -lc 'set -e
               # The CLI cannot store a new profile'"'"'s passwords without a desktop
@@ -112,11 +117,14 @@ jobs:
                 openssl pkcs12 -export -in /tmp/author.pem -out "$HOME/author.p12" -passout pass:developer
                 rm /tmp/author.pem
               fi
-              cp -r /app /tmp/app
-              tizen package -t wgt -s dev -o /tmp/out -- /tmp/app
-              cp /tmp/out/*.wgt /out/pleione.wgt'
+              for kind in app store; do
+                rm -rf /tmp/src /tmp/out && cp -r "/$kind" /tmp/src
+                tizen package -t wgt -s dev -o /tmp/out -- /tmp/src
+                cp /tmp/out/*.wgt "/out/pleione-$kind.wgt"
+              done'
           version=$(node -p "require('./package.json').version")
-          mv build/pleione.wgt "Pleione_${version}_tizen.wgt"
+          mv build/pleione-app.wgt "Pleione_${version}_tizen.wgt"
+          mv build/pleione-store.wgt "Pleione_${version}_tizen_store.wgt"
           rm -rf build/tizen-certs
 
       - name: Build service

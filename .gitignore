@@ -2,6 +2,7 @@ node_modules/
 dist/
 dist-720/
 dist-tizen/
+dist-tizen-store/
 *.ipk
 *.wgt
 tizen-probe-*.json

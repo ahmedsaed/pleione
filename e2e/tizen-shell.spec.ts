@@ -16,8 +16,9 @@ interface TizenRecord {
 }
 
 // The parts of window.tizen the app calls, recording what it asks for.
-async function stubTizen(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+// `store` is the store package, which carries no LAN web service.
+async function stubTizen(page: Page, { store = false } = {}): Promise<void> {
+  await page.addInitScript((storePackage: boolean) => {
     const record: TizenRecord = { registered: [], exits: 0, launches: [] };
     (window as unknown as { __tizen: TizenRecord }).__tizen = record;
     const supported = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -39,7 +40,12 @@ async function stubTizen(page: Page): Promise<void> {
       },
       ApplicationControl: function ApplicationControl() {},
     };
-  });
+    const application = (window as unknown as { tizen: { application: Record<string, unknown> } }).tizen.application;
+    application.getAppInfo = (id: string) => {
+      if (storePackage) throw Object.assign(new Error(`${id} not installed`), { name: 'NotFoundError' });
+      return { id };
+    };
+  }, store);
 }
 
 const tizenRecord = (page: Page) =>
@@ -107,4 +113,19 @@ test('the Guide key opens the Guide from Home', async ({ page }) => {
   await pressKeys(page, GUIDE);
   await expect(page.locator('#view-channels.live-guide-mode #live-guide .guide-cell').first()).toBeVisible();
   await expect(page.locator('#live-guide .focused')).toHaveCount(1);
+});
+
+test('the store package, without the LAN service, offers no phone setup and starts no service', async ({ page }) => {
+  await stubTizen(page, { store: true });
+  await page.goto('/');
+  await expect(page.locator('#view-home [data-add]')).toHaveCount(2);
+  await expect(page.locator('#view-home .home-setup')).toHaveCount(0);
+  await expect(page.locator('#view-home .focused')).toHaveCount(1);
+
+  await seedXtream(page);
+  await page.goto('/');
+  await enterTab(page, 'settings');
+  await expect(page.locator('#view-settings')).toBeVisible();
+  await expect(page.locator('#setup-info')).toHaveCount(0);
+  expect((await tizenRecord(page)).launches).toEqual([]);
 });

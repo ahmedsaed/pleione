@@ -29,6 +29,21 @@ describe('tizenConfigXml', () => {
     expect(xml).toContain('http://tizen.org/privilege/application.launch');
   });
 
+  it('declares every screen size, which Seller Office pre-testing requires', () => {
+    expect(tizenConfigXml('2.1.0')).toContain('<feature name="http://tizen.org/feature/screen.size.all"/>');
+    expect(tizenConfigXml('2.1.0', { service: false }))
+      .toContain('<feature name="http://tizen.org/feature/screen.size.all"/>');
+  });
+
+  it('leaves the LAN service and its privilege out of the store package', () => {
+    const xml = tizenConfigXml('2.1.0', { service: false });
+    expect(xml).not.toContain('<tizen:service');
+    expect(xml).not.toContain('http://tizen.org/feature/web.service');
+    expect(xml).not.toContain('http://tizen.org/privilege/application.launch');
+    expect(xml).toContain('http://tizen.org/privilege/internet');
+    expect(xml).toContain(`<tizen:application id="${TIZEN_APP_ID}" package="${TIZEN_PACKAGE_ID}"`);
+  });
+
   it('rejects a version Tizen cannot read', () => {
     expect(() => tizenConfigXml('2.1.0-beta')).toThrow(/x\.y\.z/);
   });

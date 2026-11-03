@@ -16,7 +16,10 @@ interface TizenHost {
       getSupportedKeys(): { name: string; code: number }[];
       registerKey(name: string): void;
     };
-    application: { getCurrentApplication(): { exit(): void } };
+    application: {
+      getCurrentApplication(): { exit(): void; appInfo?: { packageId?: string } };
+      getAppInfo?(id: string): unknown;
+    };
   };
   webapis?: {
     appcommon?: {
@@ -27,6 +30,23 @@ interface TizenHost {
 }
 
 let awake: boolean | null = null;
+let lanServicePresent: boolean | null = null;
+
+// The store package leaves the LAN web service out (scripts/tizen-config.mjs):
+// Seller Office takes a <tizen:service> only from Partner sellers.
+function hasLanService(): boolean {
+  if (lanServicePresent !== null) return lanServicePresent;
+  const app = host()?.application;
+  const packageId = app?.getCurrentApplication().appInfo?.packageId;
+  if (!app?.getAppInfo || !packageId) return true;
+  try {
+    app.getAppInfo(`${packageId}.${TIZEN_LAN_SERVICE}`);
+    lanServicePresent = true;
+  } catch {
+    lanServicePresent = false;
+  }
+  return lanServicePresent;
+}
 let awakeFailureLogged = false;
 
 // Keys a Tizen app receives only after registering them. Arrows, OK and
@@ -78,11 +98,14 @@ export const tizen: Platform = {
     log().info('Closing the app', 'event=app.exit', 'method=tizen');
     host()?.application.getCurrentApplication().exit();
   },
-  // The LAN service runs as this package's web service (config.xml).
-  lanSetup: true,
+  // The LAN service runs as this package's web service (config.xml), which
+  // the store package leaves out.
+  get lanSetup(): boolean {
+    return hasLanService();
+  },
   lanTransport(): LanTransport | null {
     const api = host();
-    if (!api) return null;
+    if (!api || !hasLanService()) return null;
     if (!transport) transport = createTizenLanTransport(api as unknown as Parameters<typeof createTizenLanTransport>[0], TIZEN_LAN_SERVICE);
     return transport;
   },

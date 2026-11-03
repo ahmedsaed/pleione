@@ -186,7 +186,7 @@ export class Home {
       <div class="home-view ${this.issue ? 'home-view-alert' : ''}" data-tint="${this.focusedCard() ?? 'live'}">
         ${this.glows()}
         ${this.header()}
-        ${this.issue ? this.alert(columns) : ''}
+        ${this.issue ? this.issueCard(columns) : ''}
         <div class="home-bento home-bento-cols-${String(columns)}" data-nav-container>
           ${this.card('live')}
           <div class="home-bento-side">
@@ -262,7 +262,7 @@ export class Home {
   }
 
   // The banner spans the bento's width, above it.
-  private alert(columns: number): Safe {
+  private issueCard(columns: number): Safe {
     const issue = this.issue!;
     const body = this.checking ? t('settings.checking')
       : t(issue.state === 'rejected' ? 'home.connectionRejected' : 'home.connectionUnreachable');

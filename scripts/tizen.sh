@@ -23,6 +23,7 @@
 # TIZEN_AUTHOR_PASSWORD, TIZEN_DISTRIBUTOR_PASSWORD   their passwords, for
 #                 profile, which asks for them when they are unset
 # TIZEN_HOST      this computer's LAN address for probe (default: the route to the TV)
+# TIZEN_STORE     set (to 1) to package the store build, without the LAN web service
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -103,9 +104,13 @@ package() {
   npm run lint
   info "Building for Tizen..."
   npx tsc --noEmit
-  node esbuild.config.mjs --platform=tizen
+  if [ -n "$TIZEN_STORE" ]; then
+    node esbuild.config.mjs --platform=tizen --store
+  else
+    node esbuild.config.mjs --platform=tizen
+  fi
   info "Packaging $WGT with profile '$PROFILE'..."
-  package_dir dist-tizen "$WGT"
+  package_dir "$([ -n "$TIZEN_STORE" ] && echo dist-tizen-store || echo dist-tizen)" "$WGT"
   docker cp "$CONTAINER:/home/developer/out/$WGT" "$ROOT/$WGT"
   info "Wrote $WGT"
 }
@@ -263,5 +268,5 @@ case "${1:-}" in
   profile) profile "$2" ;;
   duid) duid ;;
   down) down ;;
-  *) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

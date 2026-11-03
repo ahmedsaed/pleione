@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://pleione.merope.dev/tizen-probe" version="1.0.0" viewmodes="maximized">
+  <tizen:application id="meropeProb.Probe" package="meropeProb" required_version="2.3"/>
+  <tizen:profile name="tv-samsung"/>
+  <content src="index.html"/>
+  <access origin="*" subdomains="true"/>
+  <name>Pleione Probe</name>
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/productinfo"/>
+  <feature name="http://tizen.org/feature/web.service"/>
+  <tizen:service id="meropeProb.Service" auto-restart="false" on-boot="false">
+    <tizen:content src="service.js"/>
+    <tizen:name>PleioneProbeService</tizen:name>
+    <tizen:description>Reports the web service runtime and LAN bind</tizen:description>
+    <tizen:metadata key="meta-key" value="meta-value"/>
+    <tizen:category name="http://tizen.org/category/service"/>
+  </tizen:service>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

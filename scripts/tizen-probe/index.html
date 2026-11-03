@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- scripts/tizen.sh probe writes the computer's LAN address here; the media
+     checks play from the demo Xtream server on it (npm run xtream:demo). -->
+<meta name="probe-host" content="__PROBE_HOST__">
+<title>Pleione Probe</title>
+<script src="$WEBAPIS/webapis/webapis.js"></script>
+<style>
+  html, body { margin: 0; background: #111; color: #eee; font: 22px sans-serif; width: 1920px; height: 1080px; overflow: hidden; }
+  #video { position: absolute; right: 40px; top: 40px; width: 800px; height: 450px; background: #000; }
+  #log { position: absolute; left: 40px; top: 40px; width: 1000px; height: 1000px; overflow: hidden; white-space: pre-wrap; font-size: 18px; }
+  #look { position: absolute; right: 40px; top: 520px; width: 800px; font-size: 32px; }
+  #keys { position: absolute; right: 40px; top: 820px; width: 800px; font-size: 26px; color: #fc6; }
+  #rtl { direction: rtl; width: 200px; height: 40px; overflow: auto; white-space: nowrap; position: absolute; left: -9999px; }
+</style>
+</head>
+<body>
+<div id="log"></div>
+<video id="video"></video>
+<div id="look">
+  <div>Latin: Pleione 0123456789</div>
+  <div dir="rtl">عربي: القنوات المباشرة ١٢٣</div>
+  <div>Symbols: ↺ ★ ✓ ▶ ⏸</div>
+</div>
+<div id="keys">Press remote keys; each one is recorded.</div>
+<div id="rtl"><span style="display:inline-block;width:1000px">x</span></div>
+<script>
+// Device checks for the Samsung port (docs/tizen-port-plan.md, §11.2). Results
+// collect in window.__probe, which scripts/tizen-probe/collect.mjs reads over
+// DevTools. ES5 only: this runs on every Tizen engine.
+(function () {
+  var host = document.querySelector('meta[name="probe-host"]').getAttribute('content');
+  var MEDIA = 'http://' + host + ':8090';
+  var probe = window.__probe = { done: false, results: {}, keys: [] };
+  var logEl = document.getElementById('log');
+  function record(name, value) {
+    probe.results[name] = value;
+    logEl.textContent = (name + ': ' + JSON.stringify(value) + '\n' + logEl.textContent).slice(0, 5000);
+  }
+  function safe(fn) { try { return fn(); } catch (e) { return 'ERR ' + (e && e.message); } }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  // Resolves true once playback has moved on by a second, false after 15 s:
+  // a stream can load its metadata well before it plays.
+  function playing() {
+    var from = null;
+    var start = Date.now();
+    return new Promise(function (resolve) {
+      (function check() {
+        if (from === null && video.readyState >= 3) from = video.currentTime;
+        if (from !== null && video.currentTime > from + 1) { resolve(true); return; }
+        if (Date.now() - start > 15000) { resolve(false); return; }
+        setTimeout(check, 250);
+      })();
+    });
+  }
+
+  record('environment', {
+    userAgent: navigator.userAgent,
+    platformVersion: safe(function () { return tizen.systeminfo.getCapability('http://tizen.org/feature/platform.version'); }),
+    model: safe(function () { return webapis.productinfo.getModel(); }),
+    firmware: safe(function () { return webapis.productinfo.getFirmware(); }),
+    viewport: innerWidth + 'x' + innerHeight + ' @' + devicePixelRatio
+  });
+  record('apis', {
+    MediaSource: typeof MediaSource !== 'undefined',
+    eme: !!navigator.requestMediaKeySystemAccess,
+    VTTCue: typeof VTTCue !== 'undefined',
+    notification: typeof tizen !== 'undefined' && !!tizen.notification,
+    alarm: typeof tizen !== 'undefined' && !!tizen.alarm,
+    avplay: typeof webapis !== 'undefined' && !!webapis.avplay,
+    cssFlexGapSupportsQuery: CSS.supports('gap', '1px'),
+    focusVisible: safe(function () { document.querySelector(':focus-visible'); return true; }) === true
+  });
+  var types = ['application/vnd.apple.mpegurl', 'video/mp2t', 'video/mp4', 'application/dash+xml', 'video/x-matroska',
+    'video/mp4; codecs="hev1.1.6.L150.90"', 'audio/mp4; codecs="ec-3"'];
+  var cpt = {};
+  types.forEach(function (t) { cpt[t] = document.createElement('video').canPlayType(t); });
+  record('canPlayType', cpt);
+  var r = document.getElementById('rtl');
+  var start = r.scrollLeft; r.scrollLeft = -50; var neg = r.scrollLeft;
+  record('rtlScrollModel', start > 0 ? 'positive from max (old Chromium)' : (neg < 0 ? 'negative (spec)' : 'reverse'));
+  if (navigator.storage && navigator.storage.estimate) {
+    navigator.storage.estimate().then(function (e) { record('storageQuotaMB', Math.round(e.quota / 1e6)); });
+  }
+
+  var supported = safe(function () { return tizen.tvinputdevice.getSupportedKeys().map(function (k) { return k.name; }); });
+  record('supportedKeys', supported);
+  ['0','1','2','3','4','5','6','7','8','9','ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue',
+    'MediaPlay','MediaPause','MediaPlayPause','MediaStop','MediaRewind','MediaFastForward',
+    'ChannelUp','ChannelDown','Info','Guide'].forEach(function (k) {
+    safe(function () { tizen.tvinputdevice.registerKey(k); });
+  });
+  var keysEl = document.getElementById('keys');
+  document.addEventListener('keydown', function (e) {
+    probe.keys.push({ keyCode: e.keyCode, key: e.key });
+    keysEl.textContent = 'keyCode ' + e.keyCode + ' (' + e.key + ')';
+    if (e.keyCode === 10009) e.preventDefault();
+  });
+
+  var keySystems = ['com.widevine.alpha', 'com.microsoft.playready', 'org.w3.clearkey'];
+  var drm = {};
+  var config = [{ initDataTypes: ['cenc'], videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.42E01E"' }] }];
+  var drmDone = Promise.all(keySystems.map(function (ks) {
+    if (!navigator.requestMediaKeySystemAccess) { drm[ks] = 'no EME'; return null; }
+    return navigator.requestMediaKeySystemAccess(ks, config)
+      .then(function () { drm[ks] = 'available'; }, function (e) { drm[ks] = String(e.name || e); });
+  })).then(function () { record('drm', drm); });
+
+  // The web service: launched like Pleione would, then read from the LAN side.
+  var serviceDone = new Promise(function (resolve) {
+    try {
+      tizen.application.launchAppControl(
+        new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/service'), 'meropeProb.Service',
+        function () { resolve(); }, function (e) { record('webService', 'launch failed: ' + e.message); resolve(); });
+    } catch (e) { record('webService', 'launch threw: ' + e.message); resolve(); }
+  }).then(function () { return wait(1500); }).then(function () {
+    return fetch('http://127.0.0.1:8099/').then(function (res) { return res.json(); })
+      .then(function (info) { record('webService', info); }, function (e) { record('webService', 'unreachable: ' + e.message); });
+  });
+
+  var video = document.getElementById('video');
+  function describe() {
+    var at = video.audioTracks, a = [], s = [], i;
+    if (at) for (i = 0; i < at.length; i++) a.push({ lang: at[i].language, enabled: at[i].enabled });
+    for (i = 0; i < video.seekable.length; i++) s.push([Math.round(video.seekable.start(i)), Math.round(video.seekable.end(i))]);
+    return { size: video.videoWidth + 'x' + video.videoHeight, duration: video.duration, t: Math.round(video.currentTime),
+      seekable: s, audioTracks: at ? a : 'unsupported', textTracks: video.textTracks.length,
+      error: video.error ? video.error.code : null };
+  }
+  function play(name, url) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      function done(how) { if (!settled) { settled = true; resolve(how); } }
+      video.onloadedmetadata = function () { done('loaded'); };
+      video.onerror = function () { done('error'); };
+      setTimeout(function () { done('timeout'); }, 25000);
+      video.src = url;
+      video.play().catch(function () {});
+    }).then(function (how) {
+      if (how !== 'loaded') { record(name, { result: how, state: describe() }); return; }
+      return playing().then(function (moving) {
+        if (!moving) { record(name, { result: 'loads but does not play', state: describe() }); return; }
+        var before = video.currentTime;
+        var state = describe();
+        var switched = 'fewer than 2 audio tracks';
+        var at = video.audioTracks;
+        var step = Promise.resolve();
+        if (at && at.length > 1) {
+          at[1].enabled = true; at[0].enabled = false;
+          step = wait(1000).then(function () {
+            var after = video.currentTime;
+            return wait(5000).then(function () {
+              switched = { playsOn: video.currentTime > after + 2, secondTrackEnabled: at[1].enabled };
+            });
+          });
+        }
+        return step.then(function () { record(name, { result: 'plays', state: state, audioSwitch: switched }); });
+      });
+    });
+  }
+  function liveSeek() {
+    // Back 60 s inside the window, then to the live edge: the edge froze Tizen 5.5.
+    var s = video.seekable;
+    if (!s.length) { record('liveSeek', 'no seekable window'); return Promise.resolve(); }
+    video.currentTime = s.end(s.length - 1) - 60;
+    return wait(1500).then(playing).then(function (backPlays) {
+      video.currentTime = video.seekable.end(video.seekable.length - 1) - 3;
+      return wait(1500).then(playing).then(function (edgePlays) {
+        record('liveSeek', { back60Plays: backPlays, liveEdgePlays: edgePlays });
+      });
+    });
+  }
+
+  // Samsung's AVPlay on the same live stream: its window, its tracks, live
+  // seeking with jumpBackward/jumpForward (seekTo fails on live), and an
+  // audio switch. Runs after the <video> checks: one decoder serves both.
+  function avplay() {
+    var av = typeof webapis !== 'undefined' ? webapis.avplay : null;
+    if (!av) { record('avplay', 'not available'); return Promise.resolve(); }
+    var result = {};
+    var obj = document.createElement('object');
+    obj.type = 'application/avplayer';
+    obj.style.cssText = 'position:absolute;left:1080px;top:40px;width:800px;height:450px';
+    document.body.appendChild(obj);
+    video.style.display = 'none';
+    var now = function () { return av.getCurrentTime(); };
+    var jump = function (name, ms) {
+      return new Promise(function (resolve) {
+        try { av[name](ms, function () { resolve('ok'); }, function (e) { resolve('ERR ' + e); }); }
+        catch (e) { resolve('ERR ' + e.message); }
+      });
+    };
+    var moved = function (ms) { var from = now(); return wait(ms).then(function () { return now() > from + 2000; }); };
+    return new Promise(function (resolve, reject) {
+      av.open(MEDIA + '/live/demo/demo/1.m3u8');
+      av.setDisplayRect(1080, 40, 800, 450);
+      av.prepareAsync(resolve, reject);
+    }).then(function () {
+      av.play();
+      result.version = safe(function () { return av.getVersion(); });
+      return wait(5000).then(function () { return moved(2000); });
+    }).then(function (plays) {
+      result.plays = plays;
+      result.liveWindow = safe(function () { return av.getStreamingProperty('GET_LIVE_DURATION'); });
+      result.tracks = safe(function () {
+        return av.getTotalTrackInfo().map(function (t) { return t.type + ':' + (JSON.parse(t.extra_info).language || ''); });
+      });
+      return jump('jumpBackward', 60000);
+    }).then(function (back) {
+      result.jumpBack = back;
+      return moved(4000);
+    }).then(function (plays) {
+      result.backPlays = plays;
+      return jump('jumpForward', 50000);
+    }).then(function (forward) {
+      result.jumpForward = forward;
+      return moved(4000);
+    }).then(function (plays) {
+      result.forwardPlays = plays;
+      var audios = safe(function () { return av.getTotalTrackInfo().filter(function (t) { return t.type === 'AUDIO'; }); });
+      if (!Array.isArray(audios) || audios.length < 2) { result.audioSwitch = 'fewer than 2 audio tracks'; return null; }
+      av.setSelectTrack('AUDIO', audios[1].index);
+      return wait(4000).then(function () {
+        var current = safe(function () {
+          return av.getCurrentStreamInfo().filter(function (t) { return t.type === 'AUDIO'; }).map(function (t) { return t.index; });
+        });
+        result.audioSwitch = { switched: Array.isArray(current) && current[0] === audios[1].index };
+      });
+    }).catch(function (e) {
+      result.error = String(e && (e.name || e.message) || e);
+    }).then(function () {
+      safe(function () { av.stop(); av.close(); });
+      obj.remove();
+      video.style.display = '';
+      record('avplay', result);
+    });
+  }
+
+  Promise.all([drmDone, serviceDone])
+    .then(function () { return play('liveHls', MEDIA + '/live/demo/demo/1.m3u8'); })
+    .then(liveSeek)
+    .then(function () { return play('liveTs', MEDIA + '/live/demo/demo/2.ts'); })
+    .then(function () { return play('vodMp4', MEDIA + '/movie/demo/demo/10001.mp4'); })
+    .then(function () {
+      video.removeAttribute('src');
+      video.load();
+      return avplay();
+    })
+    .then(function () {
+      probe.done = true;
+      record('done', 'media checks finished; press keys, then read the results');
+    });
+})();
+</script>
+</body>
+</html>

@@ -5,6 +5,48 @@ What real Samsung TVs do, measured for the Tizen port
 measurement on a device, not a reading of the docs. Add a column when
 another TV is tested.
 
+## Develop on a Samsung TV
+
+`scripts/tizen.sh` builds, signs, installs, and debugs through a pinned
+Tizen CLI container; the `tizen-device` skill has the details.
+
+```bash
+TIZEN_TV=<tv-ip> scripts/tizen.sh install      # build, package, install, cold-start
+TIZEN_TV=<tv-ip> scripts/tizen.sh debug 9333   # DevTools on http://127.0.0.1:9333/json
+npm run xtream:demo                            # in another terminal: the probe's media
+TIZEN_TV=<tv-ip> scripts/tizen.sh probe 20     # the device checks; then press keys for 20 s
+```
+
+The TV's Developer Mode must name this computer as its Host PC IP (Apps,
+then **1 2 3 4 5**).
+
+### Certificates
+
+A Tizen 5.5–6.5 TV installs the image's sample certificate. Tizen 7 and
+later need a **Samsung** certificate: an author certificate (the app's
+identity, kept forever) and a distributor certificate that lists each TV's
+DUID. Samsung issues it only after a sign-in to a Samsung account in a
+browser, which the container cannot show, so make it on the computer once:
+
+1. Install the **Tizen** extension in VS Code, connect the TV
+   (`TIZEN_TV=<tv-ip> scripts/tizen.sh connect` makes it visible to sdb),
+   and open the extension's certificate manager.
+2. Create a **Samsung** certificate, TV profile: the author certificate
+   (name, password), then the distributor certificate with the connected
+   TV's DUID; add the other test TV's DUID too.
+3. Copy `author.p12` and `distributor.p12` to `~/.config/pleione/tizen-certs`
+   (outside the repository) and register them:
+
+   ```bash
+   TIZEN_CERTS=~/.config/pleione/tizen-certs TIZEN_AUTHOR_PASSWORD=... \
+     TIZEN_DISTRIBUTOR_PASSWORD=... TIZEN_TV=<tv-ip> scripts/tizen.sh profile samsung
+   TIZEN_PROFILE=samsung TIZEN_TV=<tv-ip> scripts/tizen.sh install
+   ```
+
+CI signs the release `.wgt` with the project's author certificate when the
+repository has the `TIZEN_AUTHOR_P12` (base64) and `TIZEN_AUTHOR_PASSWORD`
+secrets, and with the sample one otherwise.
+
 ## Test TVs
 
 | | 2020 TV | Current TV |
@@ -94,6 +136,22 @@ MP4, the audio picker works, and subtitles take the self-render path as
 on webOS. Live-stream detection must not rely on `duration === Infinity`,
 and catch-up/EPG alignment cannot use `getStartDate()` here. Live DVR
 stays off (above).
+
+### AVPlay (`webapis.avplay` 4.0) on the same live HLS
+
+| Check | AVPlay | Native `<video>` |
+|---|---|---|
+| Plays | Yes | Yes |
+| Live window | `GET_LIVE_DURATION` (e.g. 4000–304000 ms) | `seekable`, duration finite |
+| Track names | Audio tracks carry their language | Language only, no labels |
+| `seekTo` on live | Fails (`PLAYER_ERROR_SEEK_FAILED`) | Freezes at the edge |
+| `jumpBackward` 60 s / `jumpForward` to near the edge | Both play on | n/a |
+| Audio-track switch | Does not switch (stays on the first) | Switches |
+
+So on Tizen 5.5 AVPlay trades audio-track switching for live rewind. The
+plan's Stage B (an AVPlay backend) waits for the same checks on a Tizen 8+
+TV, where native audio switching is reported broken: `scripts/tizen.sh
+probe` runs them.
 
 ## DRM (Shaka 5.2.12 on MSE/EME)
 

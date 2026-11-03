@@ -6,6 +6,7 @@ import { seedXtream } from './fixtures/xtream';
 
 const RETURN = 10009;
 const LEFT = 37;
+const RIGHT = 39;
 const OK = 13;
 const GUIDE = 458;
 
@@ -16,8 +17,10 @@ interface TizenRecord {
 }
 
 // The parts of window.tizen the app calls, recording what it asks for.
-// `store` is the store package, which carries no LAN web service.
-async function stubTizen(page: Page, { store = false } = {}): Promise<void> {
+// `store` is the store package, which carries no LAN web service; `agreed`
+// is an earlier yes to the privacy notice.
+async function stubTizen(page: Page, { store = false, agreed = true } = {}): Promise<void> {
+  if (agreed) await page.addInitScript(() => localStorage.setItem('iptv_privacy_consent', 'true'));
   await page.addInitScript((storePackage: boolean) => {
     const record: TizenRecord = { registered: [], exits: 0, launches: [] };
     (window as unknown as { __tizen: TizenRecord }).__tizen = record;
@@ -60,6 +63,9 @@ test('boots in key mode and registers the remote keys, never Exit', async ({ pag
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('html')).toHaveClass(/keyboard-nav/);
   await expect(page.locator('#view-home .focused')).toHaveCount(1);
+  // Home's brand logo ships in the Samsung package too.
+  await expect.poll(() => page.locator('.home-logo').evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
   const { registered } = await tizenRecord(page);
   expect(registered).toEqual(expect.arrayContaining(['ColorF0Red', 'ChannelUp', 'ChannelDown', '0', '9']));
   expect(registered).not.toContain('Exit');
@@ -128,4 +134,28 @@ test('the store package, without the LAN service, offers no phone setup and star
   await expect(page.locator('#view-settings')).toBeVisible();
   await expect(page.locator('#setup-info')).toHaveCount(0);
   expect((await tizenRecord(page)).launches).toEqual([]);
+});
+
+test('a first launch asks for privacy consent before any source is added', async ({ page }) => {
+  await stubTizen(page, { store: true, agreed: false });
+  await page.goto('/');
+  const notice = prompt(page);
+  await expect(notice.locator('.confirmation-title')).toHaveText('Your privacy');
+  await expect(notice.locator('.focused')).toHaveAttribute('data-key', 'confirm');
+
+  // Not now: the welcome screen stays, and adding a source asks again.
+  await pressKeys(page, RIGHT, OK);
+  await expect(notice).toHaveCount(0);
+  await expect(page.locator('#view-home .focused')).toHaveAttribute('data-add', 'xtream');
+  await pressKeys(page, OK);
+  await expect(notice).toBeVisible();
+  await expect(page.locator('#view-settings')).toBeHidden();
+
+  // Agree: the account form opens, and the answer is kept.
+  await pressKeys(page, OK);
+  await expect(page.locator('#view-settings')).toBeVisible();
+  await expect(page.locator('#settings-privacy')).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('#view-home [data-add]')).toHaveCount(2);
+  await expect(prompt(page)).toHaveCount(0);
 });

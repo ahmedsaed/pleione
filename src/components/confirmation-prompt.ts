@@ -9,6 +9,10 @@ interface ConfirmationOptions {
   message?: string;
   confirmLabel: string;
   cancelLabel: string;
+  /** A destructive confirm (the default) is red; a primary one is the accent and takes focus first. */
+  confirmTone?: 'danger' | 'primary';
+  /** A modifier class on the dialog, for a longer message. */
+  dialogClass?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -37,7 +41,7 @@ export class ConfirmationPrompt {
       });
     }
     this.options = options;
-    this.focus = 'cancel';
+    this.focus = options.confirmTone === 'primary' ? 'confirm' : 'cancel';
     if (!this.el) {
       this.el = document.createElement('div');
       this.el.className = 'confirmation-prompt';
@@ -97,11 +101,11 @@ export class ConfirmationPrompt {
   private render(): void {
     if (!this.el || !this.options) return;
     morph(this.el, html`
-      <div class="confirmation-dialog">
+      <div class="confirmation-dialog ${this.options.dialogClass ?? ''}">
         <h2 class="confirmation-title">${this.options.title}</h2>
         ${this.options.message ? html`<p class="confirmation-message">${this.options.message}</p>` : ''}
         <div class="confirmation-buttons">
-          <button class="confirmation-btn danger" data-focusable
+          <button class="confirmation-btn ${this.options.confirmTone === 'primary' ? 'primary' : 'danger'}" data-focusable
                   data-key="confirm" data-confirm-action="confirm">${this.options.confirmLabel}</button>
           <button class="confirmation-btn" data-focusable
                   data-key="cancel" data-confirm-action="cancel">${this.options.cancelLabel}</button>

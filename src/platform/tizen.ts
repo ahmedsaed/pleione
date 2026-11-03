@@ -110,6 +110,8 @@ export const tizen: Platform = {
     return transport;
   },
   confirmExitAtHome: true,
+  // Samsung's privacy guide asks for consent before the app stores a source.
+  privacyConsent: true,
   // Reminders are in-app only on Tizen (docs/tizen-port-plan.md, D5), so
   // nothing launches the app with parameters.
   coldLaunchParams(): unknown {

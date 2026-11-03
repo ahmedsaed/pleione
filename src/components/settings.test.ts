@@ -1321,7 +1321,7 @@ describe('Settings Recently Watched clearing', () => {
   });
 
   it('places maintenance actions after history settings', () => {
-    const section = container.querySelector('#settings-data .settings-section')!;
+    const section = container.querySelector('#settings-data .settings-section:not(.settings-privacy)')!;
     const recent = section.querySelector('.settings-item--action')!;
     const maintenance = section.querySelector('.settings-maintenance')!;
     expect(recent.compareDocumentPosition(maintenance) & Node.DOCUMENT_POSITION_FOLLOWING)

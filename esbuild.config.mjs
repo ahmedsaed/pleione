@@ -117,6 +117,8 @@ if (platform === 'tizen') {
   outputIndexHtml = outputIndexHtml.replace(appScript, `<script src="$WEBAPIS/webapis/webapis.js"></script>\n  ${appScript}`);
   writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version, { service: !isStore }));
   cpSync('assets/icon130.png', `${OUT}/icon.png`);
+  // Home's brand logo (src/components/home.ts), which webOS packages carry too.
+  cpSync('assets/icon130.png', `${OUT}/largeIcon.png`);
   // The LAN setup service ships as the package's web service: the same ES5
   // build as webOS's, entered through bundled-service/src/tizen.ts.
   rmSync(`${OUT}/service`, { recursive: true, force: true });

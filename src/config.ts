@@ -1,6 +1,8 @@
 export const CONFIG = {
   APP_ID: __APP_ID__ as string,
   APP_NAME: 'Pleione',
+  // The full privacy policy, which Settings › Data Management links by QR code.
+  PRIVACY_URL: 'https://pleione.merope.dev/privacy/',
   VERSION: __APP_VERSION__ as string,
 
   STORAGE_PREFIX: 'iptv_',

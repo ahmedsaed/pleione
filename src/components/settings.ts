@@ -83,6 +83,7 @@ import {
   SOURCES_ICON,
 } from './icons';
 import { isBackKey } from '../navigation/keys';
+import { withPrivacyConsent } from './privacy-notice';
 
 const log = createLogger('Settings');
 
@@ -487,6 +488,32 @@ export type SourceTarget =
   | { kind: 'add-xtream' }
   | { kind: 'add-playlist' }
   | { kind: 'account'; accountId: string; state: 'rejected' | 'unreachable' };
+
+// The privacy policy in brief, with the full text a QR code away: Samsung's
+// privacy guide asks for it inside the app, and every platform shows it.
+function privacyPolicySection(): Safe {
+  const url = CONFIG.PRIVACY_URL;
+  return html`
+    <div class="settings-section settings-privacy" id="settings-privacy">
+      <h3 class="settings-section-title">${t('settings.privacyPolicy')}</h3>
+      <div class="settings-privacy-body">
+        <ul class="settings-privacy-points">
+          <li>${t('settings.privacyStored')}</li>
+          <li>${t('settings.privacyConnects', { name: CONFIG.APP_NAME })}</li>
+          <li>${t('settings.privacyNothingSent')}</li>
+          <li>${t('settings.privacyReset', { action: t('settings.resetApp') })}</li>
+        </ul>
+        <div class="settings-privacy-link">
+          <img class="settings-privacy-qr" alt="${t('settings.qrAlt', { url })}" src="${qrDataUrl(url)}">
+          <div class="settings-privacy-url">
+            <div class="settings-item-hint">${t('settings.privacyFullPolicy')}</div>
+            <div class="setup-url">${url.replace(/^https:\/\//, '').replace(/\/$/, '')}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 export class Settings {
   private container: HTMLElement;
@@ -1169,6 +1196,7 @@ export class Settings {
             </div>
 
             <div class="settings-category ${this.pageClass('data')}" id="settings-data" data-settings-category="data">
+              ${privacyPolicySection()}
               <div class="settings-section">
                 <h3 class="settings-section-title">${t('settings.dataManagement')}</h3>
                 <div class="settings-item settings-item--action">
@@ -1562,7 +1590,7 @@ export class Settings {
     if (el.classList.contains('settings-nav-item')) {
       this.showCategory(el.dataset.settingsTarget as SettingsCategory);
     } else if (el.id === 'add-playlist') {
-      this.addPlaylistEntry();
+      withPrivacyConsent(() => this.addPlaylistEntry());
     } else if (el.classList.contains('remove-playlist')) {
       this.authorizeSourceRemoval(this.sourceId(el), () => this.removePlaylistEntry(el));
     } else if (el.id === 'add-epg-source') {
@@ -1576,7 +1604,7 @@ export class Settings {
     } else if (el.classList.contains('epg-scope-option')) {
       this.toggleManualEpgScope(el);
     } else if (el.id === 'add-xtream') {
-      this.addXtreamEntry();
+      withPrivacyConsent(() => this.addXtreamEntry());
     } else if (el.classList.contains('remove-xtream')) {
       this.authorizeSourceRemoval(this.sourceId(el), () => this.removeXtreamEntry(el));
     } else if (el.classList.contains('check-xtream')) {

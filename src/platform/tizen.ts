@@ -97,6 +97,9 @@ export const tizen: Platform = {
     nativePipeline: () => true,
     // No Luna compositor; the native element neither shows nor exposes 608.
     nativeCaptionCompositor: () => false,
+    // No Luna DRM service; the TV's EME grants com.microsoft.playready,
+    // which Shaka drives (docs/tizen.md).
+    nativePlayReady: () => false,
     // The TV's screensaver also starts over a playing video, so the app holds
     // it off while one plays and hands it back on pause or stop.
     keepAwake(on: boolean): void {

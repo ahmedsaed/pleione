@@ -238,9 +238,21 @@ Shaka's own `isBrowserSupported()` is true.
 | Widevine, a public multi-DRM DASH test stream (one key) | Decodes and plays |
 | PlayReady, the same multi-DRM test stream | Decodes and plays |
 
-So PlayReady on Tizen can go through Shaka with the
+So PlayReady on Tizen goes through Shaka with the
 `com.microsoft.playready` key system, in place of webOS's Luna DRM
-service. Shaka 5 has no `setTextTrackVisibility`/`isTextTrackVisible`;
+service (`platform.media.nativePlayReady()`). In the app on the 2020 TV:
+
+| Check | 2020 TV |
+|---|---|
+| Widevine DASH (public test title) | Plays through Shaka |
+| PlayReady DASH (public test title), up to 960x428 | Plays through Shaka |
+| The same title's 1920x860 H.264 High variant | Does not start, under an SL150 or SL3000 license, in the app or a bare Shaka player; the app retries, then moves on |
+
+PlayReady `CustomData` has no EME equivalent, and PlayReady license
+headers are not passed on, as on webOS, so the app logs both as
+unsupported options.
+
+Shaka 5 has no `setTextTrackVisibility`/`isTextTrackVisible`;
 selecting a text track shows it.
 
 ## Input

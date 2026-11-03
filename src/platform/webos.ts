@@ -24,6 +24,7 @@ export const webos: Platform = {
     nativePipeline: isWebOS,
     // setSubtitleEnable is a Luna verb on the native pipeline.
     nativeCaptionCompositor: isWebOS,
+    nativePlayReady: () => true,
     // webOS keeps the screensaver off during video playback on its own.
     keepAwake(): void {},
   },

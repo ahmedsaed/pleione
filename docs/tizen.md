@@ -92,8 +92,20 @@ there and on the computer: `base64 -w0 author.p12` gives the secret.
 ### Testing a new Samsung TV
 
 What to do on a TV that has not been through the checks yet (the second
-test TV is one). Bring a computer with Docker and this repository onto the
-TV's network.
+test TV is one). Bring a computer with Docker, Node.js 22+, ffmpeg (for the
+demo media) and this repository onto the TV's network, plus the folder
+`~/.config/pleione/tizen-certs` and its password from the computer that made
+the certificates. They are not in the repository: copy them by USB or a
+password manager, never through git. Run `npm ci` once.
+
+On a Tizen 7+ TV (2023 on), make a distributor certificate for it before
+installing anything. In the Certificate Manager (Certificates, above),
+choose **Import an existing author key file** with `author.p12` and its
+password, never a new author key, then create a new distributor
+certificate listing the DUIDs of every test TV (this one from
+`scripts/tizen.sh duid`, run before `scripts/tizen.sh down`). Copy the new
+`distributor.p12` over the old one and register them again with
+`scripts/tizen.sh profile samsung`.
 
 1. **Developer Mode on the TV**: Apps, then **1 2 3 4 5** (the Smart
    Remote's **123** button gives digits), switch Developer mode on, enter
@@ -115,7 +127,15 @@ TV's network.
    in Search with the TV keyboard, Arabic, Return on Home (asks first), the
    Exit key (leaves at once), and phone setup from a phone (pair, add a
    playlist).
-5. **Record it**: add the TV as a column in "Test TVs" and the sections
+5. **The store package**, the build Samsung will certify:
+   `scripts/tizen.sh uninstall`, then
+   `TIZEN_STORE=1 TIZEN_PROFILE=samsung TIZEN_TV=<tv-ip> scripts/tizen.sh install`.
+   A first launch asks **Your privacy**; walk the pre-submission items in
+   `store/samsung/README.md` (Return and Exit, the Smart Remote table in
+   `store/samsung/ui-description.md`, hidden and resumed, the screensaver
+   during playback, no phone setup, Settings › Data Management's Privacy
+   Policy), with the demo account from Seller Office's test-account text.
+6. **Record it**: add the TV as a column in "Test TVs" and the sections
    below, from the probe's JSON.
 
 Two decisions wait on this TV's results:

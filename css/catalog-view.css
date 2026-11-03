@@ -56,11 +56,15 @@
   overflow: hidden;
   background-color: var(--bg-primary);
 }
+/* The art and the scrim over it are layers of their own: in one layer, a
+   TV's software rasterizer redrew the scrim and a poster's blur on every
+   focus move (~700 ms on a 2025 Samsung TV; ~170 ms as layers). */
 .catalog-hero-art {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background-size: cover;
   background-position: center 25%;
+  will-change: transform;
 }
 /* A poster stands in for a missing backdrop: blurred into a wash of its
    colors, and scaled so the blur's soft edges stay off screen. */
@@ -72,6 +76,7 @@
 .catalog-hero-scrim {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
+  will-change: transform;
   background:
     linear-gradient(90deg, rgb(var(--catalog-hero-scrim-rgb) / 0.95) 2%, rgb(var(--catalog-hero-scrim-rgb) / 0.5) 40%, transparent 72%),
     linear-gradient(0deg, var(--bg-primary) 2%, transparent 48%);
@@ -246,6 +251,9 @@ html[data-animation="reduced"] .catalog-tile { transition: transform var(--trans
   /* Chromium 53 has the prefixed mask, which is all this needs. */
   /* stylelint-disable-next-line plugin/no-unsupported-browser-features */
   -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  /* Its own layer, as on the browse hero: otherwise every focus move below
+     redraws the masked, blurred art (~375 ms on a 2025 Samsung TV; ~95 ms). */
+  will-change: transform;
 }
 .detail-art {
   position: absolute;

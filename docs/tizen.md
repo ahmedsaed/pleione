@@ -312,6 +312,11 @@ Every unsupported feature already has a fallback for webOS 4, so Tizen
 
 ## Platform services
 
+Samsung's privacy guide asks for consent before an app stores personal data, and for the
+privacy policy inside the app: the Tizen build asks **Your privacy** before a first source is
+added (`platform.privacyConsent`, `src/components/privacy-notice.ts`), and every build shows
+the policy in **Settings › Data Management**.
+
 | Check | 2020 TV |
 |---|---|
 | Notification / toast API | **None**: `tizen.notification` is undefined, and no `webapis` module offers one |

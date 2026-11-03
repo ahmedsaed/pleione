@@ -89,6 +89,14 @@ out section 8 and the phone setup panel of section 1: the store package has no p
 
 Use these in place of the LG text in the scenario:
 
+- **Privacy notice** (section 1). A first launch shows **Your privacy** over the welcome
+  screen: what the app keeps on the TV, why, for how long, and that a source can't be added
+  without agreeing. **Agree** (focused) continues; **Not now** keeps the welcome screen, and
+  **Add Xtream account** or **Add M3U playlist** asks again. The answer is kept until **Reset
+  App**.
+- **Privacy Policy** (section 7). **Settings › Data Management** opens on the policy in brief,
+  with a QR code and the address of the full text.
+
 - **The pointer.** Samsung remotes have none: every step uses the keys above, and the app starts
   with a selected item on screen.
 - **Back** in the scenario is **Return** on the Samsung remote.

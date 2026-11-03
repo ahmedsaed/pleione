@@ -268,6 +268,9 @@ in `docs/tizen.md`; use the `tizen-device` skill on a TV.
   handle both, and Return on Home must ask before exiting
   (`platform.confirmExitAtHome`).
 - **No notification API**: reminders fire in-app only.
+- **Privacy consent**: every new way to add a source goes through
+  `withPrivacyConsent()` (`src/components/privacy-notice.ts`), which
+  asks on Tizen before the first one (Samsung's privacy guide).
 - **The native player** reports a live stream's duration as finite and
   growing, so live DVR stays off; a seek to the live edge freezes it. It
   neither renders nor exposes CEA-608 (Shaka does), and `getStartDate()`

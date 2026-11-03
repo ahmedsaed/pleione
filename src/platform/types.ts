@@ -15,6 +15,11 @@ export interface LanTransport {
   subscribe(onEvent: (event: unknown) => void): () => void;
 }
 
+/** A stream the platform's own player plays behind the page. */
+export interface PlatformPlayback {
+  release(): void;
+}
+
 // What the app needs from the TV platform it was built for (`__PLATFORM__`).
 // Everything else in the app is platform-neutral.
 export interface Platform {
@@ -50,5 +55,11 @@ export interface Platform {
     nativePlayReady(): boolean;
     /** Hold off the TV's screensaver while a video plays (Samsung's is the app's to switch). */
     keepAwake(on: boolean): void;
+    /**
+     * Play `url` through the platform's own player (Samsung's AVPlay) behind
+     * `video`, which then reports that playback's state. Absent where there is
+     * none; null when it cannot start.
+     */
+    playPlatform?(video: HTMLVideoElement, url: string): PlatformPlayback | null;
   };
 }

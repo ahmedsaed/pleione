@@ -146,3 +146,106 @@ describe('PlayerPipeline on Tizen', () => {
     expect(configure).toHaveBeenLastCalledWith(expect.not.objectContaining({ restrictions: expect.anything() }));
   });
 });
+
+describe('PlayerPipeline on Tizen: raw MPEG-TS', () => {
+  async function setup() {
+    localStorage.clear();
+    const { tizen } = await import('../platform/tizen');
+    const release = vi.fn();
+    const playPlatform = vi.spyOn(tizen.media, 'playPlatform').mockReturnValue({ release });
+    const { PlayerPipeline } = await import('./player-pipeline');
+    const pipeline = new PlayerPipeline(callbacks());
+    const video = document.createElement('video');
+    vi.spyOn(video, 'play').mockResolvedValue();
+    vi.spyOn(video, 'load').mockImplementation(() => {});
+    pipeline.setVideoElement(video);
+    return { pipeline, video, playPlatform, release };
+  }
+
+  // What Tizen 9's <video> does with raw TS: it loads, knows the frame size,
+  // and decodes nothing.
+  function loadsWithoutFrames(video: HTMLVideoElement): void {
+    Object.defineProperty(video, 'readyState', { configurable: true, get: () => 4 });
+    Object.defineProperty(video, 'videoWidth', { configurable: true, get: () => 640 });
+    Object.defineProperty(video, 'paused', { configurable: true, get: () => false });
+  }
+
+  it('hands a TS stream the TV loads but never decodes to the TV\'s own player, and remembers it', async () => {
+    vi.useFakeTimers();
+    try {
+      const { pipeline, video, playPlatform } = await setup();
+      const lines: string[] = [];
+      vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => { lines.push(args.map(String).join(' ')); });
+
+      pipeline.load('http://host/live/1.ts', null);
+      expect(video.querySelector('source')?.type).toBe('video/mp2t');
+      loadsWithoutFrames(video);
+      await vi.advanceTimersByTimeAsync(6000);
+
+      expect(playPlatform).toHaveBeenCalledWith(video, 'http://host/live/1.ts');
+      expect(lines).toContainEqual(expect.stringMatching(/event=playback\.native_ts\.checked .*result=broken/));
+      expect(lines).toContainEqual(expect.stringMatching(/event=playback\.path\.platform .*reason=detected/));
+
+      playPlatform.mockClear();
+      pipeline.load('http://host/live/2.ts', null);
+      expect(playPlatform).toHaveBeenCalledWith(video, 'http://host/live/2.ts');
+      expect(lines).toContainEqual(expect.stringMatching(/event=playback\.path\.platform .*reason=remembered/));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps TS on the native element when it plays there', async () => {
+    vi.useFakeTimers();
+    try {
+      const { pipeline, video, playPlatform } = await setup();
+      pipeline.load('http://host/live/1.ts', null);
+      loadsWithoutFrames(video);
+      Object.defineProperty(video, 'currentTime', { configurable: true, get: () => 2 });
+      await vi.advanceTimersByTimeAsync(6000);
+
+      expect(playPlatform).not.toHaveBeenCalled();
+      pipeline.load('http://host/live/2.ts', null);
+      expect(video.querySelector('source')?.src).toBe('http://host/live/2.ts');
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(playPlatform).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reaches no verdict while the first TS stream is paused', async () => {
+    vi.useFakeTimers();
+    try {
+      const { pipeline, video, playPlatform } = await setup();
+      pipeline.load('http://host/live/1.ts', null);
+      loadsWithoutFrames(video);
+      Object.defineProperty(video, 'paused', { configurable: true, get: () => true });
+      await vi.advanceTimersByTimeAsync(10000);
+
+      expect(playPlatform).not.toHaveBeenCalled();
+      expect(localStorage.getItem('iptv_native_ts_playback')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('releases the TV\'s player when the next stream loads', async () => {
+    localStorage.setItem('iptv_native_ts_playback', JSON.stringify('broken'));
+    const { tizen } = await import('../platform/tizen');
+    const release = vi.fn();
+    vi.spyOn(tizen.media, 'playPlatform').mockReturnValue({ release });
+    const { PlayerPipeline } = await import('./player-pipeline');
+    const pipeline = new PlayerPipeline(callbacks());
+    const video = document.createElement('video');
+    vi.spyOn(video, 'play').mockResolvedValue();
+    vi.spyOn(video, 'load').mockImplementation(() => {});
+    pipeline.setVideoElement(video);
+
+    pipeline.load('http://host/live/1.ts', null);
+    pipeline.load('http://host/a.m3u8', null);
+
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(video.querySelector('source')?.type).toBe('application/vnd.apple.mpegurl');
+  });
+});

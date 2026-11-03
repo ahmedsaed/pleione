@@ -1,4 +1,5 @@
 import { createLogger } from '../utils/logger';
+import { playWithAvplay, type AvplayApi } from './tizen-avplay';
 import { createTizenLanTransport } from './tizen-lan';
 import type { LanTransport, Platform } from './types';
 
@@ -22,6 +23,7 @@ interface TizenHost {
     };
   };
   webapis?: {
+    avplay?: AvplayApi;
     appcommon?: {
       AppCommonScreenSaverState: { SCREEN_SAVER_OFF: number; SCREEN_SAVER_ON: number };
       setScreenSaver(state: number, ok?: () => void, fail?: (e: { name?: string }) => void): void;
@@ -144,6 +146,10 @@ export const tizen: Platform = {
       } catch (e) {
         fail(e as { name?: string });
       }
+    },
+    playPlatform(video: HTMLVideoElement, url: string) {
+      const av = (window as unknown as TizenHost).webapis?.avplay;
+      return av ? playWithAvplay(av, video, url) : null;
     },
     // Live DVR stays off: live HLS reports a finite duration here, which
     // dvrWindow() reads as not live, and native seeks to the live edge freeze

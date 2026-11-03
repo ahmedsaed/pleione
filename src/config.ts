@@ -107,6 +107,7 @@ export const CONFIG = {
     BUFFERING_FROZEN_MS: 1000,  // playing video whose clock stands this long shows the spinner
     STARTUP_POLL_MS: 500,       // startup watchdog: readyState/networkState poll interval
     STARTUP_TIMEOUT: 15000,     // ms a stream may load without a frame before it counts as failed
+    NATIVE_TS_FRAME_TIMEOUT: 4000, // ms a loaded TS stream may show no frame before the TV's own player takes it
     DVR_MIN_WINDOW: 10,         // live DVR: a seekable window must exceed this (s) to offer timeshift
     DVR_LIVE_EDGE: 10,          // within this many seconds of the window end counts as "at live"
     DVR_GO_LIVE_PAD: 3,         // Go-to-Live seeks to seekable.end minus this (s), avoiding a stall at the edge

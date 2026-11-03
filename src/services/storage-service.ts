@@ -810,6 +810,16 @@ export const StorageService = {
     set('xtream_output_formats', next);
   },
 
+  // Whether this TV's <video> decodes raw MPEG-TS; measured once on the first
+  // TS stream (Tizen 9 does not, docs/tizen.md).
+  getNativeTsPlayback(): 'ok' | 'broken' | null {
+    const value = get<unknown>('native_ts_playback', null);
+    return value === 'ok' || value === 'broken' ? value : null;
+  },
+  setNativeTsPlayback(value: 'ok' | 'broken'): void {
+    set('native_ts_playback', value);
+  },
+
   getLiveReconnectAttempts(): number {
     const attempts = get<unknown>(
       'live_reconnect_attempts',

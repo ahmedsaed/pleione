@@ -15,6 +15,8 @@ import { FetchTextError, fetchLimitedText } from '../utils/fetch-helper';
 import { getLenientLoaders } from '../utils/hls-stable-loader';
 import { createLogger } from '../utils/logger';
 import { platform } from '../platform';
+import type { PlatformPlayback } from '../platform/types';
+import { StorageService } from '../services/storage-service';
 import { parseClosedCaptions, parseSubtitleRenditions } from '../utils/subtitle-tracks';
 import { parseVariants, type StreamVariant } from '../utils/stream-info';
 import { mediaOptionSourceType } from '../utils/webos-media-option';
@@ -149,13 +151,18 @@ export class PlayerPipeline {
   private manifestSeq = 0;
   private manifestController: AbortController | null = null;
   private videoLoadLabels = new WeakMap<HTMLVideoElement, string>();
+  private platformPlayback: PlatformPlayback | null = null;
+  private tsCheckTimer: ReturnType<typeof setInterval> | null = null;
   private playReadyDrm = new PlayReadyDrm();
   private activeDrm = '';
 
   constructor(private callbacks: PlayerPipelineOptions) {}
 
   setVideoElement(videoEl: HTMLVideoElement): void {
-    if (this.videoEl !== videoEl) this.engineTeardown = null;
+    if (this.videoEl !== videoEl) {
+      this.engineTeardown = null;
+      this.releasePlatformPlayback();
+    }
     this.videoEl = videoEl;
   }
 
@@ -270,7 +277,7 @@ export class PlayerPipeline {
           this.callbacks.playbackLabel(token),
           'reason=direct', 'url=', safeUrl,
           '| native VOD | MIME', mime || '(sniffed)');
-        this.playNative(url, mime);
+        this.playNativeMime(url, mime);
         return;
       }
       if (isTsUrl || isFlvUrl || isHlsUrl || isDashUrl) {
@@ -442,6 +449,7 @@ export class PlayerPipeline {
       }
     }
     this.hls = null;
+    this.releasePlatformPlayback();
     if (this.mpegtsPlayer) {
       this.mpegtsPlayer.destroy();
       this.mpegtsPlayer = null;
@@ -503,7 +511,79 @@ export class PlayerPipeline {
       this.playNativeDash(url);
       return;
     }
+    if (mime === 'video/mp2t' && platform.media.playPlatform) {
+      this.playTs(url);
+      return;
+    }
     this.playNative(url, mime);
+  }
+
+  private playTs(url: string): void {
+    const token = this.loadToken;
+    const support = StorageService.getNativeTsPlayback();
+    if (support === 'broken' && this.playOnPlatform(url, token, 'remembered')) return;
+    this.playNative(url, 'video/mp2t');
+    if (support === null) this.checkNativeTs(url, token);
+  }
+
+  private playOnPlatform(url: string, token: number, reason: string): boolean {
+    const videoEl = this.videoEl;
+    if (!videoEl || !platform.media.playPlatform) return false;
+    const playback = platform.media.playPlatform(videoEl, url);
+    if (!playback) return false;
+    this.platformPlayback = playback;
+    log.info('Selected platform playback', 'event=playback.path.platform',
+      this.callbacks.playbackLabel(token), `reason=${reason}`);
+    return true;
+  }
+
+  // Tizen 9's <video> loads raw TS (a frame size, readyState 4) but decodes
+  // no frame (docs/tizen.md). The first TS stream settles it for this TV.
+  private checkNativeTs(url: string, token: number): void {
+    const videoEl = this.videoEl;
+    if (!videoEl) return;
+    const startedAt = Date.now();
+    let loadedAt = 0;
+    const settle = (result: 'ok' | 'broken', frames: number) => {
+      this.stopNativeTsCheck();
+      StorageService.setNativeTsPlayback(result);
+      log.info('Native TS playback checked', 'event=playback.native_ts.checked',
+        this.callbacks.playbackLabel(token), `result=${result}`, `frames=${frames}`,
+        `waitedMs=${Date.now() - startedAt}`);
+    };
+    this.tsCheckTimer = setInterval(() => {
+      if (token !== this.loadToken || videoEl !== this.videoEl) {
+        this.stopNativeTsCheck();
+        return;
+      }
+      const frames = videoEl.getVideoPlaybackQuality?.().totalVideoFrames ?? 0;
+      if (frames > 0 || videoEl.currentTime > 0.5) {
+        settle('ok', frames);
+      } else if (videoEl.paused) {
+        // A paused stream shows no frame on any TV; count only while it plays.
+        loadedAt = 0;
+      } else if (videoEl.readyState >= 2 && videoEl.videoWidth > 0) {
+        if (!loadedAt) loadedAt = Date.now();
+        else if (Date.now() - loadedAt >= CONFIG.PLAYER.NATIVE_TS_FRAME_TIMEOUT) {
+          settle('broken', frames);
+          this.playOnPlatform(url, token, 'detected');
+        }
+      } else if (Date.now() - startedAt >= CONFIG.PLAYER.STARTUP_TIMEOUT) {
+        // The stream never loaded, which says nothing about the TV.
+        this.stopNativeTsCheck();
+      }
+    }, CONFIG.PLAYER.STARTUP_POLL_MS);
+  }
+
+  private stopNativeTsCheck(): void {
+    if (this.tsCheckTimer !== null) clearInterval(this.tsCheckTimer);
+    this.tsCheckTimer = null;
+  }
+
+  private releasePlatformPlayback(): void {
+    this.stopNativeTsCheck();
+    this.platformPlayback?.release();
+    this.platformPlayback = null;
   }
 
   private playNativeDash(url: string, clientId = ''): void {

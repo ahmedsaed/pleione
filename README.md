@@ -4,6 +4,7 @@
   <p><strong>A free IPTV player for your own M3U playlists and Xtream accounts, made for the remote.</strong></p>
   <p>
   <a href="#supported-webos-versions"><img src="https://img.shields.io/badge/webOS-4%2B-e6007e?logo=webos&logoColor=white" alt="webOS 4+"></a>
+  <a href="#supported-samsung-tvs"><img src="https://img.shields.io/badge/Tizen-5.5%2B-1428a0?logo=samsung&logoColor=white" alt="Tizen 5.5+"></a>
   <a href="https://github.com/ahmedsaed/pleione/releases/latest"><img src="https://img.shields.io/github/v/release/ahmedsaed/pleione" alt="Latest release"></a>
   <a href="https://github.com/ahmedsaed/pleione/releases"><img src="https://img.shields.io/github/downloads/ahmedsaed/pleione/total" alt="GitHub downloads"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
@@ -11,10 +12,10 @@
   <p><a href="https://pleione.merope.dev/">Website</a> · <a href="https://pleione.merope.dev/setup/">Setup guide</a> · <a href="https://pleione.merope.dev/support/">Support</a> · <a href="https://pleione.merope.dev/privacy/">Privacy</a></p>
 </div>
 
-Pleione plays the IPTV service you already have on your LG webOS TV: live TV
-with a program guide and catch-up, movies and series, all laid out for the
-remote. It runs on **webOS 4.0 (2018) and newer**, with a preview for
-**Samsung TVs on Tizen 5.5 (2020) and newer**.
+Pleione plays the IPTV service you already have on your LG or Samsung TV:
+live TV with a program guide and catch-up, movies and series, all laid out
+for the remote. It runs on LG TVs with **webOS 4.0 (2018) and newer**, and
+on Samsung TVs from **2020 (Tizen 5.5) on**.
 
 Pleione does not include any channels, playlists, or content. You add a
 playlist or an account from a provider of your own, and you are responsible
@@ -105,18 +106,30 @@ Some things webOS does not allow, or that are out of scope, are listed in
   Channel:
   `https://raw.githubusercontent.com/ahmedsaed/pleione/pleione/homebrew-repository.json`
 
-- **Samsung TVs (preview)** — download the `_tizen.wgt` from
-  [Releases](https://github.com/ahmedsaed/pleione/releases/latest) and
-  install it with a tool that re-signs apps for your TV, or build and
-  install it yourself in Developer Mode (`scripts/tizen.sh`, see
-  [`docs/tizen.md`](docs/tizen.md)). Live rewind is not on Samsung yet,
-  and reminders appear only while Pleione is open.
+- **Samsung TVs** — coming to Samsung's app store, in the US first. Until
+  then, download the latest `_tizen.wgt` from
+  [Releases](https://github.com/ahmedsaed/pleione/releases/latest), switch
+  on the TV's Developer Mode (**Apps**, then **1 2 3 4 5**) with your
+  computer's IP address, and install it with `sdb` and `tizen` from
+  [Tizen Studio](https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/installing-tv-sdk.html):
+
+  ```bash
+  sdb connect <TV IP>
+  tizen install -n Pleione_<version>_tizen.wgt -t <device name from sdb devices>
+  ```
+
+  TVs from 2023 on (Tizen 7+) install only apps signed for that TV: sign
+  the `.wgt` with your own Samsung certificate first
+  ([`docs/tizen.md`](docs/tizen.md#certificates)). On Samsung, live TV does
+  not pause or rewind yet, and reminders appear only while Pleione is open.
 
 The [setup guide](https://pleione.merope.dev/setup/) walks through every
 step, adding your first account or playlist, and finding your way around
 with the remote.
 
-## Supported webOS versions
+## Supported TVs
+
+### Supported webOS versions
 
 The baseline is the Chromium 53 engine on webOS 4; every later release ships
 a newer Chromium, so the app is forward-compatible. Features only newer
@@ -135,15 +148,19 @@ engines support natively get feature-detected fallbacks on older ones.
 
 webOS 3.x and older are not supported.
 
-On Samsung, the preview targets Tizen 5.5 (2020, Chromium 69) and newer;
-older Tizen versions are above the same Chromium 53 baseline and may work,
-but are not tested.
+### Supported Samsung TVs
+
+The Samsung build targets Tizen 5.5 (2020 models, Chromium 69) and newer,
+tested on a 2020 TV. Older Tizen versions meet the same Chromium 53
+baseline and may work, but are not tested. What each Samsung TV showed is
+in [`docs/tizen.md`](docs/tizen.md).
 
 ## Development
 
 Pleione is vanilla TypeScript bundled with esbuild, plus a small bundled
 webOS service for phone setup. You need [Node.js](https://nodejs.org/) 22+,
-and the webOS CLI to package or install on a TV.
+the webOS CLI to package or install on an LG TV, and Docker for the Samsung
+build's Tizen CLI.
 
 ```bash
 npm install

@@ -307,6 +307,10 @@ export class Player {
       this.onPlaybackStateChanged();
     };
     onCurrent('pause', () => update('paused'));
+    // The screensaver stays off only while a frame is moving.
+    for (const type of ['pause', 'ended', 'emptied', 'error']) {
+      onCurrent(type, () => platform.media.keepAwake(false));
+    }
     onCurrent('volumechange', () => {
       if (this.liveSessionActive && !this.vod) this.rememberLiveAudio();
       update();
@@ -374,6 +378,7 @@ export class Player {
       if (!el.paused) this.userPaused = false;
     });
     onCurrent('playing', () => {
+      platform.media.keepAwake(true);
       this.startupPending = false;
       const recovered = this.errorRetryPending;
       if (recovered) {
@@ -489,6 +494,9 @@ export class Player {
     const old = this.videoEl;
     if (!old) return;
     this.userPaused = false;
+    // The old element's pause and emptied events arrive after the swap, when
+    // onCurrent no longer passes them on.
+    platform.media.keepAwake(false);
     old.pause();
     old.removeAttribute('src');
     old.innerHTML = '';
@@ -864,7 +872,7 @@ export class Player {
     if (this.vodFailed && action !== 'back' && action !== 'stop') return;
     if (this.tracks.handleAction(action)) return;
     if (this.upNextTimer) {
-      if (action === 'select' || action === 'play') this.playNextItem();
+      if (action === 'select' || action === 'play' || action === 'play_pause') this.playNextItem();
       else if (action === 'back' || action === 'stop') this.cancelNextItem();
       return;
     }
@@ -911,7 +919,11 @@ export class Player {
       case 'pause':
         if (this.videoEl && !this.videoEl.paused) this.pauseToggle();
         break;
+      case 'play_pause':
+        this.pauseToggle();
+        break;
       case 'yellow':
+      case 'info':
         this.showOSD();
         break;
       default:
@@ -1015,6 +1027,7 @@ export class Player {
     this.startupWatchdog.stop();
     this.tracks.stop();
     this.pipeline.destroy();
+    platform.media.keepAwake(false);
     if (this.videoEl) {
       this.videoEl.pause();
       this.videoEl.removeAttribute('src');
@@ -1371,6 +1384,8 @@ export class Player {
   private failLivePreview(): boolean {
     if (!this.livePreviewMode || !this.liveSessionActive) return false;
     this.stallWatchdog.stop();
+    // A stalled frame raises no media event to hand the screensaver back.
+    platform.media.keepAwake(false);
     this.livePlaybackStatus = 'error';
     this.onPlaybackStateChanged();
     return true;
@@ -1942,13 +1957,23 @@ export class Player {
         this.channelDown();
         break;
       case 'yellow':
+      case 'info':
         this.showOSD();
         break;
       case 'play':
         if (this.videoEl?.paused) this.pauseToggle();
         break;
       case 'pause':
-        if (this.videoEl && !this.videoEl.paused) this.pauseToggle();
+      case 'play_pause':
+        // As with OK, live TV pauses only where it can catch up again
+        // (catch-up, live DVR); elsewhere the key shows the controls.
+        if (this.isLiveDvr() || this.catchupInfo) {
+          if (action === 'play_pause' || (this.videoEl && !this.videoEl.paused)) this.pauseToggle();
+        } else if (action === 'play_pause' && this.videoEl?.paused) {
+          this.pauseToggle();
+        } else {
+          this.showOSD();
+        }
         break;
       case 'rewind':
         this.goToOldest();

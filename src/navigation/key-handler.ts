@@ -60,6 +60,8 @@ const ACTION_MAP: Record<number, Action> = {
 const INPUT_PASSTHROUGH_KEYS = new Set<number>([
   K.BACK, platform.keys.back, K.RED, K.GREEN, K.YELLOW, K.BLUE,
   K.CH_UP, K.CH_DOWN, K.PLAY, K.PAUSE, K.STOP, K.REWIND, K.FORWARD,
+  // The platform's own keys (Samsung's CH+/-, Play/Pause, Info, Guide).
+  ...Object.keys(platform.keys.actions).map(Number),
 ]);
 
 let activeHandler: ActionHandler | null = null;

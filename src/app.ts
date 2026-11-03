@@ -1962,7 +1962,8 @@ class App {
     const editingChannels = currentView === 'channels' && this.channelList.isEditing;
     // Red flips Live between the list and the Guide, and opens the Guide
     // from anywhere else.
-    if (action === 'red' && !editingChannels) {
+    // The Guide key opens the Guide as Red does, on remotes that have one.
+    if ((action === 'red' || action === 'guide') && !editingChannels) {
       const mode = this.livePending?.mode ?? this.liveMode;
       this.setLiveMode(currentView === 'channels' && mode === 'guide' ? 'list' : 'guide');
       return;
@@ -1978,8 +1979,10 @@ class App {
       this.togglePlayingFavorite();
       return;
     }
-    if (action === 'yellow' && currentView === 'player') {
-      this.player.showOSD();
+    // The player decides: over a failed movie or the Up Next countdown, it
+    // keeps the controls hidden.
+    if ((action === 'yellow' || action === 'info') && currentView === 'player') {
+      this.player.handleAction(action);
       return;
     }
 

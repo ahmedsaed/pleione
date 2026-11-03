@@ -25,6 +25,7 @@
     "build:720": "tsc --noEmit && node esbuild.config.mjs --resolution=720",
     "screenshots": "node scripts/generate-screenshots.mjs",
     "screenshots:store": "node scripts/generate-store-screenshots.mjs",
+    "store:samsung": "node scripts/generate-samsung-store.mjs",
     "xtream:demo": "node scripts/xtream-demo-server.mjs",
     "lint": "npm run lint:css && npm run lint:js",
     "lint:css": "stylelint \"css/**/*.css\"",

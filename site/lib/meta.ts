@@ -57,6 +57,6 @@ export function pageMeta({
   };
 }
 
-export const HOME_TITLE = 'Pleione — a free IPTV player for LG webOS TVs';
+export const HOME_TITLE = 'Pleione — a free IPTV player for LG and Samsung TVs';
 export const HOME_DESCRIPTION =
-  'Pleione plays your own IPTV provider on an LG TV: M3U playlists and Xtream accounts, a program guide with catch-up, movies and series. It ships no channels, and it has no analytics.';
+  'Pleione plays your own IPTV provider on an LG or Samsung TV: M3U playlists and Xtream accounts, a program guide with catch-up, movies and series. It ships no channels, and it has no analytics.';

@@ -1,7 +1,7 @@
 // The Samsung Tizen widget manifest (dist-tizen/config.xml), written by the
 // build. The package id is the app's permanent identity on Samsung TVs,
 // together with the author certificate: never change it once it ships.
-export const TIZEN_PACKAGE_ID = 'meropeDevs';
+export const TIZEN_PACKAGE_ID = 'PleioneMrp';
 export const TIZEN_APP_ID = `${TIZEN_PACKAGE_ID}.PleioneIPTV`;
 
 // The LAN setup service (bundled-service/src/tizen.ts), the package's web

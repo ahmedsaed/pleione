@@ -25,10 +25,10 @@ afterEach(() => {
 
 describe('tizen adapter', () => {
   it('registers the remote keys the TV supports, never Exit', () => {
-    const { api } = stubTizen(['ColorF0Red', 'ChannelUp', '1', 'Exit', 'MediaPlayPause']);
+    const { api } = stubTizen(['ColorF0Red', 'ChannelUp', '1', 'Exit', 'MediaPlayPause', 'Guide']);
     tizen.start();
     const names = api.tvinputdevice.registerKey.mock.calls.map(c => c[0]);
-    expect(names).toEqual(['1', 'ColorF0Red', 'ChannelUp']);
+    expect(names).toEqual(['1', 'ColorF0Red', 'ChannelUp', 'MediaPlayPause', 'Guide']);
   });
 
   it('logs the keys this TV does not offer', () => {
@@ -36,12 +36,15 @@ describe('tizen adapter', () => {
     const lines: string[] = [];
     vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => { lines.push(args.map(String).join(' ')); });
     tizen.start();
-    expect(lines).toContainEqual(expect.stringMatching(/event=platform\.keys\.missing count=20 keys=0,2,/));
+    expect(lines).toContainEqual(expect.stringMatching(/event=platform\.keys\.missing count=23 keys=0,2,/));
   });
 
   it('maps Return and CH+/- to the shared actions', () => {
     expect(tizen.keys.back).toBe(10009);
-    expect(tizen.keys.actions).toEqual({ 10009: 'back', 427: 'channel_up', 428: 'channel_down' });
+    expect(tizen.keys.actions).toEqual({
+      10009: 'back', 427: 'channel_up', 428: 'channel_down',
+      10252: 'play_pause', 457: 'info', 458: 'guide',
+    });
   });
 
   it('exits through the current application and asks first at Home', () => {
@@ -49,6 +52,33 @@ describe('tizen adapter', () => {
     expect(tizen.confirmExitAtHome).toBe(true);
     tizen.exit();
     expect(app.exit).toHaveBeenCalledOnce();
+  });
+
+  it('switches the screensaver off while playing, once per change, and back on', () => {
+    const setScreenSaver = vi.fn();
+    (window as Host & { webapis?: unknown }).webapis = {
+      appcommon: { AppCommonScreenSaverState: { SCREEN_SAVER_OFF: 0, SCREEN_SAVER_ON: 1 }, setScreenSaver },
+    };
+    tizen.media.keepAwake(true);
+    tizen.media.keepAwake(true);
+    tizen.media.keepAwake(false);
+    expect(setScreenSaver.mock.calls.map(c => c[0])).toEqual([0, 1]);
+    delete (window as Host & { webapis?: unknown }).webapis;
+  });
+
+  it('logs a failed screensaver switch and tries again on the next change', () => {
+    const setScreenSaver = vi.fn((_s: number, _ok?: () => void, fail?: (e: { name: string }) => void) =>
+      fail?.({ name: 'SecurityError' }));
+    (window as Host & { webapis?: unknown }).webapis = {
+      appcommon: { AppCommonScreenSaverState: { SCREEN_SAVER_OFF: 0, SCREEN_SAVER_ON: 1 }, setScreenSaver },
+    };
+    const lines: string[] = [];
+    vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => { lines.push(args.map(String).join(' ')); });
+    tizen.media.keepAwake(true);
+    tizen.media.keepAwake(true);
+    expect(setScreenSaver).toHaveBeenCalledTimes(2);
+    expect(lines.filter(l => l.includes('event=platform.screensaver.failed error=SecurityError'))).toHaveLength(1);
+    delete (window as Host & { webapis?: unknown }).webapis;
   });
 
   it('plays natively and has no caption compositor', () => {

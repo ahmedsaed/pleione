@@ -11,16 +11,17 @@
 #   scripts/tizen.sh debug [local-port]  # cold-start in debug mode; DevTools on localhost
 #   scripts/tizen.sh uninstall           # remove Pleione from the TV
 #   scripts/tizen.sh probe [key-seconds] # run the device checks (needs npm run xtream:demo)
-#   scripts/tizen.sh profile <name>      # register $TIZEN_CERTS/author.p12 + distributor.p12
+#   scripts/tizen.sh profile <name>      # register $TIZEN_CERTS/author.p12 (+ distributor.p12)
 #   scripts/tizen.sh duid                # the TV's DUID, for a Samsung distributor certificate
 #   scripts/tizen.sh down                # stop and remove the container
 #
 # TIZEN_TV        the TV's IP address (required for everything that talks to it)
 # TIZEN_PROFILE   the signing profile in the container (default: dev, the
 #                 image's sample certificate, enough for Tizen 5.5 Developer Mode)
-# TIZEN_CERTS     a folder with author.p12 and distributor.p12 (a Samsung
-#                 certificate), mounted read-only into the container at /certs
-# TIZEN_AUTHOR_PASSWORD, TIZEN_DISTRIBUTOR_PASSWORD   their passwords, for profile
+# TIZEN_CERTS     a folder with author.p12 and, optionally, a Samsung
+#                 distributor.p12, mounted read-only into the container at /certs
+# TIZEN_AUTHOR_PASSWORD, TIZEN_DISTRIBUTOR_PASSWORD   their passwords, for
+#                 profile, which asks for them when they are unset
 # TIZEN_HOST      this computer's LAN address for probe (default: the route to the TV)
 set -e
 
@@ -199,9 +200,17 @@ probe() {
 
 profile() {
   local name="${1:?usage: scripts/tizen.sh profile <name>}"
-  [ -n "$TIZEN_CERTS" ] || error "Set TIZEN_CERTS to the folder with author.p12 and distributor.p12."
-  [ -n "$TIZEN_AUTHOR_PASSWORD" ] && [ -n "$TIZEN_DISTRIBUTOR_PASSWORD" ] \
-    || error "Set TIZEN_AUTHOR_PASSWORD and TIZEN_DISTRIBUTOR_PASSWORD."
+  [ -n "$TIZEN_CERTS" ] || error "Set TIZEN_CERTS to the folder with author.p12 (and distributor.p12)."
+  [ -f "$TIZEN_CERTS/author.p12" ] || error "No author.p12 in $TIZEN_CERTS."
+  if [ -z "$TIZEN_AUTHOR_PASSWORD" ]; then
+    read -rsp "author.p12 password: " TIZEN_AUTHOR_PASSWORD; echo >&2
+  fi
+  if [ -f "$TIZEN_CERTS/distributor.p12" ] && [ -z "$TIZEN_DISTRIBUTOR_PASSWORD" ]; then
+    read -rsp "distributor.p12 password (Enter if the same): " TIZEN_DISTRIBUTOR_PASSWORD; echo >&2
+    TIZEN_DISTRIBUTOR_PASSWORD="${TIZEN_DISTRIBUTOR_PASSWORD:-$TIZEN_AUTHOR_PASSWORD}"
+  fi
+  [ -n "$TIZEN_AUTHOR_PASSWORD" ] || error "No author.p12 password."
+  export TIZEN_AUTHOR_PASSWORD TIZEN_DISTRIBUTOR_PASSWORD
   [[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || error "A profile name takes letters, digits, - and _."
   up
   # `tizen security-profiles add` cannot store passwords without a desktop
@@ -214,14 +223,20 @@ profile() {
     mkdir -p "$dir"
     openssl pkcs12 -in /certs/author.p12 -passin env:TIZEN_AUTHOR_PASSWORD -nodes -out /tmp/a.pem
     openssl pkcs12 -export -in /tmp/a.pem -out "$dir/author.p12" -passout pass:developer
-    openssl pkcs12 -in /certs/distributor.p12 -passin env:TIZEN_DISTRIBUTOR_PASSWORD -nodes -out /tmp/d.pem
-    openssl pkcs12 -export -in /tmp/d.pem -out "$dir/distributor.p12" -passout pass:tizenpkcs12passfordsigner
-    rm -f /tmp/a.pem /tmp/d.pem
     xml="$HOME/tizen-studio-data/profile/profiles.xml"
-    enc() { sed -n "/<profile name=\"dev\">/,/<\/profile>/p" "$xml" | grep "distributor=\"$1\"" | sed "s/.*password=\"\([^\"]*\)\".*/\1/"; }
-    a=$(enc 0); d=$(enc 1)
+    item() { sed -n "/<profile name=\"dev\">/,/<\/profile>/p" "$xml" | grep "distributor=\"$1\"" | sed "s/.*$2=\"\([^\"]*\)\".*/\1/"; }
+    a=$(item 0 password); d=$(item 1 password)
+    # Without a Samsung distributor, the public one the sample profile uses:
+    # enough for Tizen 5.5-6.5 in Developer Mode.
+    dkey=$(item 1 key)
+    if [ -f /certs/distributor.p12 ]; then
+      openssl pkcs12 -in /certs/distributor.p12 -passin env:TIZEN_DISTRIBUTOR_PASSWORD -nodes -out /tmp/d.pem
+      openssl pkcs12 -export -in /tmp/d.pem -out "$dir/distributor.p12" -passout pass:tizenpkcs12passfordsigner
+      dkey="$dir/distributor.p12"
+    fi
+    rm -f /tmp/a.pem /tmp/d.pem
     sed -i "/<profile name=\"$NAME\">/,/<\/profile>/d" "$xml"
-    sed -i "s#</profiles>#<profile name=\"$NAME\">\n<profileitem ca=\"\" distributor=\"0\" key=\"$dir/author.p12\" password=\"$a\" rootca=\"\"/>\n<profileitem ca=\"\" distributor=\"1\" key=\"$dir/distributor.p12\" password=\"$d\" rootca=\"\"/>\n<profileitem ca=\"\" distributor=\"2\" key=\"\" password=\"\" rootca=\"\"/>\n</profile>\n</profiles>#" "$xml"
+    sed -i "s#</profiles>#<profile name=\"$NAME\">\n<profileitem ca=\"\" distributor=\"0\" key=\"$dir/author.p12\" password=\"$a\" rootca=\"\"/>\n<profileitem ca=\"\" distributor=\"1\" key=\"$dkey\" password=\"$d\" rootca=\"\"/>\n<profileitem ca=\"\" distributor=\"2\" key=\"\" password=\"\" rootca=\"\"/>\n</profile>\n</profiles>#" "$xml"
     tizen security-profiles list | grep -w "$NAME"'
   info "Use it with: TIZEN_PROFILE=$name scripts/tizen.sh install"
 }

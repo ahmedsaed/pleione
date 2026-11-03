@@ -64,6 +64,7 @@ import { StorageService } from '../services/storage-service';
 import { showToast } from './toast';
 import { probeMedia } from '../services/media-probe';
 import { CONFIG } from '../config';
+import { platform } from '../platform';
 import { channelKey, legacyChannelKey } from '../utils/channel';
 import { ParentalControlService } from '../services/parental-control';
 import { VodSubtitles } from '../services/vod-subtitles';
@@ -453,6 +454,17 @@ describe('Player catch-up seeking', () => {
     expect(video.paused).toBe(true); // paused (cursor cleared), not seeked to the stale pointer
   });
 
+  it('a single Play/Pause key toggles a movie, and Info shows the controls', () => {
+    player.handleAction('play_pause');
+    expect(video.paused).toBe(true);
+    player.handleAction('play_pause');
+    expect(video.paused).toBe(false);
+    player.hideOSD();
+    expect(container.querySelector('#player-osd')?.classList.contains('hidden')).toBe(true);
+    player.handleAction('info');
+    expect(container.querySelector('#player-osd')?.classList.contains('hidden')).toBe(false);
+  });
+
   it('Back drops a stale cursor, so OK resumes rather than seeking to it', () => {
     stubBar();
     player.handleAction('pause');
@@ -685,6 +697,48 @@ describe('Player catch-up completion', () => {
 });
 
 describe('Player live playback', () => {
+  it('hands the screensaver back when the element is swapped mid-play, whose events then go unheard', async () => {
+    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.pause = vi.fn();
+    HTMLMediaElement.prototype.load = vi.fn();
+    video = document.createElement('video');
+    container.appendChild(video);
+    player.init(video);
+    const keepAwake = vi.spyOn(platform.media, 'keepAwake');
+    player.play(0);
+    await flush();
+    video.dispatchEvent(new Event('playing'));
+    expect(keepAwake).toHaveBeenLastCalledWith(true);
+    (player as unknown as { recreateVideoEl(): void }).recreateVideoEl();
+    expect(keepAwake).toHaveBeenLastCalledWith(false);
+  });
+
+  it('hands the screensaver back when a stalled Live preview gives up', async () => {
+    const keepAwake = vi.spyOn(platform.media, 'keepAwake');
+    const internals = player as unknown as { livePreviewMode: boolean; liveSessionActive: boolean; failLivePreview(): boolean };
+    player.play(0);
+    await flush();
+    video.dispatchEvent(new Event('playing'));
+    internals.livePreviewMode = true;
+    internals.liveSessionActive = true;
+    expect(internals.failLivePreview()).toBe(true);
+    expect(keepAwake).toHaveBeenLastCalledWith(false);
+  });
+
+  it('holds off the screensaver while a frame moves, and hands it back on pause and stop', async () => {
+    const keepAwake = vi.spyOn(platform.media, 'keepAwake');
+    player.play(0);
+    await flush();
+    video.dispatchEvent(new Event('playing'));
+    expect(keepAwake).toHaveBeenLastCalledWith(true);
+    video.dispatchEvent(new Event('pause'));
+    expect(keepAwake).toHaveBeenLastCalledWith(false);
+    video.dispatchEvent(new Event('playing'));
+    player.stop();
+    video.dispatchEvent(new Event('emptied'));
+    expect(keepAwake).toHaveBeenLastCalledWith(false);
+  });
+
   it('lets Back stop playing live with the OSD up', () => {
     player.play(0);
     remoteKeys();
@@ -1024,6 +1078,30 @@ describe('Player live DVR', () => {
     expect(live.paused).toBe(true);
     player.handleAction('select'); // the controls now own OK: Play/Pause resumes
     expect(live.paused).toBe(false);
+  });
+
+  it('a live stream that cannot catch up again shows the controls on Pause, never pausing', () => {
+    const plain = fakeVideo(Infinity);
+    player.init(plain);
+    player.play(0);
+    player.hideOSD();
+    expect(player.isLiveDvr()).toBe(false);
+    player.handleAction('play_pause');
+    player.handleAction('pause');
+    expect(plain.paused).toBe(false);
+    expect(container.querySelector('#player-osd')?.classList.contains('hidden')).toBe(false);
+  });
+
+  it('a single Play/Pause key toggles live playback, and Info shows the controls', () => {
+    player.hideOSD();
+    player.handleAction('play_pause');
+    expect(live.paused).toBe(true);
+    player.handleAction('play_pause');
+    expect(live.paused).toBe(false);
+    player.hideOSD();
+    expect(container.querySelector('#player-osd')?.classList.contains('hidden')).toBe(true);
+    player.handleAction('info');
+    expect(container.querySelector('#player-osd')?.classList.contains('hidden')).toBe(false);
   });
 
   it('keeps a paused OSD current after Back hid it and OK showed it again', () => {
@@ -1396,6 +1474,32 @@ describe('Player VOD mode', () => {
     player.init(video);
     player.playVod(req());
     expect(player.canSeek()).toBe(true); // playVod shows the OSD
+  });
+
+  it('starts the next item on a single Play/Pause key during the Up Next countdown, as Play does', () => {
+    player.init(fakeVideo(3600));
+    player.playVod(req());
+    const internals = player as unknown as {
+      upNextTimer: ReturnType<typeof setInterval> | null;
+      playNextItem(): void;
+    };
+    const next = vi.spyOn(internals, 'playNextItem').mockImplementation(() => {});
+    internals.upNextTimer = 1 as unknown as ReturnType<typeof setInterval>;
+    player.handleAction('play_pause');
+    expect(next).toHaveBeenCalledOnce();
+    internals.upNextTimer = null;
+  });
+
+  it('keeps the controls hidden on Info and Yellow while Up Next counts down', () => {
+    player.init(fakeVideo(3600));
+    player.playVod(req());
+    player.hideOSD();
+    const internals = player as unknown as { upNextTimer: ReturnType<typeof setInterval> | null };
+    internals.upNextTimer = 1 as unknown as ReturnType<typeof setInterval>;
+    player.handleAction('info');
+    player.handleAction('yellow');
+    expect(container.querySelector('#player-osd')?.classList.contains('hidden')).toBe(true);
+    internals.upNextTimer = null;
   });
 
   it('lets Back hide the controls, playing or paused, unless the subtitle search or up-next owns them', () => {

@@ -1,5 +1,7 @@
 # LG Content Store listing
 
+The Samsung TV Seller Office listing is in [`samsung/`](samsung/README.md).
+
 Everything LG Seller Lounge asks for, kept next to the code so it changes in the same pull
 request as the app it describes.
 

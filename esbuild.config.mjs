@@ -104,6 +104,10 @@ if (isFhd) {
 if (platform === 'tizen') {
   // Samsung remotes have no pointer, so the app starts in key mode.
   outputIndexHtml = outputIndexHtml.replace('<html lang="en">', '<html lang="en" class="keyboard-nav">');
+  // Samsung's product APIs (webapis.appcommon for the screensaver).
+  const appScript = '<script src="js/app.js"></script>';
+  if (!outputIndexHtml.includes(appScript)) throw new Error('Build could not find the app script in index.html.');
+  outputIndexHtml = outputIndexHtml.replace(appScript, `<script src="$WEBAPIS/webapis/webapis.js"></script>\n  ${appScript}`);
   writeFileSync(`${OUT}/config.xml`, tizenConfigXml(version));
   cpSync('assets/icon130.png', `${OUT}/icon.png`);
   // The LAN setup service ships as the package's web service: the same ES5

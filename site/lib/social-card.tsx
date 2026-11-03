@@ -30,9 +30,9 @@ export const CARDS = {
   home: {
     title: 'Your TV, your',
     highlight: 'provider.',
-    subtitle: 'A free IPTV player for LG webOS TVs. M3U and Xtream, guide, catch-up, movies and series.',
+    subtitle: 'A free IPTV player for LG and Samsung TVs. M3U and Xtream, guide, catch-up, movies and series.',
     shots: ['movie-detail', 'home'],
-    alt: 'Pleione, a free IPTV player for LG webOS TVs, with two screens of the app.',
+    alt: 'Pleione, a free IPTV player for LG and Samsung TVs, with two screens of the app.',
   },
   privacy: {
     eyebrow: 'Privacy policy',
@@ -56,7 +56,7 @@ export const CARDS = {
     highlight: 'first channel.',
     subtitle: 'Install Pleione, add your M3U playlist or Xtream account, or set it up from your phone.',
     shots: ['settings', 'home'],
-    alt: 'Setting up Pleione on an LG TV.',
+    alt: 'Setting up Pleione on a TV.',
   },
   support: {
     eyebrow: 'Support',

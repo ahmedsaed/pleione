@@ -18,7 +18,16 @@ interface TizenHost {
     };
     application: { getCurrentApplication(): { exit(): void } };
   };
+  webapis?: {
+    appcommon?: {
+      AppCommonScreenSaverState: { SCREEN_SAVER_OFF: number; SCREEN_SAVER_ON: number };
+      setScreenSaver(state: number, ok?: () => void, fail?: (e: { name?: string }) => void): void;
+    };
+  };
 }
+
+let awake: boolean | null = null;
+let awakeFailureLogged = false;
 
 // Keys a Tizen app receives only after registering them. Arrows, OK and
 // Return always arrive. Exit and a long press of Return are never
@@ -27,7 +36,7 @@ const REGISTERED_KEYS = [
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
   'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue',
   'MediaPlay', 'MediaPause', 'MediaStop', 'MediaRewind', 'MediaFastForward',
-  'ChannelUp', 'ChannelDown',
+  'ChannelUp', 'ChannelDown', 'MediaPlayPause', 'Info', 'Guide',
 ];
 
 
@@ -56,10 +65,14 @@ export const tizen: Platform = {
     }
   },
   keys: {
-    // Return, CH+ and CH-. Literal keys keep this object free of side
+    // Return, CH+ and CH-, and the keys webOS remotes lack: Play/Pause as one
+    // key, Info, and Guide. Literal keys keep this object free of side
     // effects, so a webOS bundle can drop it.
     back: 10009,
-    actions: { 10009: 'back', 427: 'channel_up', 428: 'channel_down' },
+    actions: {
+      10009: 'back', 427: 'channel_up', 428: 'channel_down',
+      10252: 'play_pause', 457: 'info', 458: 'guide',
+    },
   },
   exit(): void {
     log().info('Closing the app', 'event=app.exit', 'method=tizen');
@@ -84,6 +97,26 @@ export const tizen: Platform = {
     nativePipeline: () => true,
     // No Luna compositor; the native element neither shows nor exposes 608.
     nativeCaptionCompositor: () => false,
+    // The TV's screensaver also starts over a playing video, so the app holds
+    // it off while one plays and hands it back on pause or stop.
+    keepAwake(on: boolean): void {
+      if (awake === on) return;
+      const appcommon = (window as unknown as TizenHost).webapis?.appcommon;
+      if (!appcommon) return;
+      awake = on;
+      const state = appcommon.AppCommonScreenSaverState;
+      const fail = (e: { name?: string }) => {
+        awake = null;
+        if (awakeFailureLogged) return;
+        awakeFailureLogged = true;
+        log().warn('Screensaver switch failed', 'event=platform.screensaver.failed', `error=${e?.name ?? 'unknown'}`);
+      };
+      try {
+        appcommon.setScreenSaver(on ? state.SCREEN_SAVER_OFF : state.SCREEN_SAVER_ON, undefined, fail);
+      } catch (e) {
+        fail(e as { name?: string });
+      }
+    },
     // Live DVR stays off: live HLS reports a finite duration here, which
     // dvrWindow() reads as not live, and native seeks to the live edge freeze
     // on Tizen 5.5 (docs/tizen.md). Timeshift waits for an MSE or AVPlay path.

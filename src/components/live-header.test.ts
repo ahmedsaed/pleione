@@ -84,6 +84,13 @@ describe('LiveHeader', () => {
     expect(handlers.onMode).toHaveBeenCalledWith('list');
   });
 
+  it('flips the mode with the Guide key, as with Red', () => {
+    header.attach(view, 'guide');
+    header.enter();
+    header.handleAction('guide');
+    expect(handlers.onMode).toHaveBeenCalledWith('list');
+  });
+
   it('offers editing only over the list', () => {
     header.attach(view, 'list');
     header.enter();

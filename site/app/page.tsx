@@ -16,7 +16,7 @@ const structuredData = {
   url: SITE_URL,
   image: `${SITE_URL}/og/home.png`,
   applicationCategory: 'MultimediaApplication',
-  operatingSystem: 'webOS',
+  operatingSystem: 'webOS, Tizen',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   license: 'https://www.apache.org/licenses/LICENSE-2.0',
   author: { '@type': 'Organization', name: 'Merope', url: 'https://merope.dev' },
@@ -88,7 +88,7 @@ export default function Home() {
         <div className="wrap">
           <div className="hero">
             <div>
-              <p className="eyebrow">IPTV player for LG webOS TVs</p>
+              <p className="eyebrow">IPTV player for LG and Samsung TVs</p>
               <h1>
                 Your provider, <em>on the big screen.</em>
               </h1>
@@ -105,7 +105,9 @@ export default function Home() {
                   Install it now
                 </Link>
               </div>
-              <p className="fineprint">For LG TVs with webOS 4.0 (2018) or newer.</p>
+              <p className="fineprint">
+                For LG TVs with webOS 4.0 (2018) or newer, and Samsung TVs from 2020 (Tizen 5.5) on.
+              </p>
             </div>
             <Screen
               name="home"
@@ -273,18 +275,26 @@ export default function Home() {
       <section id="get">
         <div className="wrap">
           <p className="eyebrow">Get Pleione</p>
-          <h2>Two ways onto your TV.</h2>
+          <h2>Three ways onto your TV.</h2>
           <div className="cards">
             <div className="card">
               <h3>LG Content Store</h3>
               <p>Coming soon. Search for Pleione in the store on your TV once it is listed.</p>
             </div>
             <div className="card">
-              <h3>Developer Mode</h3>
+              <h3>LG Developer Mode</h3>
               <p>
                 Sideload the <code>.ipk</code> from the <a href={RELEASES}>GitHub releases</a> with LG’s Developer Mode
                 app and a free LG developer account. Sessions must be renewed in that app, or the TV removes the app.{' '}
                 <Link href="/setup/#developer-mode">How</Link>
+              </p>
+            </div>
+            <div className="card">
+              <h3>Samsung TVs</h3>
+              <p>
+                Coming to Samsung’s app store, in the US first. Until then, sideload the <code>.wgt</code> from the{' '}
+                <a href={RELEASES}>GitHub releases</a> with the TV’s Developer Mode and Samsung’s Tizen tools.{' '}
+                <Link href="/setup/#samsung-tvs">How</Link>
               </p>
             </div>
           </div>

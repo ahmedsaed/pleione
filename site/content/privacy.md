@@ -99,12 +99,16 @@ keeps the program's title, channel and time so it can notify you even while the 
 For content locked by parental controls, the title and channel are left out. Removing a reminder,
 or resetting the app, cancels it with the TV's scheduler too.
 
+On Samsung TVs, reminders stay inside Pleione: nothing is handed to the TV's scheduler, and a
+reminder shows only while Pleione is open.
+
 ## Analytics and tracking
 
 None. Pleione contains no analytics, advertising, tracking, crash-reporting or remote-logging
 code, does not check for updates, and does not contact any server of Merope's. Its logs stay in
 the TV's developer console. It asks only for the standard webOS permissions to schedule
-reminders, launch the app, and play DRM-protected video.
+reminders, launch the app, and play DRM-protected video, and on Samsung TVs for internet access,
+the remote's keys, and starting its own phone-setup service.
 
 This website is static pages; it sets no cookies and runs no analytics either.
 

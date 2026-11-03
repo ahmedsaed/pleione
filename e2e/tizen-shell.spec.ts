@@ -7,6 +7,7 @@ import { seedXtream } from './fixtures/xtream';
 const RETURN = 10009;
 const LEFT = 37;
 const OK = 13;
+const GUIDE = 458;
 
 interface TizenRecord {
   registered: string[];
@@ -96,4 +97,14 @@ test('phone setup launches the package\'s LAN service, and says when it cannot',
   await enterTab(page, 'settings');
   await expect(page.locator('#view-settings')).toBeVisible();
   await expect(page.locator('#setup-info')).toContainText('currently unavailable');
+});
+
+test('the Guide key opens the Guide from Home', async ({ page }) => {
+  await stubTizen(page);
+  await seedXtream(page);
+  await page.goto('/');
+  await expect(page.locator('#view-home .focused')).toHaveCount(1);
+  await pressKeys(page, GUIDE);
+  await expect(page.locator('#view-channels.live-guide-mode #live-guide .guide-cell').first()).toBeVisible();
+  await expect(page.locator('#live-guide .focused')).toHaveCount(1);
 });

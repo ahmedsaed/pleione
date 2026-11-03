@@ -67,44 +67,112 @@ pause and rewind are off on Samsung's native player.
 IPTV, M3U, Xtream, EPG, live TV, catch-up, player
 ```
 
-## Service information
+## App images
 
-| Field | Value |
+The files in this folder (`README.md` has their sizes and limits):
+
+| Seller Office field | File |
 |---|---|
-| Service category | Videos |
-| Age rating | The questionnaire's lowest that fits an app with no content of its own |
-| Supported languages | English, Arabic, German, Spanish, French, Italian, Polish, Portuguese (Brazil), Russian, Turkish, Ukrainian, Chinese (Simplified) |
-| Privacy policy URL | https://pleione.merope.dev/privacy/ |
-| Seller type | Individual: no company registration number |
-| Seller name | Merope (the name shown on the listing) |
-| Representative, phone, mailing address | The individual seller's own, entered in Seller Office only |
-| Customer support email | the address in `site/content/privacy.md` |
-| Homepage URL | https://pleione.merope.dev |
-| Service country | United States (the only one open to a Public Seller) |
-| Billing | Free |
+| Icon 1920 × 1080: logo asset with transparency | `icon-logo-1920x1080.png` |
+| Icon 1920 × 1080: background image | `icon-background-1920x1080.jpg` |
+| Icon 512 × 423 | `icon-512x423.png` |
+| Background image | `background-1920x1080.jpg` |
+| Screenshots 1–4 | `screenshot-1.jpg` … `screenshot-4.jpg` |
 
-## App feature information
+## Service info
 
-Select **Player**, and only it: Pleione has no captions of its own to certify (it shows the
-provider's), no ads, no Smart View, and no external devices.
-
-| Player field | Value |
+| Field | Entered |
 |---|---|
-| Streaming engine / player API | The TV's native player through the HTML5 `<video>` element |
-| Container | HLS (MPEG-TS and fMP4 segments), MPEG-TS, MP4, MKV, MPEG-DASH |
+| Service category | **Videos** |
+| Rating | **ALL**: Pleione has no content of its own, and has parental controls |
+| Language | The 12 the app has: English, Arabic, Chinese (Simplified), French, German, Italian, Polish, Portuguese, Russian, Spanish, Turkish, Ukrainian. Testers may check each one |
+| Collect personal information | **Yes**: the app keeps provider logins and viewing history on the TV and sends the logins to the user's providers |
+| Privacy policy URL, English | https://pleione.merope.dev/privacy/ |
+| Privacy policy URL, Korean | https://pleione.merope.dev/privacy/ko/ |
+| Did you check "App Development Privacy Guide"? | **Yes**: the app shows the policy in Settings › Data Management and asks for consent before a first source (`docs/tizen.md`) |
+| Seller name (company name) | Merope |
+| Customer support email | support@merope.dev |
+| Seller homepage | https://pleione.merope.dev |
+| Representative, phone, address | The individual seller's own, entered in Seller Office only |
+| DoC for the European Accessibility Act | Empty: only for EU countries, which this release leaves out |
+
+The account is an **Individual** seller, with no company registration number.
+
+## Service country/region
+
+- **Rating certificates** (PEGI, ESRB, GRB, MJ/DEJUS, FSK, SAMSUNG): none. They are optional
+  outside the countries that require one (Brazil's MJ/DEJUS, Korea's GRB).
+- **Countries**: **United States of America** only. A Public seller can launch nowhere else, and
+  the countries under the EU Digital Services Act also need a company registration number.
+
+## Billing info
+
+**Free** only: no Samsung Checkout and no 3rd-party billing.
+
+## App feature info
+
+**Player**, and nothing else:
+
+| Feature | Why not |
+|---|---|
+| Caption | Closed captions that follow the TV's caption settings: the Samsung build shows a stream's own subtitles, not CEA-608/708 |
+| HDR | Not checked on a Samsung TV |
+| TTS | Voice Guide is not supported yet |
+| Mobile Device | The store package has no phone setup |
+| The rest | Pleione uses none of them |
+
+The Player page, as Seller Office lists its choices:
+
+| Field | Selected |
+|---|---|
 | Video codec | H.264, HEVC |
-| Audio codec | AAC, AC-3, E-AC-3 |
-| DRM | Widevine Modular, PlayReady (MPEG-DASH, through Shaka Player on the TV's EME) |
-| Subtitle format | WebVTT (in HLS), SRT, WebVTT and ASS/SSA files for movies and episodes |
+| Audio codec | AAC, AC3, Other |
+| Container | MP4 (FMP4), MPEG-TS, Mstroska (Seller Office's spelling of Matroska) |
+| DRM | PlayReady, Widevine (Modular) |
+| Streaming engine | HLS, HTTP(HTTPS), MPEG-DASH |
+| Player API | MSE, Other |
+| Subtitle | WebVTT, Other |
+| Other (100 bytes) | `HTML5 video for native playback; E-AC-3 audio; SRT and ASS/SSA subtitles; HLS TS/fMP4 segments` |
 
+WebM, Smooth Streaming, AVPlay, Close Caption and SMPTE-TT are left out, untested or unused.
 The codecs are the ones `canPlayType` reports as playable on the 2020 TV (`docs/tizen.md`);
-Pleione does not decode media itself, so what plays is what the TV plays.
+Pleione does not decode media itself, so what plays is what the TV plays. Seller Office notes
+that PlayReady support ends with 2027 TV models; Widevine streams keep working.
 
-## Verification information
+## Verification info
 
-| Field | Value |
+| Field | Entered |
 |---|---|
-| App description file | The PPTX made from [`ui-description.md`](ui-description.md) |
+| App description file | [`ui-description.pptx`](ui-description.pptx), with the three test-account cells on slide 6 filled in. The filled-in copy is never committed |
 | Geo IP block | No |
-| Test accounts | The demo Xtream server's URL, username and password (`store/README.md`), one entry per model group |
-| Voucher codes | None: nothing is paid |
+| Voucher code | `Not applicable: Pleione is free and has no paid content.` |
+| Share app source with members | No: the account has no other members |
+
+**Test account** (up to 4,000 bytes; fill in the three values, never commit them):
+
+```
+Pleione is an IPTV player and ships no content. Testers add this test account in the app: on first launch, select Agree on "Your privacy", then Add Xtream account on Home (later: Settings > Sources > + Add Xtream Account).
+
+Account type: Xtream account
+Server URL: [Server URL]
+Username: [Username]
+Password: [Password]
+
+This account allows any number of simultaneous logins, so the same login can be used by every tester and every model group at the same time. All content is synthetic test media made for this review: live channels in Group 1 to Group 8 and Group HD, a program guide with catch-up, movies and series. Channel Alpha (number 1) has catch-up; Movie A has two audio tracks and several subtitle tracks; Group HD holds the resolution test streams. The content is the same for every login, so no other accounts are needed.
+```
+
+Seller Office asks for at least as many test accounts as model groups. The demo server checks
+one login and does not limit concurrent use, which the text says. If reviewers still want
+separate logins, the demo server needs to learn several accounts.
+
+## Distribute
+
+- **App service › Request New Release** is the submission: the version, the model groups,
+  then **Next** runs the pre-test for those groups and **Done** sends the app to certification.
+  The list starts at 2022 models (Tizen 6.5); leave out groups ending in "LIC"/"LIC2", which
+  are other brands' TVs licensed to run Tizen.
+- **FCC model groups** take only apps with both Caption and TTS. Check before submitting whether
+  the US groups are among them: the pre-test of a request shows it, without pressing **Done**.
+- **Beta test** is optional and runs only in the app's service countries, on 2021 and later
+  models: a tester enters **1 3 4 6 7 8** in the TV's Settings, then a one-time activation code.
+- **App Review** lists users' reviews of the app, not Samsung's certification.

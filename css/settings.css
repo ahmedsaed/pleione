@@ -1339,3 +1339,50 @@
 .xtream-live-categories.focused .xtream-live-categories-new {
   border-color: white;
 }
+
+/* Settings › Data Management: the privacy policy in brief, and its full text
+   a QR code away. */
+.settings-privacy-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.settings-privacy-points {
+  flex: 1;
+  margin: 0;
+  padding-left: 28px;
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.settings-privacy-points li + li {
+  margin-top: 8px;
+}
+
+.settings-privacy-link {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 20px;
+}
+
+/* A QR code needs its light quiet zone in every theme, as .setup-qr does. */
+.settings-privacy-qr {
+  width: 160px;
+  height: 160px;
+  padding: 10px;
+  background: #fff;
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+
+.settings-privacy-url .settings-item-hint {
+  margin-top: 0;
+}
+
+.settings-privacy-url .setup-url {
+  font-size: 22px;
+  white-space: nowrap;
+}

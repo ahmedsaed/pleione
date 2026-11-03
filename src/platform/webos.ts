@@ -13,6 +13,7 @@ export const webos: Platform = {
   lanSetup: true,
   lanTransport: () => null,
   confirmExitAtHome: false,
+  privacyConsent: false,
   coldLaunchParams(): unknown {
     const w = window as unknown as { PalmSystem?: { launchParams?: string } };
     return w.PalmSystem?.launchParams;

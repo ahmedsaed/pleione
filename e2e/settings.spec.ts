@@ -1897,6 +1897,19 @@ test.describe('Settings pages', () => {
 });
 
 test.describe('Settings cache budget', () => {
+  test('Data Management opens on the privacy policy, its full text a QR code away, and LG asks for no consent', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#view-settings')).toBeVisible();
+    await expect(page.locator('.confirmation-prompt:not(.hidden)')).toHaveCount(0);
+    await page.locator('[data-settings-target="data"]').click();
+    const privacy = page.locator('#settings-privacy');
+    await expect(privacy).toBeInViewport();
+    await expect(privacy.locator('.settings-section-title')).toHaveText('Privacy Policy');
+    await expect(privacy.locator('li')).toHaveCount(4);
+    await expect(privacy.locator('.setup-url')).toHaveText('pleione.merope.dev/privacy');
+    await expect(privacy.locator('img.settings-privacy-qr')).toHaveAttribute('src', /^data:image/);
+  });
+
   // webOS 4 has no navigator.storage; the budget comes from the prefixed
   // quota API instead of the small unknown-quota fallback.
   test('budgets the cache from the quota the engine reports', async ({ page }) => {

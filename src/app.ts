@@ -72,6 +72,7 @@ import type {
 } from './types';
 import { getLocale, initLocale, localeDirection, resolveLocale, setLocale, t, tp } from './i18n';
 import { installBackdropArt } from './utils/backdrop-art';
+import { needsPrivacyConsent, withPrivacyConsent } from './components/privacy-notice';
 
 const log = createLogger('App');
 
@@ -423,8 +424,8 @@ class App {
       onSelectAccount: (id) => this.selectXtreamAccount(id),
       onLockNow: () => ParentalControlService.lock('lock-now'),
       onBack: () => this.goUp('home'),
-      onAddSource: (kind, via) =>
-        this.openSettingsAt({ kind: kind === 'xtream' ? 'add-xtream' : 'add-playlist' }, via),
+      onAddSource: (kind, via) => withPrivacyConsent(() =>
+        this.openSettingsAt({ kind: kind === 'xtream' ? 'add-xtream' : 'add-playlist' }, via)),
       onRetryConnection: () => void this.connection.verify(),
       onEditAccount: (issue, via) =>
         this.openSettingsAt({ kind: 'account', accountId: issue.accountId, state: issue.state }, via),
@@ -1045,6 +1046,8 @@ class App {
         // Home shows the first run; a later load opens Settings instead.
         if (firstRun === 'home') {
           this.goHome();
+          // Where the platform asks, the notice greets a first launch.
+          if (needsPrivacyConsent()) withPrivacyConsent(() => {});
         } else {
           this.showView('settings');
           this.settings.render();

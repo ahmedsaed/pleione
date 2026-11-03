@@ -1232,6 +1232,15 @@ export const StorageService = {
     set('channel_cycle_mode', mode);
   },
 
+  // Agreeing to the privacy notice (platform.privacyConsent); Reset App
+  // forgets it with the rest.
+  hasPrivacyConsent(): boolean {
+    return get<unknown>('privacy_consent', false) === true;
+  },
+  setPrivacyConsent(): void {
+    set('privacy_consent', true);
+  },
+
   getLocalePreference(): LocalePreference {
     const locale = get<unknown>('locale', 'system');
     return isLocalePreference(locale) ? locale : 'system';

@@ -105,6 +105,8 @@ html.q-no-flex-gap .tsp-tabs > * + * { margin-left: 14px; }
 html.q-no-flex-gap .tsp-tiles > * + * { margin-left: 8px; }
 html.q-no-flex-gap .tsp-rows > * + * { margin-top: 6px; }
 html.q-no-flex-gap .tsp-dots > * + * { margin-left: 8px; }
+html.q-no-flex-gap .settings-privacy-body > * + * { margin-left: 40px; }
+html.q-no-flex-gap .settings-privacy-link > * + * { margin-left: 20px; }
 html.q-no-flex-gap .reminder-manager-back > * + *, html.q-no-flex-gap .reminder-manager-clear > * + *, html.q-no-flex-gap .reminder-manager-remove > * + * { margin-left: 10px; }
 html.q-no-flex-gap .reminder-manager-list > * + * { margin-top: 28px; }
 @supports not (display: grid) {

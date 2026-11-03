@@ -35,6 +35,8 @@ export interface Platform {
   lanTransport(): LanTransport | null;
   /** Whether Back on Home asks before exiting (Samsung's Return policy) or closes at once (LG's). */
   readonly confirmExitAtHome: boolean;
+  /** Whether adding a first source asks for privacy consent (Samsung's privacy guide). */
+  readonly privacyConsent: boolean;
   /** The parameters the app was cold-launched with (a reminder's channel), or undefined. */
   coldLaunchParams(): unknown;
   /** Calls `cb` with the parameters of each relaunch while the app is open. */

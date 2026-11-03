@@ -83,3 +83,6 @@ Samsung certifies these; each is covered in the app, and needs a check on the bu
 - **Hidden and resumed.** Leave the app with Home and come back: playback picks up again.
 - **Screensaver.** It stays off while a video plays and comes back when playback pauses or stops.
 - **No source.** A fresh install shows Home's welcome cards, never a blank screen or an error.
+- **Privacy.** A fresh install asks **Your privacy** before any source is added (Samsung's
+  privacy guide: what is kept, why, for how long, and what refusing costs), and **Settings ›
+  Data Management** shows the policy with a QR code to its full text.

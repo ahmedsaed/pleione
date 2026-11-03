@@ -704,6 +704,22 @@ button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggl
   color: var(--danger);
 }
 
+/* The privacy notice: a paragraph to read before agreeing, so it is wider
+   and reads left to right. */
+.confirmation-dialog.privacy-notice-dialog {
+  max-width: 1040px;
+  text-align: left;
+}
+
+.privacy-notice-dialog .confirmation-message {
+  font-size: 26px;
+  line-height: 1.45;
+}
+
+.privacy-notice-dialog .confirmation-buttons {
+  justify-content: flex-start;
+}
+
 /* EPG reminder bell badge — dim on any future program (affordance), accent once set */
 .epg-bell-glyph {
   width: 22px;

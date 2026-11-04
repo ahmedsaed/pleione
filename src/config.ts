@@ -41,6 +41,8 @@ export const CONFIG = {
     FOCUS_REPEAT_WINDOW_MS: 180,
     // Longer than a native smooth reveal takes to bring its row in on a TV.
     REVEAL_SETTLE_MS: 800,
+    // Share of the Settings pane kept between the focused control and its edges.
+    SETTINGS_FOCUS_MARGIN: 0.15,
     EDGE_SCROLL_DWELL_MS: 400,
     EDGE_SCROLL_ZONE_PX: 64,
     // Edge scroll starts slow for precise stops and eases up to the top

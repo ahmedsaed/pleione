@@ -628,8 +628,8 @@ test.describe('Settings navigation', () => {
       });
 
       expect(result.bad, locale).toEqual([]);
-      expect(result.width, locale).toBeGreaterThanOrEqual(300);
-      expect(result.width, locale).toBeLessThanOrEqual(420);
+      expect(result.width, locale).toBeGreaterThanOrEqual(309);
+      expect(result.width, locale).toBeLessThanOrEqual(429);
     }
   });
 
@@ -2120,5 +2120,76 @@ test.describe('Settings form keys', () => {
     await expect(wrap).not.toHaveClass(/revealing/);
     await expect(field).toHaveValue('ab');
     await expect(field).toHaveAttribute('type', 'password');
+  });
+});
+
+test.describe('Settings focus stays in view', () => {
+  for (const locale of ['en', 'ar']) {
+    // The focused item grows, which once carried the bar past the list's edge.
+    test(`the focused category keeps its active bar (${locale})`, async ({ page }) => {
+      await page.addInitScript(loc => localStorage.setItem('iptv_locale', JSON.stringify(loc)), locale);
+      await routePlaylist(page);
+      await seedPlaylist(page);
+      await page.goto('/');
+      await enterTab(page, 'settings');
+      await page.locator('[data-settings-target="sources"]').click();
+      await page.keyboard.press(locale === 'ar' ? 'ArrowRight' : 'ArrowLeft');
+      const item = page.locator('#view-settings .settings-nav-item.active.focused');
+      await expect(item).toHaveCSS('transform', 'matrix(1.03, 0, 0, 1.03, 0, 0)');
+
+      const room = await item.evaluate((el) => {
+        const list = el.parentElement!.getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        const bar = getComputedStyle(el, '::before');
+        const rtl = bar.left === 'auto' || parseFloat(bar.right) < 0;
+        return rtl
+          ? list.right - (box.right - parseFloat(bar.right) * 1.03)
+          : box.left + parseFloat(bar.left) * 1.03 - list.left;
+      });
+      expect(room).toBeGreaterThanOrEqual(0);
+    });
+  }
+
+  test('a key keeps the focused control off the pane\'s top and bottom', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'settings');
+    await page.locator('[data-settings-target="advanced"]').click();
+    await page.keyboard.press('ArrowRight');
+
+    const measure = () => page.evaluate(() => {
+      const pane = document.querySelector<HTMLElement>('#view-settings .settings-scroll')!;
+      const el = pane.querySelector<HTMLElement>('[data-focusable].focused');
+      if (!el) return null;
+      const view = pane.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      return {
+        key: el.dataset.key ?? el.id,
+        above: (box.top - view.top) / pane.clientHeight,
+        below: (view.bottom - box.bottom) / pane.clientHeight,
+        atTop: pane.scrollTop < 1,
+        atEnd: pane.scrollTop >= pane.scrollHeight - pane.clientHeight - 1,
+      };
+    });
+    // Down ends on the action bar, outside the pane.
+    let reachedEnd = false;
+    const walk = async (key: string) => {
+      let moved = 0;
+      for (let step = 0, last = ''; step < 40; step++) {
+        await page.keyboard.press(key);
+        const now = await measure();
+        if (!now || now.key === last) break;
+        last = now.key;
+        moved++;
+        reachedEnd = now.atEnd;
+        if (!now.atTop) expect(now.above, now.key).toBeGreaterThanOrEqual(0.14);
+        if (!now.atEnd) expect(now.below, now.key).toBeGreaterThanOrEqual(0.14);
+      }
+      return moved;
+    };
+    expect(await walk('ArrowDown')).toBeGreaterThan(3);
+    expect(reachedEnd).toBe(true);
+    expect(await walk('ArrowUp')).toBeGreaterThan(3);
   });
 });

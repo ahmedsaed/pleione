@@ -161,6 +161,11 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
   tracks behind the `MseEngine` adapters in `src/components/mse/`
   (`isMseActive()`); on webOS everything plays natively, DASH included — see
   `docs/mpeg-dash.md`.
+  On Tizen 8+ HLS, raw TS and single files play through Samsung's AVPlay:
+  Player, `PlayerTracks` and the subtitle services work on `PlayerMedia`
+  (`player-media.ts`), which the `<video>` element satisfies and `AvplayMedia`
+  (`src/platform/tizen-avplay.ts`) implements, so playback state goes through
+  `media` and only DOM work through `videoEl` — see `docs/tizen.md`.
 - **Services** (`src/services/`) expose facades such as `PlaylistService`,
   `EpgService`, `StorageService`, `SetupClient`, `UploadClient`, and
   `ReminderService`. `StorageService` keeps boot-critical configuration under

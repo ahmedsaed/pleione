@@ -13,7 +13,7 @@ const FHD_SPEC = /fhd-720\.spec\.ts/;
 // two ports above the main preview.
 const tizenPort = basePort + 2;
 const tizenURL = `http://localhost:${tizenPort}`;
-const TIZEN_SPEC = /tizen-shell\.spec\.ts/;
+const TIZEN_SPEC = /tizen-(shell|avplay)\.spec\.ts/;
 
 // Build and serve an extra package only when a test of its project can run:
 // no --project filter or one naming it, and no spec filter that leaves it out.

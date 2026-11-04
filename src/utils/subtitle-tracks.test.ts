@@ -322,6 +322,12 @@ describe('formatSubtitleOffset', () => {
 import { shiftForeignTrack } from './subtitle-tracks';
 
 describe('shiftForeignTrack', () => {
+  it('hands the offset to a track whose cues arrive as they fall due', () => {
+    const track = { cues: [], cueOffset: 0 };
+    shiftForeignTrack(track, 2);
+    expect(track.cueOffset).toBe(2);
+  });
+
   const track = (cues: Array<{ startTime: number; endTime: number }>) => ({ cues });
 
   it('shifts every cue by the offset from its original time (absolute, idempotent)', () => {

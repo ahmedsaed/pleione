@@ -1,6 +1,6 @@
 # Samsung Tizen port — plan
 
-Status: decisions taken 2026-10-30, revised 2026-11-02 (see
+Status: decisions taken 2026-10-30, revised 2026-11-02 and 2026-11-04 (see
 [§12](#12-decisions)); next step is Phase 0, the device spike
 ([§11](#11-device-spike)). Progress is tracked in a GitHub issue, one
 checklist per phase; spike results go in `docs/tizen.md`.
@@ -331,22 +331,64 @@ services.
   `{ native: true, nativeDashMediaOption: false, nativeCcCompositor: false,
      playReady: 'eme', audioTrackSwitch: <by version>, stallWatchdog: true }`.
 
-**Stage B — AVPlay engine (only if Stage A falls short on device).**
-Triggers: Tizen 8+ multi-audio, TS streams the native element refuses,
-4K/HDR or performance gaps, and **live DVR**: native seeks to the live edge
-freeze on Tizen 5.5 (spike, `docs/tizen.md`), so timeshift is off on the
-native path. On 5.5, AVPlay rewinds live with `jumpBackward`/`jumpForward`
-but cannot switch audio tracks; decide on a Tizen 8+ TV's probe results.
-- Introduce a `MediaBackend` facade over the ~40 element operations
-  `Player` uses (load/play/pause/seek, time/duration/seekable,
-  readyState/networkState, events, volume, error, display rect).
-  `HtmlVideoBackend` wraps today's element; `AvplayBackend` implements it.
-- AVPlay tracks via an `MseEngine`-style adapter (`getTotalTrackInfo`).
-- Subtitles: a DOM cue renderer fed by `onsubtitlechange`; sidecar
-  SRT/VTT parsed in JS and rendered by the same renderer (avoids local-file
-  requirement); assjs needs a clock shim.
-- Live preview: `PlayerPresentation` → `setDisplayRect`.
-- Biggest single work item; estimate 1.5–3 weeks.
+**Stage B — AVPlay engine for Tizen 8 and later.** *Revised 2026-11-04*
+after the 2025 TV (`docs/tizen.md`). Samsung's guides send adaptive
+streaming, multiple tracks and extra subtitle formats to AVPlay, and
+leave `<video>` for simple files. On Tizen 9 the native element plays HLS
+and MP4 but lists no audio or subtitle tracks and decodes no raw TS.
+AVPlay plays all of them, switches audio, and hands subtitles to the app
+as text. On Tizen 5.5 it is the other way round: native switches audio,
+AVPlay does not.
+
+Measured on the 2025 TV through AVPlay:
+
+| Stream | Audio | Subtitles |
+|---|---|---|
+| Live HLS, 2 renditions + WebVTT | Listed, switch | Text events, 1 s cues |
+| Raw live TS, 2 audio | Listed, switch | none in stream |
+| MP4, 2 AAC + `mov_text` | Listed (`und`), switch | Track listed, no text arrives |
+| MKV, 2 AAC + SRT | Listed with language, switch | Text events with duration |
+| MKV, 2 AAC + ASS | Listed, switch | Track not listed |
+
+Design:
+- **`PlayerMedia`**: the media surface Player, `PlayerPipeline`,
+  `PlayerTracks`, the watchdogs and the subtitle services use (time,
+  duration, paused/ended/seeking, ready and network state, error, size,
+  play/pause/load, the media events). `HTMLVideoElement` satisfies it as
+  is; `AvplayMedia` implements it over `webapis.avplay` as a class of its
+  own, not by patching the element. DOM work (position, the Live
+  preview's rectangle, classes) stays on the `<video>` element, which
+  `AvplayMedia` follows for its display rectangle.
+- **Engine per stream** (`platform.media`): Tizen 8+ plays HLS, raw TS
+  and progressive files through AVPlay; DASH and EME DRM stay on Shaka;
+  Tizen 5.5-7 stays native, with the one-time native TS check (2.4.0)
+  moving to AVPlay where TS decodes no frame.
+- **Tracks** through the standard media track API, so the native track
+  code (`PlayerTracks`, the subtitle services) works unchanged on
+  either media: `AvplayMedia` offers `audioTracks` (switching through
+  `setSelectTrack`), `textTracks` (the stream's own text tracks; a track
+  set to `showing` selects it in AVPlay and shows its text) and
+  `addTextTrack()` for the app's own cues (HLS WebVTT segments, sidecar
+  SRT/VTT, the subtitle offset). Not the `MseEngine` seam: a library
+  there owns every subtitle choice, which would hide the app's sidecar,
+  ASS and online subtitles.
+- **Subtitles** on AVPlay draw in a DOM overlay over the video rectangle,
+  clocked by the media, from each showing track's cues
+  (`VTTCue.getCueAsHTML()`), styled like `::cue` with its color classes.
+  ASS keeps assjs, clocked by `PlayerMedia`. `mov_text` and embedded ASS
+  are not offered on AVPlay (measured above).
+- **Lifecycle**: one AVPlay at a time, released on the next load, on
+  hide (suspend/restore for movies), and when the player closes; the
+  page opens over the video plane while it plays (2.4.0).
+- **Tests**: unit tests for `AvplayMedia`, the AVPlay engine, the DOM
+  renderer and engine choice; a fake `webapis.avplay` in the `tizen-sim`
+  E2E project so the player specs (audio picker, subtitles, preview,
+  Return, resume) run on it; a device checklist on both TVs.
+
+Phases: (1) `PlayerMedia` and `AvplayMedia`, replacing 2.4.0's patched
+element, no behavior change; (2) Tizen 8+ routing and the track lists;
+(3) the DOM cue renderer and AVPlay subtitles; (4) E2E,
+device checks on both TVs, docs, and the Samsung scenario.
 
 ### 5.2 Alternative: MSE-first (hls.js + mpegts.js + Shaka everywhere)
 Fastest to stand up (desktop path already works), but known hls.js Tizen

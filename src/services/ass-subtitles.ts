@@ -1,3 +1,4 @@
+import type { PlayerMedia } from '../components/player-media';
 import type { SidecarSubtitle } from '../types';
 import { fetchText } from '../utils/fetch-helper';
 import { createLogger } from '../utils/logger';
@@ -28,8 +29,12 @@ interface AssInstance {
  * `import('assjs')`, so a TV that never plays ASS never loads it. One track draws
  * at a time, into an `#ass-overlay` positioned over the video plane.
  */
+const CLOCK_EVENTS = ['play', 'pause', 'playing', 'waiting', 'seeking'];
+
 export class AssSubtitles {
   private video: HTMLVideoElement | null = null;
+  private media: PlayerMedia | null = null;
+  private clock: { element: HTMLElement; release(): void } | null = null;
   private container: HTMLElement | null = null;
   private overlay: HTMLElement | null = null;
   private sidecars: SidecarSubtitle[] = [];
@@ -38,11 +43,13 @@ export class AssSubtitles {
   private delay = 0; // per-stream subtitle timing offset (seconds; + = later)
 
   // Record the video, the DOM host for the overlay, and the ASS sidecars. No
-  // assjs instance is created yet — that waits for the first `show`.
-  attach(video: HTMLVideoElement, container: HTMLElement, sidecars: SidecarSubtitle[]): void {
+  // assjs instance is created yet — that waits for the first `show`. `media`
+  // is what plays, when that is not the element itself (Samsung's AVPlay).
+  attach(video: HTMLVideoElement, container: HTMLElement, sidecars: SidecarSubtitle[], media?: PlayerMedia): void {
     this.gen++;
     this.destroyInstance();
     this.video = video;
+    this.media = media && media !== video ? media : null;
     this.container = container;
     this.sidecars = sidecars;
     if (sidecars.length) log.info('recorded', sidecars.length, 'ASS sidecar(s)');
@@ -65,7 +72,8 @@ export class AssSubtitles {
       if (gen !== this.gen) return; // a newer selection/stop landed mid-fetch
       const overlay = this.ensureOverlay();
       if (!overlay) return;
-      this.ass = new ASS(content, video, { container: overlay }) as unknown as AssInstance;
+      const clock = this.media ? this.clockFor(this.media, video, overlay) : video;
+      this.ass = new ASS(content, clock as HTMLVideoElement, { container: overlay }) as unknown as AssInstance;
       if (this.delay) { try { this.ass.delay = this.delay; } catch { /* older assjs */ } }
       log.info('showing ASS sidecar', sidecar.name || sidecar.lang || sidecar.url);
     } catch (e) {
@@ -92,14 +100,50 @@ export class AssSubtitles {
     this.destroyInstance();
     if (this.overlay) { this.overlay.remove(); this.overlay = null; }
     this.video = null;
+    this.media = null;
     this.container = null;
     this.sidecars = [];
   }
 
   private destroyInstance(): void {
+    this.clock?.release();
+    this.clock = null;
     if (!this.ass) return;
     try { this.ass.destroy(); } catch (e) { log.warn('ASS destroy failed:', e); }
     this.ass = null;
+  }
+
+  // assjs takes its clock from a <video>: it reads currentTime, paused and the
+  // picture's size, listens for play/pause/seek, and watches the element's
+  // size. When the platform's own player plays (the element itself stays
+  // idle), it gets a hidden element over the video's box that reads from that
+  // player and relays its events.
+  private clockFor(media: PlayerMedia, video: HTMLVideoElement, host: HTMLElement): HTMLElement {
+    const element = document.createElement('div');
+    element.className = 'ass-clock';
+    const rect = video.getBoundingClientRect();
+    element.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;`
+      + `width:${rect.width}px;height:${rect.height}px;visibility:hidden;pointer-events:none`;
+    Object.defineProperties(element, {
+      currentTime: { get: () => media.currentTime },
+      paused: { get: () => media.paused },
+      videoWidth: { get: () => media.videoWidth },
+      videoHeight: { get: () => media.videoHeight },
+    });
+    const relays = CLOCK_EVENTS.map(type => {
+      const relay = (): void => { element.dispatchEvent(new Event(type)); };
+      media.addEventListener(type, relay);
+      return () => media.removeEventListener(type, relay);
+    });
+    host.appendChild(element);
+    this.clock = {
+      element,
+      release: () => {
+        relays.forEach(stop => stop());
+        element.remove();
+      },
+    };
+    return element;
   }
 
   private ensureOverlay(): HTMLElement | null {

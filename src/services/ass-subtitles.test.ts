@@ -23,6 +23,7 @@ vi.mock('../utils/fetch-helper', () => ({ fetchText: fetchTextMock }));
 
 import { AssSubtitles, isAssSidecar } from './ass-subtitles';
 import type { SidecarSubtitle } from '../types';
+import type { PlayerMedia } from '../components/player-media';
 
 const sidecar = (over: Partial<SidecarSubtitle> = {}): SidecarSubtitle =>
   ({ id: '1', name: 'Track 1', lang: 'l1', url: 'http://host/a.ass', ...over });
@@ -142,5 +143,34 @@ describe('AssSubtitles', () => {
     expect(assInstances[0].delay).toBe(3);
     subs.setOffset(-1.5);
     expect(assInstances[0].delay).toBe(-1.5);
+  });
+
+  it('clocks assjs from the platform\'s own player when the element stays idle', async () => {
+    fetchTextMock.mockResolvedValue('[Script Info]');
+    const listeners: Record<string, Array<() => void>> = {};
+    const media = {
+      currentTime: 42,
+      paused: false,
+      videoWidth: 640,
+      videoHeight: 360,
+      addEventListener: (type: string, fn: () => void) => { (listeners[type] ??= []).push(fn); },
+      removeEventListener: (type: string, fn: () => void) => {
+        listeners[type] = (listeners[type] ?? []).filter(l => l !== fn);
+      },
+    } as unknown as PlayerMedia;
+    subs.attach(video, container, [sidecar()], media);
+    await subs.show(0);
+
+    const clock = assInstances[0].video as HTMLElement & { currentTime: number; paused: boolean; videoWidth: number };
+    expect(clock).not.toBe(video);
+    expect([clock.currentTime, clock.paused, clock.videoWidth]).toEqual([42, false, 640]);
+    const seen: string[] = [];
+    clock.addEventListener('seeking', () => seen.push('seeking'));
+    listeners.seeking.forEach(fn => fn());
+    expect(seen).toEqual(['seeking']);
+
+    subs.hide();
+    expect(listeners.seeking).toEqual([]);
+    expect(clock.isConnected).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import type { PlayerMedia } from './player-media';
 import type {
   Action,
   AudioOption,
@@ -70,6 +71,8 @@ export const VOD_SUBTITLE_BASE = 2000;
 
 interface PlayerTracksOptions {
   getVideoElement: () => HTMLVideoElement | null;
+  /** What plays: the element, or the platform's own player; it owns the audio tracks. */
+  getMedia: () => PlayerMedia | null;
   getChannel: () => Channel | null;
   getVod: () => VodPlayback | null;
 }
@@ -94,12 +97,17 @@ export class PlayerTracks {
   private subtitleOffsetS = 0; // per-stream subtitle timing offset (seconds; + = later)
   private offsetOverlay: SubtitleOffsetOverlay | null = null;
 
+  private attachedVod: VodPlayback | null = null;
+  private attachedMedia: PlayerMedia | null = null;
+
   constructor(
     private pipeline: PlayerPipeline,
     private options: PlayerTracksOptions,
   ) {}
 
   resetForLoad(): void {
+    this.attachedVod = null;
+    this.attachedMedia = null;
     this.manifestAudio = [];
     this.manifestSubtitles = [];
     this.manifestClosedCaptions = [];
@@ -111,6 +119,15 @@ export class PlayerTracks {
     this.subs.stop();
     this.dashSubs.stop();
     this.clearVodSubtitles();
+  }
+
+  // The platform's own player can take a stream after attachVod (a load queued
+  // behind an MSE teardown, or the native TS check); subtitles follow it.
+  mediaChanged(): void {
+    const vod = this.attachedVod;
+    if (vod && this.options.getVod() === vod && this.options.getMedia() !== this.attachedMedia) {
+      this.attachVod(vod);
+    }
   }
 
   applyManifest(manifest: PipelineManifest): void {
@@ -127,14 +144,17 @@ export class PlayerTracks {
 
   attachVod(vod: VodPlayback): void {
     const video = this.options.getVideoElement();
-    if (!video) return;
+    const media = this.options.getMedia();
+    if (!video || !media) return;
+    this.attachedVod = vod;
+    this.attachedMedia = media;
     // Split sidecars: SRT/WebVTT use a reusable application TextTrack; ASS/SSA
     // are drawn by assjs. Both attach after loadStream resets the video.
     this.activeAssIndex = -1;
     this.vodTextSidecars = vod.subtitles.filter((s) => !isAssSidecar(s.url));
     this.vodAssSidecars = vod.subtitles.filter((s) => isAssSidecar(s.url));
-    this.vodSubs.attach(video, this.vodTextSidecars);
-    this.assSubs.attach(video, video.parentElement ?? document.body, this.vodAssSidecars);
+    this.vodSubs.attach(media, this.vodTextSidecars);
+    this.assSubs.attach(video, video.parentElement ?? document.body, this.vodAssSidecars, media);
     void this.restoreOnlineSubtitle(vod);
   }
 
@@ -213,7 +233,7 @@ export class PlayerTracks {
     if (this.options.getVod()) {
       if (this.vodSubs.activeIndex >= 0) return true;
       if (this.activeAssIndex >= 0) return true;
-      const list = this.options.getVideoElement()?.textTracks;
+      const list = this.options.getMedia()?.textTracks;
       if (list) for (let i = 0; i < list.length; i++) {
         const track = list[i];
         if ((track.kind === 'subtitles' || track.kind === 'captions')
@@ -251,7 +271,7 @@ export class PlayerTracks {
     this.dashSubs.setOffset(seconds);
     this.vodSubs.setOffset(seconds);
     this.assSubs.setOffset(seconds);
-    const list = this.options.getVideoElement()?.textTracks;
+    const list = this.options.getMedia()?.textTracks;
     if (list) for (let i = 0; i < list.length; i++) {
       const track = list[i];
       if (track.kind !== 'subtitles' && track.kind !== 'captions') continue;
@@ -361,10 +381,10 @@ export class PlayerTracks {
         this.vodAssSidecars.push(subtitle);
         this.applySubtitleChoice(ASS_SUBTITLE_BASE + this.vodAssSidecars.length - 1);
       } else {
-        const video = this.options.getVideoElement();
-        if (video) {
+        const media = this.options.getMedia();
+        if (media) {
           this.vodTextSidecars.push(subtitle);
-          const sidecarIndex = this.vodSubs.addOnline(video, subtitle);
+          const sidecarIndex = this.vodSubs.addOnline(media, subtitle);
           this.applySubtitleChoice(VOD_SUBTITLE_BASE + sidecarIndex);
         }
       }
@@ -419,10 +439,10 @@ export class PlayerTracks {
     if (pick.format === 'ass' || pick.format === 'ssa') {
       this.vodAssSidecars.push(subtitle);
     } else {
-      const video = this.options.getVideoElement();
-      if (video) {
+      const media = this.options.getMedia();
+      if (media) {
         this.vodTextSidecars.push(subtitle);
-        this.vodSubs.addOnline(video, subtitle);
+        this.vodSubs.addOnline(media, subtitle);
       }
     }
     this.applyNativeSubtitleSelection();
@@ -436,7 +456,7 @@ export class PlayerTracks {
    */
   private audioOptions(): AudioOption[] {
     if (this.pipeline.isMseActive()) return this.pipeline.mseAudioOptions();
-    const list = this.options.getVideoElement()?.audioTracks;
+    const list = this.options.getMedia()?.audioTracks;
     if (!list) return [];
     return mergeManifestNames(nativeAudioOptions(list), this.manifestAudio);
   }
@@ -482,7 +502,7 @@ export class PlayerTracks {
     if (this.pipeline.isMseActive()) {
       if (!this.pipeline.setMseAudioTrack(index)) return;
     } else {
-      const list = this.options.getVideoElement()?.audioTracks;
+      const list = this.options.getMedia()?.audioTracks;
       if (!list || index < 0 || index >= list.length) return;
       for (let i = 0; i < list.length; i++) list[i].enabled = (i === index);
     }
@@ -533,7 +553,7 @@ export class PlayerTracks {
 
   applyNativeAudioSelection(): void {
     if (this.pipeline.isMseActive()) return; // hls.js owns the rendition; videoEl exposes only the active one
-    const list = this.options.getVideoElement()?.audioTracks;
+    const list = this.options.getMedia()?.audioTracks;
     if (!list || list.length < 2) return;
     const options = this.audioOptions();
     const pref = StorageService.getAudioPref(
@@ -557,7 +577,7 @@ export class PlayerTracks {
     // VOD: keep in-container tracks native. Sidecars are synthetic picker
     // options because their reusable addTextTrack renderer must stay hidden.
     if (this.options.getVod()) {
-      const list = this.options.getVideoElement()?.textTracks;
+      const list = this.options.getMedia()?.textTracks;
       const native = list
         ? nativeSubtitleOptions(list)
           .filter(option => !this.vodSubs.owns(list[option.index]))
@@ -707,7 +727,7 @@ export class PlayerTracks {
     // VOD has three mutually exclusive paths: reusable SRT/WebVTT TextTrack,
     // ASS overlay, or native in-container track.
     if (this.options.getVod()) {
-      const list = this.options.getVideoElement()?.textTracks;
+      const list = this.options.getMedia()?.textTracks;
       if (index >= VOD_SUBTITLE_BASE) {
         if (list) for (let i = 0; i < list.length; i++) {
           const track = list[i];
@@ -745,7 +765,7 @@ export class PlayerTracks {
       return;
     }
     const manifest = index >= 0 ? this.manifestSubtitles[index] : undefined;
-    const video = this.options.getVideoElement();
+    const video = this.options.getMedia();
     if (!manifest || !video || !this.masterUrl) {
       this.subs.stop();
       this.dashSubs.stop();

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from 'vitest';
+import type { PlatformMedia } from '../platform/types';
 import type { PlayerPipelineOptions } from './player-pipeline';
 
 vi.mock('../services/idb-cache', () => ({
@@ -20,6 +21,7 @@ function callbacks(): PlayerPipelineOptions {
     onAudioTracksUpdated: vi.fn(),
     onSubtitleTracksUpdated: vi.fn(),
     onManifest: vi.fn(),
+    onMediaChanged: vi.fn(),
   };
 }
 
@@ -147,19 +149,24 @@ describe('PlayerPipeline on Tizen', () => {
   });
 });
 
+function fakePlatformMedia(): PlatformMedia {
+  return Object.assign(document.createElement('video'), { start: vi.fn(), release: vi.fn() });
+}
+
 describe('PlayerPipeline on Tizen: raw MPEG-TS', () => {
   async function setup() {
     localStorage.clear();
     const { tizen } = await import('../platform/tizen');
-    const release = vi.fn();
-    const playPlatform = vi.spyOn(tizen.media, 'playPlatform').mockReturnValue({ release });
+    const media = fakePlatformMedia();
+    const playPlatform = vi.spyOn(tizen.media, 'createPlatformMedia').mockReturnValue(media);
     const { PlayerPipeline } = await import('./player-pipeline');
-    const pipeline = new PlayerPipeline(callbacks());
+    const options = callbacks();
+    const pipeline = new PlayerPipeline(options);
     const video = document.createElement('video');
     vi.spyOn(video, 'play').mockResolvedValue();
     vi.spyOn(video, 'load').mockImplementation(() => {});
     pipeline.setVideoElement(video);
-    return { pipeline, video, playPlatform, release };
+    return { pipeline, video, playPlatform, media, options };
   }
 
   // What Tizen 9's <video> does with raw TS: it loads, knows the frame size,
@@ -233,19 +240,70 @@ describe('PlayerPipeline on Tizen: raw MPEG-TS', () => {
   it('releases the TV\'s player when the next stream loads', async () => {
     localStorage.setItem('iptv_native_ts_playback', JSON.stringify('broken'));
     const { tizen } = await import('../platform/tizen');
-    const release = vi.fn();
-    vi.spyOn(tizen.media, 'playPlatform').mockReturnValue({ release });
+    const media = fakePlatformMedia();
+    vi.spyOn(tizen.media, 'createPlatformMedia').mockReturnValue(media);
     const { PlayerPipeline } = await import('./player-pipeline');
-    const pipeline = new PlayerPipeline(callbacks());
+    const options = callbacks();
+    const pipeline = new PlayerPipeline(options);
     const video = document.createElement('video');
     vi.spyOn(video, 'play').mockResolvedValue();
     vi.spyOn(video, 'load').mockImplementation(() => {});
     pipeline.setVideoElement(video);
 
     pipeline.load('http://host/live/1.ts', null);
+    // Player hears of the TV's player before it opens the stream.
+    expect(options.onMediaChanged).toHaveBeenLastCalledWith(media);
+    expect(media.start).toHaveBeenCalledTimes(1);
     pipeline.load('http://host/a.m3u8', null);
 
-    expect(release).toHaveBeenCalledTimes(1);
+    expect(media.release).toHaveBeenCalledTimes(1);
+    expect(options.onMediaChanged).toHaveBeenLastCalledWith(null);
     expect(video.querySelector('source')?.type).toBe('application/vnd.apple.mpegurl');
+  });
+});
+
+describe('PlayerPipeline on Tizen 8 and later', () => {
+  async function setup(prefers: boolean) {
+    localStorage.clear();
+    const { tizen } = await import('../platform/tizen');
+    const media = fakePlatformMedia();
+    const create = vi.spyOn(tizen.media, 'createPlatformMedia').mockReturnValue(media);
+    vi.spyOn(tizen.media, 'prefersPlatformMedia').mockReturnValue(prefers);
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('#EXTM3U\n'))));
+    const { PlayerPipeline } = await import('./player-pipeline');
+    const pipeline = new PlayerPipeline(callbacks());
+    const video = document.createElement('video');
+    vi.spyOn(video, 'play').mockResolvedValue();
+    vi.spyOn(video, 'load').mockImplementation(() => {});
+    pipeline.setVideoElement(video);
+    return { pipeline, video, create };
+  }
+
+  it('plays HLS, raw TS and single-file movies through the TV\'s own player, for their tracks', async () => {
+    const { pipeline, video, create } = await setup(true);
+    pipeline.load('http://host/live/1.m3u8', null);
+    expect(create).toHaveBeenLastCalledWith(video, 'http://host/live/1.m3u8');
+    pipeline.load('http://host/live/1.ts', null);
+    expect(create).toHaveBeenLastCalledWith(video, 'http://host/live/1.ts');
+    pipeline.load('http://host/movie/1.mkv', null, { direct: true });
+    expect(create).toHaveBeenLastCalledWith(video, 'http://host/movie/1.mkv');
+    expect(create).toHaveBeenCalledTimes(3);
+    expect(video.querySelector('source')).toBeNull();
+  });
+
+  it('keeps DASH off the TV\'s own player', async () => {
+    const { pipeline, create } = await setup(true);
+    pipeline.load('http://host/a.mpd', null);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+    await new Promise(r => setTimeout(r, 0));
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('leaves an older TV on its own <video>, which switches tracks there', async () => {
+    const { pipeline, video, create } = await setup(false);
+    pipeline.load('http://host/live/1.m3u8', null);
+    pipeline.load('http://host/movie/1.mkv', null, { direct: true });
+    expect(create).not.toHaveBeenCalled();
+    expect(video.querySelector('source')?.src).toBe('http://host/movie/1.mkv');
   });
 });

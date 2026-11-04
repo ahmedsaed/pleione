@@ -1,3 +1,4 @@
+import type { PlayerMedia } from '../components/player-media';
 import { parseWebVTT } from '../utils/webvtt';
 import { createLogger } from '../utils/logger';
 import { t } from '../i18n';
@@ -27,7 +28,7 @@ interface MediaPlaylist { segs: Segment[]; unsupported: 'fmp4' | 'encrypted' | n
  * (the map) and `maybeCalibrate` (how we reconstruct getStartDate).
  */
 export class HlsSubtitles {
-  private video: HTMLVideoElement | null = null;
+  private video: PlayerMedia | null = null;
   private cueTrack = new WebVttCueTrack();
   private timer: ReturnType<typeof setInterval> | null = null;
   private seen = new Set<string>();
@@ -52,7 +53,7 @@ export class HlsSubtitles {
     return this.cueTrack.current;
   }
 
-  async start(video: HTMLVideoElement, masterUrl: string, want?: { name?: string; lang?: string }): Promise<void> {
+  async start(video: PlayerMedia, masterUrl: string, want?: { name?: string; lang?: string }): Promise<void> {
     this.stop();
     const gen = ++this.gen;
     this.video = video;

@@ -1,3 +1,4 @@
+import type { PlayerMedia } from '../components/player-media';
 import { applyCueSettings, type VttCueSettings } from '../utils/webvtt';
 
 /**
@@ -7,14 +8,14 @@ import { applyCueSettings, type VttCueSettings } from '../utils/webvtt';
  */
 export class WebVttCueTrack {
   private track: TextTrack | null = null;
-  private video: HTMLVideoElement | null = null;
+  private video: PlayerMedia | null = null;
   private offset = 0;
 
   get current(): TextTrack | null {
     return this.track;
   }
 
-  attach(video: HTMLVideoElement, label: string, lang: string): TextTrack {
+  attach(video: PlayerMedia, label: string, lang: string): TextTrack {
     // Reuse one track per video element because TextTracks cannot be removed.
     if (!this.track || this.video !== video) {
       this.track = video.addTextTrack('subtitles', label, lang || 'und');

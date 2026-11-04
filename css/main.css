@@ -2,7 +2,6 @@
   --bg-primary: #0a0a0f;
   --bg-secondary: #12121a;
   --bg-tertiary: #1a1a2e;
-  --bg-card: #16213e;
   --text-primary: #e8e8e8;
   --text-secondary: #a0a0b0;
   --text-muted: #666680;
@@ -446,10 +445,10 @@ button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggl
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: var(--bg-card);
+  background: var(--bg-secondary);
   color: var(--text-primary);
   padding: 14px 32px;
-  border-radius: var(--radius);
+  border-radius: var(--card-radius);
   font-size: 24px;
   border: 1px solid var(--border);
   opacity: 0;
@@ -646,9 +645,9 @@ html.avplay-playing .view[data-backdrop]:not(.hidden) {
 .confirmation-dialog,
 .parental-pin-dialog,
 .detail-text-dialog {
-  background: var(--bg-card);
+  background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--card-radius);
   padding: 40px 48px;
   max-width: 720px;
   text-align: center;

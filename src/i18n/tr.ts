@@ -259,8 +259,6 @@ export const TR_MESSAGES = {
   'settings.resetCustomizationTitle': 'Kanal özelleştirmesi sıfırlansın mı?',
   'settings.resetCustomizationMessage': 'Tüm sıralamalar, gizli kanallar, ad değişiklikleri, özel gruplar, elle EPG eşleştirmeleri ve kanal saat düzeltmeleri kaldırılacak. Favoriler korunur.',
   'settings.customizationReset': 'Kanal özelleştirmesi sıfırlandı',
-  'settings.navChooseCategory': 'Kategori seç',
-  'settings.navEnterReturn': 'Gir / geri dön',
   'settings.previewChannelOne': 'Birinci kanal',
   'settings.previewChannelTwo': 'İkinci kanal',
   'settings.previewEpgNow': 'EPG · şimdi',

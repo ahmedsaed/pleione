@@ -291,8 +291,6 @@ export const AR_MESSAGES = {
   'settings.resetCustomizationTitle': 'هل تريد إعادة تعيين تخصيص القنوات؟',
   'settings.resetCustomizationMessage': 'ستتم إزالة كل عمليات إعادة الترتيب والقنوات المخفية وإعادة التسمية والمجموعات المخصصة وربط EPG اليدوي وتصحيح وقت القنوات. ستبقى المفضلة.',
   'settings.customizationReset': 'تمت إعادة تعيين تخصيص القنوات',
-  'settings.navChooseCategory': 'اختيار الفئة',
-  'settings.navEnterReturn': 'دخول / رجوع',
   'settings.previewChannelOne': 'القناة الأولى',
   'settings.previewChannelTwo': 'القناة الثانية',
   'settings.previewEpgNow': 'الآن · EPG',

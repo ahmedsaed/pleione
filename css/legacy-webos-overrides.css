@@ -88,7 +88,7 @@ html.q-scroll-end-padding .catalog-category-rail::after { content: none; }
   .settings-body > .settings-sidebar {
     -webkit-flex: 0 0 auto;
     flex: 0 0 auto;
-    margin-right: 32px;
+    margin-right: 8px;
   }
   .settings-body > .settings-main {
     -webkit-box-flex: 1;

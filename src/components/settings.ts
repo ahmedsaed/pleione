@@ -78,8 +78,6 @@ import {
   GLOBE_ICON,
   GUIDE_ICON,
   LOCK_ICON,
-  NAV_HORIZONTAL_ICON,
-  NAV_VERTICAL_ICON,
   PLAYBACK_ICON,
   SOURCES_ICON,
 } from './icons';
@@ -804,16 +802,6 @@ export class Settings {
         <nav class="settings-sidebar" data-nav-container aria-label="${t('common.settings')}">
           <div class="settings-nav-list">
             ${SETTINGS_CATEGORIES.map(category => settingsNavItem(category, category.id === this.category))}
-          </div>
-          <div class="settings-nav-help">
-            <div class="settings-nav-help-row">
-              <span class="settings-nav-key">${raw(NAV_VERTICAL_ICON)}</span>
-              <span>${t('settings.navChooseCategory')}</span>
-            </div>
-            <div class="settings-nav-help-row">
-              <span class="settings-nav-key">${raw(NAV_HORIZONTAL_ICON)}</span>
-              <span>${t('settings.navEnterReturn')}</span>
-            </div>
           </div>
         </nav>
 

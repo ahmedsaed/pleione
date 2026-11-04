@@ -266,8 +266,6 @@ export const ES_MESSAGES = {
   'settings.resetCustomizationTitle': '¿Restablecer la personalización de canales?',
   'settings.resetCustomizationMessage': 'Se eliminarán todos los reordenamientos, canales ocultos, cambios de nombre, grupos personalizados, asignaciones EPG manuales y correcciones horarias de canales. Los favoritos se conservan.',
   'settings.customizationReset': 'Personalización de canales restablecida',
-  'settings.navChooseCategory': 'Elegir categoría',
-  'settings.navEnterReturn': 'Entrar / volver',
   'settings.previewChannelOne': 'Canal uno',
   'settings.previewChannelTwo': 'Canal dos',
   'settings.previewEpgNow': 'EPG · ahora',

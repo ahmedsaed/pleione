@@ -615,7 +615,7 @@ test.describe('Settings navigation', () => {
 
       const result = await page.locator('.settings-sidebar').evaluate((sidebar) => {
         const bad = Array.from(sidebar.querySelectorAll<HTMLElement>(
-          '.settings-nav-item, .settings-nav-help-row'))
+          '.settings-nav-item'))
           .filter((item) => {
             const label = item.lastElementChild;
             if (!label) return true;
@@ -628,8 +628,8 @@ test.describe('Settings navigation', () => {
       });
 
       expect(result.bad, locale).toEqual([]);
-      expect(result.width, locale).toBeGreaterThanOrEqual(252);
-      expect(result.width, locale).toBeLessThanOrEqual(328);
+      expect(result.width, locale).toBeGreaterThanOrEqual(300);
+      expect(result.width, locale).toBeLessThanOrEqual(420);
     }
   });
 

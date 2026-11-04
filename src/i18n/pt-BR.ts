@@ -388,7 +388,6 @@ export const PT_BR_MESSAGES = {
   'settings.resetAppTitle': 'Redefinir o aplicativo?',
   'settings.resetAppMessage': 'Todos os dados locais e caches serão removidos permanentemente. O aplicativo reiniciará com a configuração inicial.',
   'settings.resetFailed': 'Não foi possível concluir a redefinição. Reinicie o aplicativo e tente novamente.',
-  'settings.saveApply': 'Salvar alterações',
   'settings.accountLabel': 'Nome da conta',
   'settings.label': 'Nome',
   'settings.serverUrl': 'URL do servidor',

@@ -404,7 +404,6 @@ export const RU_MESSAGES = {
   'settings.resetAppTitle': 'Сбросить приложение?',
   'settings.resetAppMessage': 'Все локальные данные приложения и кэш будут удалены без возможности восстановления. Приложение перезапустится с начальной настройкой.',
   'settings.resetFailed': 'Сброс не завершён. Перезапустите приложение и повторите попытку.',
-  'settings.saveApply': 'Сохранить изменения',
   'settings.accountLabel': 'Название аккаунта',
   'settings.label': 'Название',
   'settings.serverUrl': 'URL сервера',

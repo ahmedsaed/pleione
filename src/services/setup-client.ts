@@ -173,7 +173,7 @@ class SetupClientImpl {
    * Apply phone-submitted source changes to the same storage used by Settings.
    * Actions are idempotent so a failed acknowledgement can be retried safely.
    */
-  async applyPendingActions(): Promise<boolean> {
+  async applyPendingActions(beforeApply?: () => void): Promise<boolean> {
     const base = serviceBase();
     if (!base) {
       log.debug('Action sync skipped: service port not yet known');
@@ -199,6 +199,7 @@ class SetupClientImpl {
     }
 
     if (actions.length === 0) return false;
+    beforeApply?.();
 
     const previousPlaylists = StorageService.getPlaylists();
     let playlists: PlaylistEntry[] = previousPlaylists

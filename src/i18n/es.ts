@@ -388,7 +388,6 @@ export const ES_MESSAGES = {
   'settings.resetAppTitle': '¿Restablecer la aplicación?',
   'settings.resetAppMessage': 'Todos los datos locales y cachés se eliminarán permanentemente. La aplicación se reiniciará con la configuración inicial.',
   'settings.resetFailed': 'No se pudo completar el restablecimiento. Reinicia la aplicación e inténtalo de nuevo.',
-  'settings.saveApply': 'Guardar cambios',
   'settings.accountLabel': 'Etiqueta de la cuenta',
   'settings.label': 'Etiqueta',
   'settings.serverUrl': 'URL del servidor',

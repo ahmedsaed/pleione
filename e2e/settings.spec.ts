@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   liveAfterSave,
   test, expect, type Page, routePlaylist, routeLiveManifest, seedPlaylist, PLAYLIST_URL, enterTab, readUserDataStore,
   isChromium53, pressKeys,
@@ -244,7 +245,7 @@ test.describe('Settings navigation', () => {
     });
     expect(animationRow.optionsCenter).toBeCloseTo(animationRow.rowCenter, 0);
     await page.locator('#animation-mode [data-value="essential"]').click();
-    await page.locator('#save-settings').click();
+    await leaveSettings(page);
 
     await expect(page.locator('html')).toHaveAttribute('data-animation', 'essential');
     const durations = await page.evaluate(() => {
@@ -255,7 +256,7 @@ test.describe('Settings navigation', () => {
       liveBadge.className = 'live-badge-dot';
       document.body.appendChild(liveBadge);
       const motionFixtures = document.createElement('div');
-      // Settings released its page on save; a button stands in for Save.
+      // Settings released its page on leaving; a button stands in for it.
       motionFixtures.innerHTML = `
         <button class="btn btn-primary btn-large"></button>
         <div class="channel-item"></div>
@@ -407,48 +408,20 @@ test.describe('Settings navigation', () => {
     }
   });
 
-  test('the action bar sits below the scroll viewport and stays put while scrolling', async ({ page }) => {
-    await page.goto('/');
-    const main = page.locator('.settings-main');
-    const scroll = page.locator('.settings-scroll');
-    const actions = page.locator('.settings-actions');
-
-    const [mainBox, scrollBox, actionBox] = await Promise.all([
-      main.boundingBox(),
-      scroll.boundingBox(),
-      actions.boundingBox(),
-    ]);
-    expect(mainBox).not.toBeNull();
-    expect(scrollBox).not.toBeNull();
-    expect(actionBox).not.toBeNull();
-    expect(actionBox!.x).toBeLessThanOrEqual(mainBox!.x);
-    expect(actionBox!.y).toBeGreaterThanOrEqual(scrollBox!.y + scrollBox!.height - 1);
-    expect(actionBox!.y + actionBox!.height).toBeLessThanOrEqual(mainBox!.y + mainBox!.height + 1);
-
-    // `position: sticky` is Chromium 56, so the bar must hold its place
-    // through the layout itself rather than through the scroll position.
-    await scroll.evaluate((el) => {
-      el.style.scrollBehavior = 'auto';
-      el.scrollTop = el.scrollHeight;
-    });
-    const scrolled = await actions.boundingBox();
-    expect(scrolled!.y).toBeCloseTo(actionBox!.y, 0);
-  });
-
-  test('clicking Cancel in settings (opened from Home) returns Home, and nothing plays', async ({ page }) => {
+  test('Back from settings (opened from Home) returns Home, and nothing plays', async ({ page }) => {
     await routePlaylist(page);
     await seedPlaylist(page);
     await page.goto('/');
     await expect(page.locator('#view-channels')).toBeVisible();
 
-    // Open settings from Home, then dismiss with Cancel.
+    // Open settings from Home, then go Back.
     await enterTab(page, 'settings');
     await expect(page.locator('#view-settings')).toBeVisible();
-    await page.locator('#cancel-settings').click();
+    await leaveSettings(page);
 
     // Give the document-level deferred select (setTimeout 0) a chance to fire,
     // then assert we still land on Home. Before the fix, that second select
-    // fired on the view Cancel landed on and activated its focused item.
+    // fired on the view Back landed on and activated its focused item.
     await page.waitForTimeout(50);
     await expect(page.locator('#view-home')).toBeVisible();
     await expect(page.locator('#view-channels')).toBeHidden();
@@ -709,7 +682,7 @@ test.describe('Settings navigation', () => {
     // Live preview: the scale applies before saving.
     expect(await fontSize()).toBeCloseTo(base * 1.3, 1);
 
-    await page.locator('#save-settings').click();
+    await leaveSettings(page);
     await liveAfterSave(page);
 
     // Persisted across a relaunch and applied outside Settings, without
@@ -793,12 +766,12 @@ test.describe('Settings text fields', () => {
     await page.goto('/');
     await page.locator('[data-settings-target="subtitles"]').click();
     const field = page.locator('#subdl-key');
-    const save = page.locator('#save-settings');
+    const other = page.locator('[data-settings-target="general"]');
 
     await field.click();
     await expect(field).toBeFocused();
     // While the caret is in the field, a hovered button is not lit beside it.
-    await save.hover();
+    await other.hover();
     await expect.poll(() => rings(page)).toEqual(['subdl-key']);
 
     await page.keyboard.press('Escape');
@@ -810,7 +783,7 @@ test.describe('Settings text fields', () => {
     await page.keyboard.press('ArrowUp');
     await expect(field).not.toBeFocused();
     await expect.poll(async () => (await rings(page)).length).toBe(1);
-    await expect(save).not.toHaveClass(/focused/);
+    await expect(other).not.toHaveClass(/focused/);
     await expect(field).not.toHaveClass(/focused/);
   });
 });
@@ -934,15 +907,15 @@ test.describe('Settings re-entry', () => {
     await expect(add).toBeInViewport();
   });
 
-  test('Down past the last control of a page goes to the action bar, not the next category', async ({ page }) => {
+  test('Down past the last control of a page stays on it, not the next category', async ({ page }) => {
     await leaveFromAddPlaylist(page);
 
     // A held key: each press follows the last with no pause.
-    for (let step = 0; step < 30 && !(await page.locator('.settings-actions .focused').count()); step++) {
+    for (let step = 0; step < 30; step++) {
       await page.keyboard.press('ArrowDown');
       expect(await focusedCategory(page) ?? 'sources').toBe('sources');
     }
-    await expect(page.locator('.settings-actions .focused')).toHaveCount(1);
+    await expect(page.locator('#settings-sources [data-focusable].focused')).toHaveCount(1);
     expect(await settledCategory(page)).toEqual(['sources']);
     await expect(page.locator('#settings-guide')).toBeHidden();
   });
@@ -1035,16 +1008,12 @@ test.describe('Settings playlists', () => {
     await page.locator('.playlist-name').first().fill('Saved');
     await page.locator('.playlist-url').first().fill(PLAYLIST_URL);
 
-    // Drive Save via the remote-style focus + Enter path (avoids the click's
+    // Leave by the remote's path (avoids the click's
     // deferred select firing on the channel view after the reload). Use an
     // explicit CustomEvent so SpatialNav's parent-bound listener receives a
     // bubbling nav:hover.
     await page.locator('.playlist-url').first().blur();
-    await page.evaluate(() => {
-      document.getElementById('save-settings')!
-        .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-    });
-    await page.keyboard.press('Enter');
+    await leaveSettings(page);
 
     await liveAfterSave(page);
     await expect(page.locator('.channel-main .channel-name').filter({ hasText: 'Channel One' })).toBeVisible();
@@ -1066,15 +1035,11 @@ test.describe('Settings playlists', () => {
     await page.locator('[data-settings-target="sources"]').click();
     await page.locator('.remove-playlist').first().click();
     await expect(page.locator('#playlist-entries .settings-row')).toHaveCount(0);
-    // Save via the keyboard path so the deferred-select skip-list does not
+    // Leave by the keyboard path so the deferred-select skip-list does not
     // matter here (this test is about stale in-memory state, not click wiring).
     // Use page.evaluate for an explicit CustomEvent so SpatialNav's parent-
     // bound listener definitely receives the bubbling nav:hover.
-    await page.evaluate(() => {
-      document.getElementById('save-settings')!
-        .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-    });
-    await page.keyboard.press('Enter');
+    await leaveSettings(page);
 
     // The save returns Home, now the first run; Live (the Red key flips the
     // Guide to the list) must NOT show the previous playlist's channels (the
@@ -1175,7 +1140,7 @@ test.describe('Settings Xtream: add -> cancel -> re-enter', () => {
     await page.waitForSelector('#add-xtream');
   }
 
-  test("re-entering Settings after Cancel must NOT show a leftover Xtream card", async ({ page }) => {
+  test("re-entering Settings after Back must NOT show an empty Xtream card", async ({ page }) => {
     await seedOneM3u(page);
     await page.goto('/');
 
@@ -1188,8 +1153,8 @@ test.describe('Settings Xtream: add -> cancel -> re-enter', () => {
     await page.click('#add-xtream');
     await expect(page.locator('#xtream-entries .xtream-card')).toHaveCount(1);
 
-    // 3) Cancel.
-    await page.click('#cancel-settings');
+    // 3) Back.
+    await leaveSettings(page);
     await expect(page.locator('#view-home')).toBeVisible(); // back Home
 
     // 4) Re-enter Settings.
@@ -1286,7 +1251,7 @@ test.describe('Settings Xtream live output', () => {
 
     const hlsRequest = page.waitForRequest(request =>
       request.url().endsWith('/live/u1/p1/101.m3u8'));
-    await page.locator('#save-settings').click();
+    await leaveSettings(page);
     // The save returns Home, which loads no channels; Live loads them anew.
     await liveAfterSave(page);
     await hlsRequest;
@@ -1341,7 +1306,7 @@ test.describe('Settings Xtream live categories', () => {
   const press = (page: Page, keyCode: number) => page.evaluate(code => document.dispatchEvent(
     new KeyboardEvent('keydown', { keyCode: code, bubbles: true })), keyCode);
 
-  test('choosing categories in the picker narrows the channel list after Save', async ({ page }) => {
+  test('choosing categories in the picker narrows the channel list on leaving', async ({ page }) => {
     await routeAccount(page, () => 3);
     await seedAccount(page);
     await page.goto('/');
@@ -1361,7 +1326,7 @@ test.describe('Settings Xtream live categories', () => {
     await expect(picker).toBeHidden();
     await expect(button).toContainText('2 of 3');
 
-    await page.locator('#save-settings').click();
+    await leaveSettings(page);
     await liveAfterSave(page);
     await expect(channels(page)).toHaveCount(2);
     await expect(channels(page)).not.toContainText(['Bravo']);
@@ -1798,7 +1763,7 @@ test.describe('Settings pages', () => {
     await expect(guide).toHaveClass(/focused/);
   });
 
-  test('unsaved edits survive switching categories and Save applies them all', async ({ page }) => {
+  test('edits survive switching categories and leaving saves them all', async ({ page }) => {
     await routePlaylist(page);
     await seedPlaylist(page);
     await page.goto('/');
@@ -1814,7 +1779,7 @@ test.describe('Settings pages', () => {
     await page.locator('[data-settings-target="appearance"]').click();
     await expect(page.locator('.theme-swatch.active')).toHaveAttribute('data-theme-id', 'arctic');
 
-    await page.locator('#save-settings').click();
+    await leaveSettings(page);
     await expect.poll(() => page.evaluate(() => [
       localStorage.getItem('iptv_channel_cycle_mode'), localStorage.getItem('iptv_theme'),
     ])).toEqual(['"active"', '"arctic"']);
@@ -2002,23 +1967,6 @@ test.describe('Settings form keys', () => {
     });
   }
 
-  test('Up from the action bar returns to the control just above it', async ({ page }) => {
-    await openSources(page);
-    const last = page.locator('#reset-customization');
-    await last.scrollIntoViewIfNeeded();
-    await ringOn(page, last);
-    await page.keyboard.press('ArrowDown');
-    await expect(page.locator('#cancel-settings')).toHaveClass(/focused/);
-    await page.keyboard.press('ArrowUp');
-    await expect(last).toHaveClass(/focused/);
-
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowRight');
-    await expect(page.locator('#save-settings')).toHaveClass(/focused/);
-    await page.keyboard.press('ArrowUp');
-    await expect(last).toHaveClass(/focused/);
-  });
-
   test('Left at the start of a field leaves for the field beside it, never wrapping', async ({ page }) => {
     await openSources(page);
     const prevented: boolean[] = [];
@@ -2059,7 +2007,7 @@ test.describe('Settings form keys', () => {
   });
 
   for (const interfaceSize of ['100', '130']) {
-    test(`every dropdown opens whole above the action bar (interface ${interfaceSize}, text 150)`, async ({ page }) => {
+    test(`every dropdown opens whole inside the page (interface ${interfaceSize}, text 150)`, async ({ page }) => {
       await page.addInitScript((size) => {
         localStorage.setItem('iptv_interface_size', JSON.stringify(size));
         localStorage.setItem('iptv_text_size', JSON.stringify('150'));
@@ -2072,18 +2020,17 @@ test.describe('Settings form keys', () => {
         expect(ids.length, category).toBeGreaterThan(0);
         for (const id of ids) {
           const dropdown = page.locator(`[id="${id}"]`);
-          // The trigger at the bottom of the pane, just above the action bar.
+          // The trigger at the bottom of the pane.
           await dropdown.locator('.dropdown-trigger').evaluate(el => el.scrollIntoView({ block: 'end' }));
           await dropdown.locator('.dropdown-trigger').click();
           await expect(dropdown).toHaveClass(/open/);
           const box = await page.evaluate((menuId) => {
             const menu = document.getElementById(menuId)!.querySelector('.dropdown-menu')!.getBoundingClientRect();
             const pane = document.querySelector('#view-settings .settings-scroll')!.getBoundingClientRect();
-            const bar = document.querySelector('#view-settings .settings-actions')!.getBoundingClientRect();
-            return { top: menu.top, bottom: menu.bottom, paneTop: pane.top, barTop: bar.top };
+            return { top: menu.top, bottom: menu.bottom, paneTop: pane.top, paneBottom: pane.bottom };
           }, id);
           expect(box.top, id).toBeGreaterThanOrEqual(box.paneTop - 1);
-          expect(box.bottom, id).toBeLessThanOrEqual(box.barTop + 1);
+          expect(box.bottom, id).toBeLessThanOrEqual(box.paneBottom + 1);
           await page.keyboard.press('Escape');
           await expect(dropdown).not.toHaveClass(/open/);
         }
@@ -2172,7 +2119,6 @@ test.describe('Settings focus stays in view', () => {
         atEnd: pane.scrollTop >= pane.scrollHeight - pane.clientHeight - 1,
       };
     });
-    // Down ends on the action bar, outside the pane.
     let reachedEnd = false;
     const walk = async (key: string) => {
       let moved = 0;
@@ -2191,5 +2137,116 @@ test.describe('Settings focus stays in view', () => {
     expect(await walk('ArrowDown')).toBeGreaterThan(3);
     expect(reachedEnd).toBe(true);
     expect(await walk('ArrowUp')).toBeGreaterThan(3);
+  });
+});
+
+test.describe('Settings saves without a button', () => {
+  test('a language applies at once, in place, keeping edits on another page', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'settings');
+    await page.locator('[data-settings-target="sources"]').click();
+    await page.locator('.playlist-name').first().fill('Renamed');
+    await page.locator('.playlist-name').first().blur();
+
+    await page.locator('[data-settings-target="general"]').click();
+    await page.locator('#app-language .dropdown-trigger').click();
+    await page.locator('#app-language .dropdown-option[data-dropdown-value="ar"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await expect(page.locator('#view-settings')).toBeVisible();
+    await expect(page.locator('#settings-general')).toHaveClass(/\bactive\b/);
+    await expect(page.locator('.playlist-name').first()).toHaveValue('Renamed');
+  });
+
+  test('Back keeps a picked theme and goes Home; a swatch only previewed does not stay', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'settings');
+    await page.locator('[data-settings-target="appearance"]').click();
+    const theme = () => page.locator('html').getAttribute('data-theme');
+    await page.locator('.theme-swatch[data-theme-id="daylight"]').click();
+    await page.locator('.theme-swatch[data-theme-id="pastel-latte"]').hover();
+    await leaveSettings(page);
+    await expect(page.locator('#view-home')).toBeVisible();
+    await expect.poll(theme).toBe('daylight');
+  });
+
+  test('Blue from the reminder manager returns to the form with its edits', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'settings');
+    await page.locator('[data-settings-target="sources"]').click();
+    await page.locator('.playlist-name').first().fill('Renamed');
+    await page.locator('.playlist-name').first().blur();
+    await page.locator('[data-settings-target="guide"]').click();
+    await page.locator('#manage-reminders').click();
+    await expect(page.locator('#view-reminders')).toBeVisible();
+    await pressKeys(page, 406);
+    await expect(page.locator('#view-settings')).toBeVisible();
+    await expect(page.locator('.playlist-name').first()).toHaveValue('Renamed');
+  });
+
+  test('a source that fails after a color key shows Live\'s error, not an empty list', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.route('**/broken.m3u', route => route.fulfill({ status: 404, body: '' }));
+    await page.goto('/');
+    await enterTab(page, 'live');
+    await expect(page.locator('#view-channels')).toBeVisible();
+    await pressKeys(page, 406);
+    await page.locator('[data-settings-target="sources"]').click();
+    await page.locator('.playlist-url').first().fill('http://host/broken.m3u');
+    await page.locator('.playlist-url').first().blur();
+    await pressKeys(page, 403);
+    await expect(page.locator('#view-channels')).toBeVisible();
+    await expect(page.locator('.live-load-error')).toBeVisible();
+  });
+
+  test('a Home click blocked by a duplicate guide URL keeps the ring on the field', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'settings');
+    await page.locator('[data-settings-target="guide"]').click();
+    await page.locator('#add-epg-source').click();
+    await page.locator('.manual-epg-url').last().fill('http://host/guide.xml');
+    await page.locator('#add-epg-source').click();
+    await page.locator('.manual-epg-url').last().fill('http://host/guide.xml');
+    await page.locator('.manual-epg-url').last().blur();
+    await page.mouse.move(960, 2);
+    await page.locator('.home-button').click();
+    await expect(page.locator('#view-settings')).toBeVisible();
+    await expect(page.locator('.manual-epg-url.focused')).toHaveCount(1);
+  });
+
+  test('removing the last source and leaving by a color key lands Home, not back in Settings', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'live');
+    await expect(page.locator('#view-channels')).toBeVisible();
+    await pressKeys(page, 406);
+    await page.locator('[data-settings-target="sources"]').click();
+    await page.locator('.remove-playlist').first().click();
+    await pressKeys(page, 403);
+    await expect(page.locator('#view-home')).toBeVisible();
+  });
+
+  test('the Home button saves as Back does', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'settings');
+    await page.locator('[data-settings-target="sources"]').click();
+    await page.locator('.playlist-name').first().fill('Renamed');
+    await page.locator('.playlist-name').first().blur();
+    await page.locator('.home-button').click();
+    await expect(page.locator('#view-home')).toBeVisible();
+    const name = await page.evaluate(() =>
+      (JSON.parse(localStorage.getItem('iptv_playlists')!) as { name: string }[])[0].name);
+    expect(name).toBe('Renamed');
   });
 });

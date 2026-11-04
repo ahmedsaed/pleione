@@ -54,7 +54,7 @@ export function toggleDropdown(
 interface Box { top: number; bottom: number }
 
 // The part of the screen `el` can paint in: the window, cut by every
-// ancestor that clips its overflow (the Settings pane above its action bar).
+// ancestor that clips its overflow (the Settings pane).
 function visibleBox(el: HTMLElement): { box: Box; scroller: HTMLElement | null } {
   const box: Box = { top: 0, bottom: window.innerHeight };
   let scroller: HTMLElement | null = null;

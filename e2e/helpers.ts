@@ -151,6 +151,12 @@ export async function pressStepsAndReadPlayer(page: Page, steps: number[][]): Pr
 // BACK_KEY and pressBack, so another platform's key code is one change.
 export const BACK_KEY = 461;
 
+// Back out of Settings, which saves; in a text field the first Back only leaves it.
+export async function leaveSettings(page: Page): Promise<void> {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await pressKeys(page, BACK_KEY);
+}
+
 /** Press Back as the remote does: a raw keydown (Backspace is unmapped). */
 export async function pressBack(page: Page): Promise<void> {
   await page.evaluate((code) => {

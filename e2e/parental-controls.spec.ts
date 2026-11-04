@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   test,
   expect,
   enterTab,
@@ -178,11 +179,7 @@ test('a source added after turning on stays locked until the manager opens it', 
   await page.locator('.playlist-name').last().fill('Second');
   await page.locator('.playlist-url').last().fill('http://host.example.com/second.m3u');
   await page.locator('.playlist-url').last().blur();
-  await page.evaluate(() => {
-    document.getElementById('save-settings')!
-      .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-  });
-  await page.keyboard.press('Enter');
+  await leaveSettings(page);
   await liveAfterSave(page);
 
   const prompt = page.locator('.parental-pin-prompt');
@@ -249,7 +246,7 @@ test('channels hidden from the list are locked with their source', async ({ page
   await enterTab(page, 'settings');
   await page.locator('[data-settings-target="sources"]').click();
   await page.locator('#show-hidden [data-value="on"]').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await liveAfterSave(page);
   const hidden = page.locator('.channel-main .channel-item').filter({ hasText: 'Channel Two' });
   await expect(hidden).toBeVisible();
@@ -270,11 +267,7 @@ test('pointing a reviewed source at a new address locks it again', async ({ page
   await page.locator('[data-settings-target="sources"]').click();
   await page.locator('.playlist-url').first().fill('http://host.example.com/second.m3u');
   await page.locator('.playlist-url').first().blur();
-  await page.evaluate(() => {
-    document.getElementById('save-settings')!
-      .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-  });
-  await page.keyboard.press('Enter');
+  await leaveSettings(page);
   await liveAfterSave(page);
 
   const prompt = page.locator('.parental-pin-prompt');

@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   liveAfterSave,
   test, expect, enterTab, openGuide, pressKeys, routePlaylist, seedPlaylist, type Page,
 } from './helpers';
@@ -92,13 +93,13 @@ for (const size of SIZES) {
     for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
       await page.locator(`[data-settings-target="${category}"]`).click();
       await page.waitForTimeout(150);
-      // Settings scrolls its categories; only its frame and actions must fit.
-      const actions = await page.locator('#save-settings').evaluate((el) => {
+      // Settings scrolls its categories; only its frame must fit.
+      const frame = await page.locator('.settings-scroll').evaluate((el) => {
         const r = el.getBoundingClientRect();
         return { right: r.right, bottom: r.bottom };
       });
-      expect(actions.bottom, `${category}: Save sits on screen`).toBeLessThanOrEqual(1081);
-      expect(actions.right, `${category}: Save sits on screen`).toBeLessThanOrEqual(1921);
+      expect(frame.bottom, `${category}: the page sits on screen`).toBeLessThanOrEqual(1081);
+      expect(frame.right, `${category}: the page sits on screen`).toBeLessThanOrEqual(1921);
     }
   });
 }
@@ -164,17 +165,10 @@ test('the interface size previews live, reverts on Cancel, and persists on Save'
   await page.locator('#interface-size .dropdown-trigger').click();
   await page.locator('#interface-size .dropdown-option[data-dropdown-value="120"]').click();
   await expect(root).toHaveAttribute('data-interface-size', '120');
-  const radius = await page.locator('#save-settings').evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius));
+  const radius = await page.locator('.settings-nav-item').first().evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius));
   expect(radius).toBeCloseTo(8 * 1.2, 1);
 
-  await page.locator('#cancel-settings').click();
-  await expect(root).toHaveAttribute('data-interface-size', '100');
-
-  await enterTab(page, 'settings');
-  await page.locator('[data-settings-target="appearance"]').click();
-  await page.locator('#interface-size .dropdown-trigger').click();
-  await page.locator('#interface-size .dropdown-option[data-dropdown-value="120"]').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await liveAfterSave(page);
   await expect(root).toHaveAttribute('data-interface-size', '120');
 

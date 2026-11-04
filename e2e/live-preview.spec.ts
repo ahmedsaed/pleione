@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   liveAfterSave,
   test,
   expect,
@@ -662,7 +663,7 @@ test('disabling the playing source in Settings leaves no preview', async ({ page
   await enterTab(page, 'settings');
   await page.locator('[data-settings-target="sources"]').click();
   await page.locator('#playlist-entries .source-toggle').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await liveAfterSave(page);
   await expect(page.locator(PANEL)).toBeHidden();
   await expect(page.locator(ROW)).toHaveCount(0);
@@ -685,7 +686,7 @@ test.describe('display timezone', () => {
     await enterTab(page, 'settings');
     await page.locator('[data-settings-target="guide"]').click();
     await page.locator('#tz-mode [data-value="feed"]').click();
-    await page.locator('#save-settings').click();
+    await leaveSettings(page);
     await liveAfterSave(page);
     await selectFirst(page);
     await expect(page.locator(`${PANEL} .live-preview-program time`).first())

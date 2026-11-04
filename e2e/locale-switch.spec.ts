@@ -1,4 +1,4 @@
-import { test, expect, routePlaylist, seedPlaylist, enterTab } from './helpers';
+import { leaveSettings, test, expect, routePlaylist, seedPlaylist, enterTab } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
 test.use({ startOn: 'live' });
@@ -31,7 +31,7 @@ test('switching through every language refreshes cached Recently Watched labels'
     await enterTab(page, 'settings');
     await page.locator('#app-language .dropdown-trigger').click();
     await page.locator(`#app-language [data-dropdown-value="${locale}"]`).click();
-    await page.locator('#save-settings').click();
+    await leaveSettings(page);
     await expect(recentLabel).toHaveText(label);
   }
 });

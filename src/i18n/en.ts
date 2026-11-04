@@ -390,7 +390,6 @@ export const EN_MESSAGES = {
   'settings.resetAppTitle': 'Reset the app?',
   'settings.resetAppMessage': 'All local app data and caches will be permanently removed. The app will restart with its initial setup.',
   'settings.resetFailed': 'Reset could not be completed. Restart the app and try again.',
-  'settings.saveApply': 'Save Changes',
   'settings.accountLabel': 'Account label',
   'settings.label': 'Label',
   'settings.serverUrl': 'Server URL',

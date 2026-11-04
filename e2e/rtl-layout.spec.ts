@@ -1,5 +1,6 @@
 import { seedXtream } from './fixtures/xtream';
 import {
+  leaveSettings,
   test, expect, enterTab, openGuide, pressKeys, routeLiveManifest, routePlaylist, seedPlaylist,
   type Page,
 } from './helpers';
@@ -19,7 +20,7 @@ async function chooseLanguage(page: Page, locale: string): Promise<void> {
   await enterTab(page, 'settings');
   await page.locator('#app-language .dropdown-trigger').click();
   await page.locator(`#app-language [data-dropdown-value="${locale}"]`).click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await expect(page.locator('#view-home')).toBeVisible();
 }
 
@@ -296,9 +297,6 @@ test.describe('Settings', () => {
       const sidebar = (await view.locator('.settings-sidebar').boundingBox())!;
       const pageBox = (await view.locator('.settings-scroll').boundingBox())!;
       expect(rightOf(sidebar, pageBox)).toBe(true);
-      // Save sits at the left end of the action row, Cancel to its right.
-      expect(rightOf((await view.locator('#cancel-settings').boundingBox())!,
-        (await view.locator('#save-settings').boundingBox())!)).toBe(true);
 
       const appearance = view.locator('[data-settings-target="appearance"]');
       await appearance.click();

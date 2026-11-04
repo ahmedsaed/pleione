@@ -404,7 +404,6 @@ export const PL_MESSAGES = {
   'settings.resetAppTitle': 'Zresetować aplikację?',
   'settings.resetAppMessage': 'Wszystkie lokalne dane i pamięć podręczna zostaną trwale usunięte. Aplikacja uruchomi się z konfiguracją początkową.',
   'settings.resetFailed': 'Nie udało się zresetować. Uruchom aplikację ponownie i spróbuj jeszcze raz.',
-  'settings.saveApply': 'Zapisz zmiany',
   'settings.accountLabel': 'Nazwa konta',
   'settings.label': 'Etykieta',
   'settings.serverUrl': 'URL serwera',

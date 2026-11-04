@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   test,
   expect,
   seedPlaylist,
@@ -309,20 +310,43 @@ test('Settings keeps reminders while its channels load, then counts them', async
   await expect(entry.locator('#manage-reminders')).toContainText('(1)');
 });
 
-test('Save while Settings waits for the channels saves once they load', async ({ page }) => {
+test('Back with a source edit while the channels load saves once they load', async ({ page }) => {
   const gate = holdPlaylist(page);
   await openHome(page);
   await enterTab(page, 'settings');
-  await settings(page).locator('[data-settings-target="appearance"]').click();
-  await settings(page).locator('.theme-swatch[data-theme-id="arctic"]').click();
-  await settings(page).locator('#save-settings').click();
+  await settings(page).locator('[data-settings-target="sources"]').click();
+  await settings(page).locator('.playlist-name').first().fill('Renamed');
+  await leaveSettings(page);
   await expect(page.locator('.toast.visible')).toContainText('Loading channels…');
   await expect(settings(page)).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem('iptv_theme'))).not.toBe('"arctic"');
+  const savedName = () => page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('iptv_playlists')!) as { name: string }[])[0].name);
+  expect(await savedName()).not.toBe('Renamed');
 
   gate.release();
-  await expect(page.locator('#view-home')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('iptv_theme'))).toBe('"arctic"');
+  await expect.poll(savedName).toBe('Renamed');
+  await expect(settings(page)).toBeHidden();
+});
+
+test('a source fixed during a load wins over that load when a color key leaves Settings', async ({ page }) => {
+  const gate = holdPlaylist(page);
+  await page.route('**/fixed.m3u', route => route.fulfill({
+    contentType: 'application/x-mpegurl',
+    body: '#EXTM3U\n#EXTINF:-1 group-title="Group 1",Fixed One\nhttp://host/fixed/1.m3u8\n',
+  }));
+  await openHome(page);
+  await enterTab(page, 'settings');
+  await settings(page).locator('[data-settings-target="sources"]').click();
+  await settings(page).locator('.playlist-url').first().fill('http://host/fixed.m3u');
+  await settings(page).locator('.playlist-url').first().blur();
+  await expect.poll(() => gate.requests).toBe(1);
+  await pressKeys(page, 403);
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await expect(page.locator('.channel-main .channel-item').filter({ hasText: 'Fixed One' })).toBeVisible();
+
+  gate.release();
+  await page.waitForTimeout(300);
+  await expect(page.locator('.channel-main .channel-item').filter({ hasText: 'Fixed One' })).toBeVisible();
 });
 
 test('Back while Settings loads goes Home, and the load does not pull Settings back', async ({ page }) => {

@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   liveAfterSave,
   test,
   expect,
@@ -593,7 +594,7 @@ test('Settings enters edit mode, reveals hidden channels, and resets everything'
 
   // Show hidden reveals the hidden channel in the normal list, marked.
   await page.locator('#show-hidden [data-value="on"]').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await liveAfterSave(page);
   await expect(page.locator('.channel-main .channel-item')).toHaveCount(4);
   await expect(page.locator('.channel-main .hidden-entry')).toHaveCount(1);
@@ -604,7 +605,7 @@ test('Settings enters edit mode, reveals hidden channels, and resets everything'
   await page.locator('#reset-customization').click();
   await expect(page.locator('.confirmation-prompt')).toBeVisible();
   await page.locator('.confirmation-btn').first().click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await liveAfterSave(page);
   await expect(page.locator('.channel-main .hidden-entry')).toHaveCount(0);
   await expect(page.locator('.channel-main .channel-item')).toHaveCount(4);
@@ -621,7 +622,7 @@ test('Show hidden channels dims a hidden channel in the Guide as in the list', a
   await enterTab(page, 'settings');
   await page.locator('[data-settings-target="sources"]').click();
   await page.locator('#show-hidden [data-value="on"]').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await liveAfterSave(page);
   const listRow = page.locator('.channel-main .channel-item.hidden-entry');
   await expect(listRow).toHaveCount(1);

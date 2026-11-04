@@ -119,14 +119,14 @@ for (const size of ['100', '130']) {
     for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
       await page.locator(`[data-settings-target="${category}"]`).click();
       await page.waitForTimeout(150);
-      const save = await page.locator('#save-settings').evaluate((el) => {
+      const frame = await page.locator('.settings-scroll').evaluate((el) => {
         const r = el.getBoundingClientRect();
         return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
       });
-      expect(save.left, `${category}: Save sits on screen`).toBeGreaterThanOrEqual(-1);
-      expect(save.top, `${category}: Save sits on screen`).toBeGreaterThanOrEqual(-1);
-      expect(save.bottom, `${category}: Save sits on screen`).toBeLessThanOrEqual(721);
-      expect(save.right, `${category}: Save sits on screen`).toBeLessThanOrEqual(1281);
+      expect(frame.left, `${category}: the page sits on screen`).toBeGreaterThanOrEqual(-1);
+      expect(frame.top, `${category}: the page sits on screen`).toBeGreaterThanOrEqual(-1);
+      expect(frame.bottom, `${category}: the page sits on screen`).toBeLessThanOrEqual(721);
+      expect(frame.right, `${category}: the page sits on screen`).toBeLessThanOrEqual(1281);
     }
   });
 }

@@ -89,7 +89,7 @@ const log = createLogger('Settings');
 // The rows Left and Right move along; outside them, a control moves to the
 // page's control beside it on the same line.
 const ROW_GROUPS = '.toggle-group, .theme-swatch-rail, .settings-row, .xtream-fields, '
-  + '.xtream-card-foot, .settings-actions, .epg-offset-controls, .manual-epg-source-head, '
+  + '.xtream-card-foot, .epg-offset-controls, .manual-epg-source-head, '
   + '.manual-epg-scope-options';
 
 type EpgScopePlaylist = Pick<PlaylistEntry, 'id' | 'name' | 'url'>;
@@ -418,7 +418,7 @@ function manualEpgSourceRow(
   const canMoveLater = index < sourceCount - 1;
   const key = manualEpgKey(index);
   return html`
-    <div class="manual-epg-source" data-manual-epg-source data-key="${key}">
+    <div class="manual-epg-source" data-manual-epg-source data-key="${key}" data-saved-url="${source.url}">
       <div class="manual-epg-source-head">
         <span class="manual-epg-priority">${index + 1}</span>
         <input type="url" class="settings-input manual-epg-url" data-focusable
@@ -480,8 +480,30 @@ function formatExpiry(expiresAt: number | null): string {
 
 /** What the app does after Settings closes: reload = re-fetch playlist/EPG;
  *  apply = re-render for display-only changes; reset = erase local app data;
- *  edit-channels = open the channel list in edit mode; cancel = discard. */
-export type SaveAction = 'reload' | 'apply' | 'reset' | 'cancel' | 'edit-channels';
+ *  edit-channels = open the channel list in edit mode; cancel = nothing changed. */
+// `-behind` leaves the view alone, for a way out of Settings that is already
+// on its way somewhere; `language` applies a new language while Settings stays.
+export type SaveAction = 'reload' | 'reload-behind' | 'apply' | 'apply-behind' | 'language'
+  | 'reset' | 'cancel' | 'edit-channels' | 'reload-edit-channels';
+
+// A row or card the form holds but cannot save yet, kept across a redraw.
+interface HeldRow {
+  kind: 'playlist' | 'xtream';
+  id: string;
+  values: Record<string, string>;
+}
+
+const HELD_FIELDS = {
+  playlist: ['.playlist-name', '.playlist-url'],
+  xtream: ['.xtream-name', '.xtream-url', '.xtream-username', '.xtream-password'],
+};
+
+interface SourcesForm {
+  stored: PlaylistEntry[];
+  sources: PlaylistEntry[];
+  manualEpgSources: ManualEpgSource[];
+  reviewedSnapshots: [string, XtreamLiveCategorySnapshot][];
+}
 
 export type SourceTarget =
   | { kind: 'add-xtream' }
@@ -534,14 +556,14 @@ export class Settings {
   // The control Settings came back to, until its first reveal.
   private landedKey: string | null = null;
   private currentRow: Element | null = null;
-  // Pending theme selection (persisted on Save; live-previewed while browsing).
+  // The picked theme, against the one a swatch previews while browsing.
   private selectedTheme = '';
   private themeHoverToken = 0;
   private epgOffsets: Record<string, number> = {};
   private storedEpgOffsets: Record<string, number> = {};
   private confirmationPrompt = new ConfirmationPrompt('prompt.settings');
   private liveCategoryPicker = new LiveCategoryPicker();
-  // Picker results waiting for Save, per card id; `account` ties each to the
+  // Picker results waiting to save, per card id; `account` ties each to the
   // server and username it was chosen for.
   private pendingLiveCategories = new Map<string, {
     filter: XtreamLiveCategoryFilter | undefined;
@@ -561,7 +583,16 @@ export class Settings {
   private healthResume: (() => void) | null = null;
   // Settings opens before the channels load; the parts that need them wait.
   private channelsLoading = false;
-  private saveWhenChannelsLoad = false;
+  private leaveWhenChannelsLoad = false;
+  // A setting changed since the last way out, which re-applies them.
+  private edited = false;
+  // Sources saved while Settings stayed open, to load on the way out.
+  private reloadPending = false;
+  // Already left: `release()` has nothing more to save.
+  private left = false;
+  // The sources as the form last showed them saved, so only an edit saves.
+  private drawnSources = '';
+  private held: HeldRow[] = [];
   private channelsReady: () => boolean = () => true;
 
   constructor(
@@ -672,6 +703,9 @@ export class Settings {
 
     this.container.addEventListener('input', (e: Event) => {
       const input = e.target as HTMLInputElement;
+      this.leaveWhenChannelsLoad = false;
+      // Sources and guide fields are compared with what was drawn instead.
+      if (!input.closest('#settings-sources, #settings-guide')) this.edited = true;
       if (input.classList.contains('manual-epg-url')) {
         this.refreshEpgOffsetEditor(this.manualEpgSourcesFromEditor(), input.value.trim());
       } else if (
@@ -747,6 +781,9 @@ export class Settings {
   }
 
   render(): void {
+    this.left = false;
+    this.leaveWhenChannelsLoad = false;
+    const pendingCategories = this.held.length ? new Map(this.pendingLiveCategories) : null;
     this.pendingLiveCategories.clear();
     const allPlaylists = StorageService.getPlaylists();
     const playlists = allPlaylists.filter(pl => pl.source !== 'upload' && pl.source !== 'xtream');
@@ -1248,16 +1285,14 @@ export class Settings {
               </div>
             </div>
           </div>
-
-          <div class="settings-actions" data-nav-container>
-            <button class="btn btn-secondary btn-large" data-focusable id="cancel-settings">${t('common.cancel')}</button>
-            <button class="btn btn-primary btn-large" data-focusable id="save-settings">${t('settings.saveApply')}</button>
-          </div>
         </div>
         </div>
       </div>
     `);
 
+    if (pendingCategories) this.pendingLiveCategories = pendingCategories;
+    this.restoreHeld();
+    this.drawnSources = this.sourcesSignature(this.readSources(false)!);
     this.enter();
     void this.refreshSetupInfo();
     // Sync uploads from the local service on every Settings open. Subsequent
@@ -1419,8 +1454,7 @@ export class Settings {
   // Up walks the category column on its own, so Up from the first
   // category stays put rather than reaching the pane beside it.
   // Up and Down on a page stay on it, a row at a time, so they never land on
-  // the sidebar beside it (and switch pages); Down past its end goes to the
-  // action bar, and Up from the bar returns to the control just above it.
+  // the sidebar beside it (and switch pages).
   // Left and Right stay on the focused control's row. The theme
   // rail is wider than anything above or below it, so Up and Down leave it for
   // the page's neighboring control in reading order rather than whatever sits
@@ -1436,14 +1470,9 @@ export class Settings {
       return true;
     }
     const focused = this.nav.focused;
-    if (!open && action === 'right' && focused?.closest('.settings-category, .settings-actions')) {
+    if (!open && action === 'right' && focused?.closest('.settings-category')) {
       const peer = this.rowPeer(focused, 'right');
       if (peer) this.nav.focus(peer);
-      return true;
-    }
-    if (!open && action === 'up' && focused?.closest('.settings-actions')) {
-      const above = this.controlAboveActions();
-      if (above) this.nav.focus(above);
       return true;
     }
     const page = open || (action !== 'up' && action !== 'down') ? null
@@ -1461,10 +1490,6 @@ export class Settings {
         moved = !!row;
       } else if (!rail) {
         this.nav.setRestrict(page);
-        moved = this.nav.move(action);
-      }
-      if (!moved && action === 'down') {
-        this.nav.setRestrict(this.container.querySelector<HTMLElement>('.settings-actions'));
         moved = this.nav.move(action);
       }
       this.nav.setRestrict(null);
@@ -1624,18 +1649,15 @@ export class Settings {
       // Single-select toggle group: clear the siblings, activate the chosen option.
       el.parentElement?.querySelectorAll('.toggle-option').forEach(b => b.classList.remove('active'));
       el.classList.add('active');
+      this.settingChanged();
     } else if (el.classList.contains('epg-offset-step')) {
       this.adjustEpgOffset(Number(el.dataset.offsetDelta));
     } else if (el.classList.contains('epg-offset-value')) {
       this.setEpgOffset(0);
     } else if (el.classList.contains('theme-swatch')) {
       this.selectThemeSwatch(el);
-    } else if (el.id === 'save-settings') {
-      this.save();
-    } else if (el.id === 'cancel-settings') {
-      this.onSave('cancel');
     } else if (el.id === 'refresh-data') {
-      this.onSave('reload');
+      this.leave('reload');
     } else if (el.id === 'clear-cache') {
       this.confirmationPrompt.show({
         title: t('settings.clearCacheTitle'),
@@ -1655,8 +1677,11 @@ export class Settings {
         onCancel: () => {},
       });
     } else if (el.id === 'edit-channel-list') {
-      this.saveShowHidden();
-      this.onSave('edit-channels');
+      if (!this.saveNow(true)) return;
+      const reload = this.reloadPending;
+      this.reloadPending = false;
+      this.left = true;
+      this.onSave(reload ? 'reload-edit-channels' : 'edit-channels');
     } else if (el.id === 'check-channel-health') {
       if (!this.healthController) {
         const check = this.startChannelHealthCheck();
@@ -1722,7 +1747,7 @@ export class Settings {
   }
 
   // The channels Settings opened before: the guide sources they bring, the
-  // health check, and Save wait for them, each showing so in place.
+  // health check, and new sources wait for them, each showing so in place.
   setChannelsLoading(loading: boolean): void {
     if (this.channelsLoading === loading) return;
     this.channelsLoading = loading;
@@ -1732,9 +1757,9 @@ export class Settings {
       const reminders = $('.reminders-item', this.container);
       if (reminders) morph(reminders, this.reminderItem());
     }
-    if (loading || !this.saveWhenChannelsLoad) return;
-    this.saveWhenChannelsLoad = false;
-    if (!this.container.classList.contains('hidden')) this.save();
+    if (loading || !this.leaveWhenChannelsLoad) return;
+    this.leaveWhenChannelsLoad = false;
+    if (!this.container.classList.contains('hidden')) this.leave();
   }
 
   setChannelsReady(ready: () => boolean): void {
@@ -1983,7 +2008,7 @@ export class Settings {
     }
   }
 
-  // Applied on its own (not only on Save) so leaving through "Edit channel list"
+  // Applied on its own so leaving through "Edit channel list"
   // still honors the toggle.
   private saveShowHidden(): void {
     const btn = $('#show-hidden .toggle-option.active', this.container);
@@ -2009,6 +2034,13 @@ export class Settings {
   release(): void {
     if (!this.container.firstChild) return;
     this.dismissPrompt();
+    this.held = [];
+    if (!this.left) {
+      const saved = this.saveForm(false);
+      if (saved) this.onSave('reload-behind');
+      else if (this.edited) this.onSave('apply-behind');
+      this.edited = false;
+    }
     morph(this.container, html``);
   }
 
@@ -2374,33 +2406,6 @@ export class Settings {
     return best;
   }
 
-  // Up from the action bar lands on the page's control nearest above it in
-  // view, not on whatever the geometry of the whole view favors.
-  private controlAboveActions(): HTMLElement | null {
-    const page = this.container.querySelector<HTMLElement>('.settings-category.active');
-    const pane = this.container.querySelector<HTMLElement>('.settings-scroll');
-    if (!page || !pane) return null;
-    const view = pane.getBoundingClientRect();
-    const from = this.nav.focused?.getBoundingClientRect() ?? null;
-    let best: HTMLElement | null = null;
-    let bestBottom = -Infinity;
-    let bestGap = Infinity;
-    let last: HTMLElement | null = null;
-    for (const el of Array.from(page.querySelectorAll<HTMLElement>('[data-focusable]'))) {
-      if (el.closest('.dropdown-menu') || !this.nav.navigable(el)) continue;
-      last = el;
-      const r = el.getBoundingClientRect();
-      if (r.bottom > view.bottom + 1 || r.top < view.top - 1) continue;
-      const gap = from ? Math.max(r.left - from.right, from.left - r.right, 0) : 0;
-      if (r.bottom > bestBottom + 5 || (Math.abs(r.bottom - bestBottom) <= 5 && gap < bestGap)) {
-        best = el;
-        bestBottom = Math.max(r.bottom, bestBottom);
-        bestGap = gap;
-      }
-    }
-    return best ?? last;
-  }
-
   private focusActiveCategory(): void {
     const active = this.container.querySelector<HTMLElement>('.settings-nav-item.active')
       ?? this.container.querySelector<HTMLElement>('.settings-nav-item');
@@ -2431,7 +2436,7 @@ export class Settings {
       !!el && rail.contains(el) && this.nav.navigable(el)) ?? null;
   }
 
-  // OK on a swatch: mark it the pending selection (persisted on Save & Apply;
+  // OK on a swatch: mark it the selection (saved at once;
   // reverted to savedTheme if Settings closes without saving — see App.showView).
   private selectThemeSwatch(el: HTMLElement): void {
     const id = el.dataset.themeId;
@@ -2440,6 +2445,7 @@ export class Settings {
     el.classList.add('active');
     this.selectedTheme = id;
     previewTheme(id);
+    this.settingChanged();
   }
 
   // Opening moves focus to the active option, or the first one when the stored
@@ -2464,13 +2470,16 @@ export class Settings {
   private selectDropdownOption(el: HTMLElement): void {
     const dd = commitDropdownOption(el);
     if (!dd) return;
-    // Text and interface sizes preview live so the choice can be judged at
-    // its own scale; showView() reverts them if Settings closes unsaved.
     if (dd.id === 'text-size') applyTextSize(dd.dataset.value ?? '');
     if (dd.id === 'interface-size') applyInterfaceSize(dd.dataset.value ?? '');
     if (dd.id === 'epg-offset-source') this.updateEpgOffsetControl();
     const trigger = dd.querySelector<HTMLElement>('.dropdown-trigger');
     if (trigger) this.nav.focus(trigger);
+    this.settingChanged();
+    if (dd.id === 'app-language') {
+      this.checkpoint(false);
+      this.onSave('language');
+    }
   }
 
   private addPlaylistEntry(): void {
@@ -2530,13 +2539,15 @@ export class Settings {
 
   private manualEpgSourcesFromEditor(
     allowedPlaylistIds?: ReadonlySet<string>,
+    keepSaved = false,
   ): ManualEpgSource[] {
     return Array.from(
       this.container.querySelectorAll<HTMLElement>('[data-manual-epg-source]'),
     ).map(row => {
       const source = this.manualEpgSourceFromRow(row);
       return {
-        url: source.url.trim(),
+        // Leaving saves, so a field left empty keeps what was saved.
+        url: source.url.trim() || (keepSaved ? row.dataset.savedUrl ?? '' : ''),
         playlistIds: allowedPlaylistIds && source.playlistIds.length
           ? source.playlistIds.filter(id => allowedPlaylistIds.has(id))
           : source.playlistIds,
@@ -2669,6 +2680,7 @@ export class Settings {
     const targetSource = this.manualEpgSourceFromRow(target);
     this.applyManualEpgSourceToRow(target, source);
     this.applyManualEpgSourceToRow(row, targetSource);
+    [row.dataset.savedUrl, target.dataset.savedUrl] = [target.dataset.savedUrl, row.dataset.savedUrl];
     this.refreshEpgOffsetEditor(
       this.manualEpgSourcesFromEditor(),
       this.currentEpgOffsetSource(),
@@ -2925,7 +2937,7 @@ export class Settings {
           counts,
         };
         this.pendingLiveCategories.set(id, { filter, account: account.key, catalogIds, reviewed });
-        // A re-pointed or unsaved account gets its snapshot only once Save succeeds.
+        // A re-pointed or unsaved account gets its snapshot only once it saves.
         if (stored) StorageService.setLiveCategorySnapshot(id, reviewed);
         log.info('Live categories chosen', 'event=xtream.category_filter.picked',
           `mode=${filter ? filter.mode : 'all'}`, `categories=${String(filter ? filter.ids.length : 0)}`,
@@ -2962,14 +2974,141 @@ export class Settings {
     morph(el, content);
   }
 
-  private save(): void {
-    // Saving keys time corrections to the channels' guide sources, so it
-    // waits for the channels Settings opened before.
+  /**
+   * Back and the Home button. Simple settings are saved as they change; the
+   * sources and guide fields save here, loading once if they changed. Invalid
+   * fields keep Settings open.
+   */
+  leave(action?: 'reload'): void {
+    // Saving keys time corrections to the channels' guide sources, so new
+    // sources wait for the channels Settings opened before.
     if (this.channelsLoading) {
-      this.saveWhenChannelsLoad = true;
-      showToast(t('app.loadingChannels'));
-      return;
+      const form = this.readSources(true);
+      if (!form) return;
+      if (this.sourcesChanged(form)) {
+        this.leaveWhenChannelsLoad = true;
+        showToast(t('app.loadingChannels'));
+        return;
+      }
     }
+    const saved = this.saveForm(true);
+    if (saved === null) return;
+    const edited = this.edited;
+    this.edited = false;
+    this.left = true;
+    this.onSave(action ?? (saved ? 'reload' : edited ? 'apply' : 'cancel'));
+  }
+
+  /**
+   * Save what the form holds and stay, before a page redraws it, holding what
+   * cannot save yet. False when a field is invalid; `report` false takes the
+   * first of a duplicate guide URL instead.
+   */
+  checkpoint(report = true): boolean {
+    if (!this.saveNow(report)) return false;
+    this.held = this.incompleteRows();
+    return true;
+  }
+
+  get formLive(): boolean {
+    return !!this.container.firstChild && !this.left;
+  }
+
+  /** Save what the form holds at a moment the app may not come back from. */
+  saveEdits(): void {
+    if (this.formLive) this.saveNow(false);
+  }
+
+  /** The form is out of date, as after a phone changed the sources: never save it. */
+  abandon(): void {
+    this.left = true;
+    this.reloadPending = false;
+  }
+
+  private saveNow(report: boolean): boolean {
+    const form = this.readSources(report);
+    if (!form) return false;
+    if (this.sourcesChanged(form)) {
+      this.saveSources(form);
+      this.reloadPending = true;
+    }
+    if (this.edited) this.savePreferences();
+    return true;
+  }
+
+  private incompleteRows(): HeldRow[] {
+    const rows: HeldRow[] = [];
+    const hold = (kind: HeldRow['kind'], el: HTMLElement, complete: (v: string[]) => boolean) => {
+      const values: Record<string, string> = {};
+      const fields = HELD_FIELDS[kind].map((field) => {
+        const value = el.querySelector<HTMLInputElement>(field)?.value ?? '';
+        values[field] = value;
+        return value;
+      });
+      if (!complete(fields) && (el.dataset.id || fields.some(Boolean))) {
+        rows.push({ kind, id: el.dataset.id ?? '', values });
+      }
+    };
+    ($$('#playlist-entries .settings-row:not(.playlist-header-row)', this.container) as HTMLElement[])
+      .forEach(row => hold('playlist', row, ([, url]) => !!url.trim()));
+    ($$('#xtream-entries .xtream-card', this.container) as HTMLElement[])
+      .forEach(card => hold('xtream', card, ([, url, user, pass]) => !!url.trim() && !!user.trim() && !!pass));
+    return rows;
+  }
+
+  private restoreHeld(): void {
+    const held = this.held;
+    this.held = [];
+    if (!held.length) return;
+    const key = this.focusScope.focusKey;
+    for (const { kind, id, values } of held) {
+      const selector = kind === 'xtream' ? '#xtream-entries .xtream-card'
+        : '#playlist-entries .settings-row:not(.playlist-header-row)';
+      const find = () => $$(selector, this.container) as HTMLElement[];
+      let el = find().find(row => row.dataset.id === id);
+      if (!el) {
+        if (kind === 'xtream') this.addXtreamEntry();
+        else this.addPlaylistEntry();
+        el = find().pop();
+        if (el && id) el.dataset.id = id;
+      }
+      for (const field of HELD_FIELDS[kind]) {
+        const input = el?.querySelector<HTMLInputElement>(field);
+        if (input) input.value = values[field];
+      }
+    }
+    this.caretInput()?.blur();
+    this.focusScope.track(key);
+  }
+
+  /** Draw the form again where it was, as after a language change. */
+  redraw(): void {
+    this.render();
+    this.land();
+    if (Focus.owner() === this.focusScope) Focus.flush();
+  }
+
+  private settingChanged(): void {
+    this.edited = true;
+    this.leaveWhenChannelsLoad = false;
+    this.savePreferences();
+  }
+
+  // True when the sources changed and need loading, null when they cannot be saved.
+  private saveForm(report: boolean): boolean | null {
+    const form = this.readSources(report);
+    if (!form) return null;
+    if (this.edited) this.savePreferences();
+    const changed = this.sourcesChanged(form);
+    if (changed) this.saveSources(form);
+    const reload = changed || this.reloadPending;
+    this.reloadPending = false;
+    return reload;
+  }
+
+  private readSources(report: boolean): SourcesForm | null {
+    const stored = StorageService.getPlaylists();
+    const storedEntry = (id: string | undefined) => stored.find(entry => entry.id === id);
     // Read row-by-row so each row's stable id (data-id) is preserved; a row
     // added before this build has none, so mint one.
     const rows = $$('#playlist-entries .settings-row:not(.playlist-header-row)', this.container) as HTMLElement[];
@@ -2977,10 +3116,16 @@ export class Settings {
 
     for (const row of rows) {
       const url = row.querySelector<HTMLInputElement>('.playlist-url')!.value.trim();
-      if (!url) continue;
+      // Leaving saves, so a field left half edited keeps what was saved.
+      if (!url) {
+        const kept = storedEntry(row.dataset.id);
+        if (kept) playlists.push(kept);
+        continue;
+      }
       const name = row.querySelector<HTMLInputElement>('.playlist-name')!.value.trim();
+      row.dataset.id ||= genPlaylistId();
       const entry: PlaylistEntry = {
-        id: row.dataset.id || genPlaylistId(),
+        id: row.dataset.id,
         name: name || t('settings.playlistDefault', { number: playlists.length + 1 }),
         url,
         source: 'url',
@@ -3000,13 +3145,17 @@ export class Settings {
       const rawUrl = card.querySelector<HTMLInputElement>('.xtream-url')!.value.trim();
       const username = card.querySelector<HTMLInputElement>('.xtream-username')!.value.trim();
       const password = card.querySelector<HTMLInputElement>('.xtream-password')!.value;
-      if (!rawUrl || !username || !password) continue;
+      if (!rawUrl || !username || !password) {
+        const kept = storedEntry(card.dataset.id);
+        if (kept) accounts.push(kept);
+        continue;
+      }
       const base = normalizeXtreamBaseUrl(rawUrl);
       const name = card.querySelector<HTMLInputElement>('.xtream-name')!.value.trim();
       const liveOutput = normalizeXtreamLiveOutputPreference(
         card.querySelector<HTMLElement>('.xtream-output .dropdown')!.dataset.value,
       );
-      const id = card.dataset.id || genPlaylistId();
+      const id = card.dataset.id ||= genPlaylistId();
       const xtream: NonNullable<PlaylistEntry['xtream']> = { username, password, liveOutput };
       const accountKey = `${base}|${username}`;
       const liveCategories = this.cardLiveCategories(id, accountKey);
@@ -3029,7 +3178,6 @@ export class Settings {
     const nonUpload = [...playlists, ...accounts];
 
     // Preserve auto-managed uploaded playlists (not shown in the editors above).
-    const stored = StorageService.getPlaylists();
     const uploads = stored.filter(pl => pl.source === 'upload').map((playlist) => {
       const toggle = this.container.querySelector<HTMLElement>(
         `#upload-entries [data-id="${playlist.id}"] .source-toggle`,
@@ -3037,8 +3185,9 @@ export class Settings {
       return withEnabledState(playlist, toggle?.dataset.enabled !== 'false');
     });
     const nextSources = [...nonUpload, ...uploads];
-    const manualEpgSources = this.manualEpgSourcesFromEditor(
+    let manualEpgSources = this.manualEpgSourcesFromEditor(
       new Set(nextSources.map(source => source.id)),
+      true,
     );
     const seenEpgUrls = new Set<string>();
     const duplicateEpgUrl = manualEpgSources.find(source => {
@@ -3046,7 +3195,14 @@ export class Settings {
       seenEpgUrls.add(source.url);
       return false;
     })?.url;
-    if (duplicateEpgUrl) {
+    if (duplicateEpgUrl && !report) {
+      const kept = new Set<string>();
+      manualEpgSources = manualEpgSources.filter((source) => {
+        const first = !kept.has(source.url);
+        kept.add(source.url);
+        return first;
+      });
+    } else if (duplicateEpgUrl) {
       const duplicateInput = Array.from(
         this.container.querySelectorAll<HTMLInputElement>('.manual-epg-url'),
       ).filter(input => input.value.trim() === duplicateEpgUrl)[1];
@@ -3055,9 +3211,37 @@ export class Settings {
         duplicateInput.focus();
       }
       showToast(t('settings.duplicateEpgSource'));
-      return;
+      return null;
     }
+    return { stored, sources: nextSources, manualEpgSources, reviewedSnapshots };
+  }
 
+  // Source, EPG URL, and time correction changes rebuild loaded data. An
+  // upload the phone adds meanwhile is no edit, so only a turned-off one counts.
+  private sourcesSignature({ sources, manualEpgSources }: SourcesForm): string {
+    const offsets = this.epgOffsets;
+    return JSON.stringify([
+      sources.filter(pl => pl.source !== 'upload').map(pl => [
+        pl.id,
+        pl.name,
+        pl.url,
+        isSourceEnabled(pl),
+        pl.xtream?.username,
+        pl.xtream?.password,
+        pl.xtream ? normalizeXtreamLiveOutputPreference(pl.xtream.liveOutput) : '',
+        pl.xtream ? normalizeLiveCategoryFilter(pl.xtream.liveCategories) ?? null : null,
+      ]),
+      sources.filter(pl => pl.source === 'upload' && !isSourceEnabled(pl)).map(pl => pl.id).sort(),
+      manualEpgSources,
+      Object.keys(offsets).sort().map(url => [url, offsets[url]]),
+    ]);
+  }
+
+  private sourcesChanged(form: SourcesForm): boolean {
+    return this.sourcesSignature(form) !== this.drawnSources;
+  }
+
+  private saveSources({ sources: nextSources, manualEpgSources, reviewedSnapshots }: SourcesForm): void {
     ReminderService.backfillSourceIds();
     // A re-pointed account loses its old snapshot on save; keep the one its picker just reviewed.
     if (StorageService.setPlaylists(nextSources)) {
@@ -3069,17 +3253,6 @@ export class Settings {
     const previousManualEpgSources = StorageService.getManualEpgSources();
     StorageService.setManualEpgSources(manualEpgSources);
 
-    const channelCycleBtn = $('#channel-cycle-mode .toggle-option.active', this.container);
-    if (channelCycleBtn?.dataset.value) {
-      StorageService.setChannelCycleMode(channelCycleBtn.dataset.value as ChannelCycleMode);
-    }
-
-    this.saveShowHidden();
-
-    const tzModeBtn = $('#tz-mode .toggle-option.active', this.container);
-    if (tzModeBtn?.dataset.value) StorageService.setTzMode(tzModeBtn.dataset.value as TzMode);
-    const timeFormatBtn = $('#time-format .toggle-option.active', this.container);
-    if (timeFormatBtn?.dataset.value) StorageService.setTimeFormat(timeFormatBtn.dataset.value as TimeFormat);
     const sourceByChannel: Record<string, string> = {};
     const legacySources = new Map<string, string>();
     const ambiguousLegacyKeys = new Set<string>();
@@ -3117,6 +3290,22 @@ export class Settings {
     this.epgOffsets = nextEpgOffsets;
     StorageService.setEpgOffsets(nextEpgOffsets);
 
+    this.storedEpgOffsets = { ...nextEpgOffsets };
+    this.drawnSources = this.sourcesSignature({ stored: [], sources: nextSources, manualEpgSources, reviewedSnapshots });
+  }
+
+  private savePreferences(): void {
+    const channelCycleBtn = $('#channel-cycle-mode .toggle-option.active', this.container);
+    if (channelCycleBtn?.dataset.value) {
+      StorageService.setChannelCycleMode(channelCycleBtn.dataset.value as ChannelCycleMode);
+    }
+
+    this.saveShowHidden();
+
+    const tzModeBtn = $('#tz-mode .toggle-option.active', this.container);
+    if (tzModeBtn?.dataset.value) StorageService.setTzMode(tzModeBtn.dataset.value as TzMode);
+    const timeFormatBtn = $('#time-format .toggle-option.active', this.container);
+    if (timeFormatBtn?.dataset.value) StorageService.setTimeFormat(timeFormatBtn.dataset.value as TimeFormat);
     StorageService.setTheme(this.selectedTheme);
 
     const overlayBtn = $('#overlay-style .toggle-option.active', this.container);
@@ -3189,27 +3378,6 @@ export class Settings {
       },
     });
     if ($('#tmdb-key', this.container)) StorageService.setTmdbApiKey(osVal('tmdb-key'));
-
-    // Source, EPG URL, and time correction changes rebuild loaded data. Display-only
-    // settings (time zone, Channel Up/Down) just re-render in place.
-    const sig = (l: PlaylistEntry[]) =>
-      JSON.stringify(l.map(pl => [
-        pl.id,
-        pl.name,
-        pl.url,
-        isSourceEnabled(pl),
-        pl.xtream?.username,
-        pl.xtream?.password,
-        pl.xtream ? normalizeXtreamLiveOutputPreference(pl.xtream.liveOutput) : '',
-        pl.xtream ? normalizeLiveCategoryFilter(pl.xtream.liveCategories) ?? null : null,
-      ]));
-    const offsetSig = (offsets: Record<string, number>) =>
-      JSON.stringify(Object.keys(offsets).sort().map(url => [url, offsets[url]]));
-    const dataChanged = JSON.stringify(manualEpgSources)
-        !== JSON.stringify(previousManualEpgSources)
-      || sig(stored) !== sig(nextSources)
-      || offsetSig(this.storedEpgOffsets) !== offsetSig(this.epgOffsets);
-    this.onSave(dataChanged ? 'reload' : 'apply');
   }
 
   /**

@@ -388,7 +388,6 @@ export const DE_MESSAGES = {
   'settings.resetAppTitle': 'App zurücksetzen?',
   'settings.resetAppMessage': 'Alle lokalen App-Daten und Caches werden dauerhaft entfernt. Die App startet anschließend mit der Ersteinrichtung neu.',
   'settings.resetFailed': 'Zurücksetzen fehlgeschlagen. Starten Sie die App neu und versuchen Sie es erneut.',
-  'settings.saveApply': 'Änderungen speichern',
   'settings.accountLabel': 'Kontobezeichnung',
   'settings.label': 'Bezeichnung',
   'settings.serverUrl': 'Server-URL',

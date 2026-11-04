@@ -5,10 +5,14 @@ const { state, playlistMock } = vi.hoisted(() => {
   const state = {
     channels: [] as Array<{ url: string; name: string }>,
     concealed: [] as Array<{ url: string; name: string }>,
+    activeSourceId: null as string | null,
+    followed: [] as string[],
   };
   return { state, playlistMock: {
     get channels() { return state.channels; },
     getUnconcealedChannels: () => [...state.channels, ...state.concealed],
+    get activeSourceId() { return state.activeSourceId; },
+    showSourceOf: (channel: { name: string }) => { state.followed.push(channel.name); },
   } };
 });
 vi.mock('./playlist-service', () => ({ PlaylistService: playlistMock }));
@@ -125,6 +129,38 @@ describe('ReminderService store', () => {
 
     expect(ReminderService.list()).toHaveLength(1);
     expect(ReminderService.listManageable(5000)).toHaveLength(0);
+  });
+
+  it('keeps a reminder on another source manageable, and tunes it by following its source', () => {
+    ReminderService.add(rem({ startMs: 6000, stopMs: 9000 }));
+    state.concealed = state.channels.filter(ch => ch.name === 'A')
+      .map(ch => ({ ...ch, playlistIds: ['other'] }));
+    state.channels = state.channels.filter(ch => ch.name !== 'A');
+    state.activeSourceId = 'picked';
+    state.followed = [];
+
+    expect(ReminderService.listManageable(5000)).toHaveLength(1);
+    expect(ReminderService.concealedChannel(keyA)).toBeNull();
+    ReminderService.tuneIndex(keyA);
+    expect(state.followed).toEqual(['A']);
+    state.activeSourceId = null;
+  });
+
+  it('keeps a concealed channel on another source concealed', () => {
+    ReminderService.add(rem({ startMs: 6000, stopMs: 9000 }));
+    state.concealed = state.channels.filter(ch => ch.name === 'A')
+      .map(ch => ({ ...ch, playlistIds: ['other'] }));
+    state.channels = state.channels.filter(ch => ch.name !== 'A');
+    state.activeSourceId = 'picked';
+    const concealed = vi.spyOn(ParentalControlService, 'isConcealed').mockReturnValue(true);
+    state.followed = [];
+
+    expect(ReminderService.listManageable(5000)).toHaveLength(0);
+    expect(ReminderService.concealedChannel(keyA)?.name).toBe('A');
+    ReminderService.tuneIndex(keyA);
+    expect(state.followed).toEqual([]);
+    concealed.mockRestore();
+    state.activeSourceId = null;
   });
 
   it('still prompts for an on-air reminder whose channel is concealed', () => {

@@ -53,7 +53,7 @@ import {
 } from './services/theme-service';
 import { applyAnimationMode } from './services/motion-service';
 import { channelKey } from './utils/channel';
-import { isSourceEnabled } from './utils/playlist';
+import { activeSource, isSourceEnabled } from './utils/playlist';
 import { truncate } from './utils/text';
 import { $, show, hide } from './utils/dom';
 import { createLogger, installGlobalErrorHandlers, logEnvironment } from './utils/logger';
@@ -297,6 +297,7 @@ class App {
       (id, proceed, turnOff) => this.authorizeSourceRemoval(id, proceed, turnOff),
     );
     this.settings.setChannelsReady(() => this.channelsLoaded);
+    PlaylistService.onSourceFollowed = () => this.sourceChanged();
     this.parentalControls = new ParentalControls(
       this.views['parental-controls'],
       () => this.goUp('parental-controls'),
@@ -997,11 +998,16 @@ class App {
   // The sections, accounts, and search scope follow the enabled sources.
   private syncSources(): void {
     const playlists = StorageService.getPlaylists();
-    const hasXtream = playlists.some((p) => p.source === 'xtream' && isSourceEnabled(p));
-    const accounts = playlists
-      .filter((p) => p.source === 'xtream' && p.xtream && isSourceEnabled(p));
+    const sources = playlists.filter(isSourceEnabled);
+    const accounts = sources.filter((p) => p.source === 'xtream' && p.xtream);
     const account = this.activeXtreamAccount();
-    this.home.setSources(hasXtream, accounts, account);
+    const selected = StorageService.getSelectedXtreamAccountId();
+    const active = activeSource(playlists, selected);
+    // A default that stays the pick: adding a source never moves anyone.
+    if (active && !selected) StorageService.setSelectedXtreamAccountId(active.id);
+    // One list has nothing to pick from, and no account to show.
+    const picker = accounts.length || sources.length > 1 ? sources : [];
+    this.home.setSources(!!account, picker, active);
     this.home.setFirstRun(!playlists.length);
     const issue = this.connection.issue;
     if (issue && !accounts.some((a) => a.id === issue.accountId)) this.connection.clear();
@@ -1246,6 +1252,10 @@ class App {
   }
 
   private retryLive(): void {
+    if (this.channelsLoaded && PlaylistService.activeSourceFailed) {
+      void this.unloadSavedSources().then(() => this.openLiveLoading('list'));
+      return;
+    }
     const pending = this.livePending;
     if (pending && !this.channelsLoaded) {
       this.openLiveLoading(pending.mode, pending.then, pending.from);
@@ -1306,7 +1316,8 @@ class App {
       this.placeLiveHeader('channels');
       return;
     }
-    if (mode === 'list') {
+    // The picked source failed: the list shows that, with Try again.
+    if (mode === 'list' || PlaylistService.activeSourceFailed) {
       this.liveMode = 'list';
       this.liveGuide.hide();
       this.channelList.render();
@@ -1367,6 +1378,7 @@ class App {
     // ends management so concealment returns; the manager never stays stacked.
     if (name !== 'parental-controls' && this.isCurrentView('parental-controls')) {
       this.parentalControls.close();
+      this.player.syncCurrentIndex();
       this.parentalPinPrompt.dismissManagement();
       ParentalControlService.endManagement();
       this.viewStack = ['settings'];
@@ -1732,20 +1744,25 @@ class App {
   }
 
   private activeXtreamAccount(): PlaylistEntry | null {
-    const accounts = StorageService.getPlaylists()
-      .filter((p) => p.source === 'xtream' && p.xtream && isSourceEnabled(p));
-    const selId = StorageService.getSelectedXtreamAccountId();
-    return accounts.find((a) => a.id === selId) ?? accounts[0] ?? null;
+    const source = activeSource(StorageService.getPlaylists(), StorageService.getSelectedXtreamAccountId());
+    return source?.source === 'xtream' && source.xtream ? source : null;
   }
 
-  // A different Xtream account was picked in an avatar dropdown (Home, the
-  // parental manager): persist it; each section opens on it next time.
+  // A different source was picked in Home's avatar dropdown: persist it; each
+  // section opens on it next time.
   private selectXtreamAccount(id: string): void {
     StorageService.setSelectedXtreamAccountId(id);
     ParentalControlService.lock('account-switched');
-    const account = this.activeXtreamAccount();
-    if (!account) return;
-    log.info('Xtream account switched to', account.name);
+    PlaylistService.selectSource();
+    this.sourceChanged();
+  }
+
+  // Whoever changed the source, by hand or by a reminder for its channel.
+  private sourceChanged(): void {
+    this.player.syncCurrentIndex();
+    this.search.invalidateCatalog();
+    this.channelList.sourceChanged();
+    log.info('Source switched');
     this.searchPrewarm.schedule('account');
     this.syncSources();
     if (this.isCurrentView('home')) this.home.render();
@@ -1858,7 +1875,7 @@ class App {
     ParentalControlService.authorize({ ...liveParentalRequest(channel, 'reminder'), label: '' }, () => {
       // The unlock reveals the channel, but lists rebuild only after this runs.
       PlaylistService.applyCustomization();
-      const index = ReminderService.resolveChannelIndex(key);
+      const index = ReminderService.tuneIndex(key);
       if (index >= 0) this.playChannel(index, undefined, this.liveScopeFor(index));
       else {
         log.warn('Unlocked reminder channel is missing', 'event=parental.reminder.missing',
@@ -1897,7 +1914,7 @@ class App {
       {
       onConfirm: () => {
         ReminderService.remove(r.channelKey, r.startMs);
-        const idx = ReminderService.resolveChannelIndex(r.channelKey);
+        const idx = ReminderService.tuneIndex(r.channelKey);
         if (idx >= 0) this.playChannel(idx, undefined, this.liveScopeFor(idx));
         else if (concealed) this.playConcealedReminder(r.channelKey, concealed);
         this.showNextReminder();

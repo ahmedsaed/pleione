@@ -1,5 +1,6 @@
 import {
   leaveSettings,
+  pressBack,
   test,
   expect,
   enterTab,
@@ -12,7 +13,7 @@ import {
   routePlaylist,
   seedPlaylist,
 } from './helpers';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 // Opened from Home's Live card after every load (see `startOn`).
 test.use({ startOn: 'live' });
@@ -185,11 +186,21 @@ test('a source added after turning on stays locked until the manager opens it', 
   const prompt = page.locator('.parental-pin-prompt');
   const channel = (name: string) =>
     page.locator('.channel-main .channel-item').filter({ hasText: name });
+  const pick = async (item: Locator) => {
+    await pressBack(page);
+    await expect(page.locator('#view-home')).toBeVisible();
+    await page.locator('.account-avatar').click();
+    await item.click();
+    await enterTab(page, 'live');
+  };
+  const items = page.locator('.account-menu-item');
+  await pick(items.filter({ hasText: 'Second' }));
   await expect(channel('Channel Three')).toBeVisible();
   await channel('Channel Three').click();
   await expect(prompt).toBeVisible();
   await prompt.locator('[data-pin-action="cancel"]').click();
   await expect(prompt).toBeHidden();
+  await pick(items.first());
   await channel('Channel One').click();
   await expect(page.locator('#view-player')).toBeVisible();
   await page.keyboard.press('Escape');

@@ -13,3 +13,12 @@ export function genPlaylistId(): string {
 export function isSourceEnabled(source: Pick<PlaylistEntry, 'enabled'>): boolean {
   return source.enabled !== false;
 }
+
+/** The source the account picker shows: the one picked, else an account, else the first. */
+export function activeSource(sources: PlaylistEntry[], selectedId: string | null): PlaylistEntry | null {
+  const enabled = sources.filter(isSourceEnabled);
+  return enabled.find(source => source.id === selectedId)
+    ?? enabled.find(source => source.source === 'xtream' && !!source.xtream)
+    ?? enabled[0]
+    ?? null;
+}

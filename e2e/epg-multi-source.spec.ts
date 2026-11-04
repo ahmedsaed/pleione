@@ -92,18 +92,22 @@ async function setup(page: Page): Promise<void> {
 const row = (page: Page, name: string) =>
   page.locator('#live-guide .guide-row').filter({ has: page.locator('.guide-name', { hasText: name }) });
 
+async function openSourceGuide(page: Page, source: string): Promise<void> {
+  await page.evaluate(id => localStorage.setItem('iptv_selectedXtream', JSON.stringify(id)), source);
+  await page.reload();
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await openGuide(page);
+}
+
 test('each playlist channel uses its own EPG when XMLTV ids collide', async ({ page }) => {
   await setup(page);
   await page.goto('/');
-  await expect(page.locator('#view-channels')).toBeVisible();
-
-  await openGuide(page);
-  await expect(page.locator('#live-guide .guide-row')).toHaveCount(3);
-  await expect(row(page, 'Alpha')).toContainText('Alpha Program');
-  await expect(row(page, 'Bravo')).toContainText('Bravo Program');
-  await expect(row(page, 'Bravo')).not.toContainText('Alpha Program');
-  await expect(row(page, 'Charlie')).toContainText('Charlie Program');
-  await expect(row(page, 'Charlie')).not.toContainText('Bravo Program');
+  for (const [source, name, other] of [['m3u', 'Alpha', 'Bravo'], ['x1', 'Bravo', 'Alpha'], ['x2', 'Charlie', 'Bravo']]) {
+    await openSourceGuide(page, source);
+    await expect(page.locator('#live-guide .guide-row')).toHaveCount(1);
+    await expect(row(page, name)).toContainText(`${name} Program`);
+    await expect(row(page, name)).not.toContainText(`${other} Program`);
+  }
 });
 
 test('applies the saved time correction only to its EPG source', async ({ page }) => {
@@ -114,9 +118,8 @@ test('applies the saved time correction only to its EPG source', async ({ page }
     }));
   });
   await page.goto('/');
-  await expect(page.locator('#view-channels')).toBeVisible();
-
-  await openGuide(page);
+  await openSourceGuide(page, 'm3u');
   await expect(row(page, 'Alpha').locator('.guide-cell-time')).toHaveText('12:00–14:00');
+  await openSourceGuide(page, 'x1');
   await expect(row(page, 'Bravo').locator('.guide-cell-time')).toHaveText('11:00–13:00');
 });

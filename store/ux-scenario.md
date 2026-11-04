@@ -50,7 +50,8 @@ Instead of typing on the TV, the account can be added from a phone (section 8).
 ## 2. Home
 
 1. Use the arrows to move between the five cards; **Up** reaches the account circle (**Switch
-   account**, which lists the accounts added).
+   account**, which lists the accounts and playlists added). Live, the Guide, Search, Movies and
+   Series show only the one picked.
 2. Press **OK** on a card to open that section. **Back** from any section returns to Home, with
    that section's card selected.
 3. Press **Back** on Home: the app closes at once (section 9).
@@ -216,7 +217,9 @@ This needs a phone or computer on the same network as the TV.
    the pairing code.
 3. On the page, add the test account from section 0 (with another label) and submit. The TV
    shows the account under **Settings › Sources** within a few seconds. The same page can upload
-   an `.m3u` file, which appears under **Uploaded Playlists**.
+   an `.m3u` file, which appears under **Uploaded Playlists**. To see a new source's content, pick
+   it from the account circle on Home. Movies and Series need an account, so they are hidden while
+   a playlist is picked.
 
 ## 9. Back and leaving the app
 

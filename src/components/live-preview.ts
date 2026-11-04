@@ -2,7 +2,6 @@ import { CONFIG } from '../config';
 import { t } from '../i18n';
 import { EpgService } from '../services/epg-service';
 import { PlaylistService } from '../services/playlist-service';
-import { StorageService } from '../services/storage-service';
 import type {
   Action,
   CatchupInfo,
@@ -14,7 +13,6 @@ import type {
 import { channelKey } from '../utils/channel';
 import { html, raw, show, hide, type Safe } from '../utils/dom';
 import { morph } from '../utils/morph';
-import { isSourceEnabled } from '../utils/playlist';
 import { addDisplayDays, displayDayKey, formatDayLabel, formatTimeRange } from '../utils/time';
 import type { ChannelList } from './channel-list';
 import { favoriteIcon } from './icons';
@@ -288,16 +286,13 @@ export class LivePreview {
   }
 
   private isChannelAvailable(channel: Channel): boolean {
-    const enabledSources = StorageService.getPlaylists()
-      .filter(isSourceEnabled).map(source => source.id);
-    if (!channel.playlistIds.some(id => enabledSources.includes(id))) return false;
+    const source = PlaylistService.activeSourceId;
+    if (!source || !channel.playlistIds.includes(source)) return false;
     if (this.channelSet !== PlaylistService.allChannels) {
       this.channelSet = PlaylistService.allChannels;
       this.channelKeys = new Set(PlaylistService.allChannels.map(item => channelKey(item)));
     }
-    return this.channelKeys.has(channelKey(channel)) || PlaylistService.hasFailedSource(
-      channel.playlistIds.filter(id => enabledSources.includes(id)),
-    );
+    return this.channelKeys.has(channelKey(channel)) || PlaylistService.hasFailedSource([source]);
   }
 
   private show(state: LivePlaybackSnapshot): void {

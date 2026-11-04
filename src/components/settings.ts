@@ -3256,7 +3256,7 @@ export class Settings {
     const sourceByChannel: Record<string, string> = {};
     const legacySources = new Map<string, string>();
     const ambiguousLegacyKeys = new Set<string>();
-    for (const channel of PlaylistService.channels) {
+    for (const channel of PlaylistService.getUnconcealedChannels()) {
       const sourceUrl = EpgService.getSourceUrl(channel);
       if (!sourceUrl) continue;
       sourceByChannel[channelKey(channel)] = sourceUrl;

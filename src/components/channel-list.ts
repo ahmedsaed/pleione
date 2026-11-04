@@ -302,9 +302,15 @@ export class ChannelList {
   private lastMarkup = '';
   private renderedThisTask = false;
 
+  /** The rows held for Recently Watched point into the old list. */
+  sourceChanged(): void {
+    this.recentItems = [];
+  }
+
   render(ensureFocus = true): void {
-    if (this.loadState) {
-      this.renderLoadState(this.loadState);
+    const loadState = this.loadState ?? (PlaylistService.activeSourceFailed ? 'failed' : null);
+    if (loadState) {
+      this.renderLoadState(loadState);
       return;
     }
     const tabs = PlaylistService.playlistTabs;

@@ -85,7 +85,7 @@ This is the complete active key inventory:
 | --- | --- | --- | --- |
 | `iptv_playlists` | `PlaylistEntry[]` | Stable id, display name, source URL/type, uploaded channel count, and Xtream username, password, and live-output preference | Configuration |
 | `iptv_manual_epg_sources` | `ManualEpgSource[]` | Manually added XMLTV URLs, in priority order, each applied to all playlists or to the listed playlist ids | Configuration |
-| `iptv_selectedXtream` | `string \| null` | Account id used by Movies, Series, and Search | Navigation state |
+| `iptv_selectedXtream` | `string \| null` | Id of the source picked on Home, an account or a playlist; Live, the Guide, Search, Movies, and Series show only it | Navigation state |
 | `iptv_xtream_output_formats` | `Record<string, {account, formats}>` | Per account id, the output formats its last accepted sign-in allowed, and the `<base URL>\|<username>` they came from; read by the Auto live output | Small derived state |
 | `iptv_catalog_sort_vod`, `iptv_catalog_sort_series` | `{by, direction}` | Movies and Series sort field (`default`, `name`, `added`, `rating`, `year`) and direction | Preference |
 | `iptv_show_hidden_channels` | `boolean` | Whether normal lists reveal hidden channels in a dimmed state | Preference |

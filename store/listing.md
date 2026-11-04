@@ -26,7 +26,7 @@ Pleione plays the IPTV service you already have on your LG TV: live TV with a pr
 Pleione does not include any channels, playlists or content. You add a playlist or an account from a provider of your own, and you are responsible for having the right to watch it.
 
 LIVE TV
-• M3U and M3U8 playlists, and Xtream Codes accounts, several at once
+• M3U and M3U8 playlists, and Xtream Codes accounts, several at once, one shown at a time
 • A program guide (XMLTV) found from your playlist or added by hand, with time correction
 • Catch-up for programs that already aired, and pause and rewind where the stream allows it
 • Favorites, Recently Watched, number-key tuning, and reminders that fire even with the app closed

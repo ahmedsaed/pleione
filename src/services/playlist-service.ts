@@ -50,7 +50,7 @@ import {
   scheduleCachedPlaylist,
   type CacheRecordRef,
 } from './idb-cache';
-import { isSourceEnabled } from '../utils/playlist';
+import { activeSource, isSourceEnabled } from '../utils/playlist';
 import {
   filterLiveStreams,
   liveCategoryCounts,
@@ -169,6 +169,9 @@ class PlaylistServiceImpl {
   epgSources: EpgSource[] = [];
   private indexMap = new Map<Channel, number>(); // channel -> global index, O(1) indexOf
   private channelsByGroup = new Map<string, Channel[]>();
+  private allSources = false;
+  /** Told when a source was picked for the user, so the app can catch up. */
+  onSourceFollowed: (() => void) | null = null;
   private channelsByPlaylist = new Map<string, Channel[]>();
   private channelsByPlaylistGroup = new Map<string, Map<string, Channel[]>>();
   private groupsByPlaylist = new Map<string, string[]>();
@@ -765,11 +768,14 @@ class PlaylistServiceImpl {
       includeHidden,
       sourceIndices,
     );
-    if (ParentalControlService.concealing) {
+    const concealing = ParentalControlService.concealing;
+    const source = this.allSources ? null : this.activeSourceId;
+    if (concealing || source) {
       const visible: Channel[] = [];
       for (let i = 0; i < this.unconcealedChannels.length; i++) {
         const channel = this.unconcealedChannels[i];
-        if (ParentalControlService.isConcealed(liveParentalRequest(channel))) continue;
+        if (source && !channel.playlistIds.includes(source)) continue;
+        if (concealing && ParentalControlService.isConcealed(liveParentalRequest(channel))) continue;
         // Compacts in place: the write index never passes the read index.
         sourceIndices[visible.length] = sourceIndices[i];
         visible.push(channel);
@@ -813,6 +819,40 @@ class PlaylistServiceImpl {
   // keyed to them (reminders, custom order) must still resolve.
   getUnconcealedChannels(): Channel[] {
     return this.unconcealedChannels;
+  }
+
+  /** The source the account picker shows; `channels` holds only its channels. */
+  get activeSourceId(): string | null {
+    return activeSource(StorageService.getPlaylists(), StorageService.getSelectedXtreamAccountId())?.id ?? null;
+  }
+
+  /** Follow the picked source. Everything else stays loaded, so this is instant. */
+  selectSource(): void {
+    this.buildPlaylistTabs();
+    this.applyCustomization();
+  }
+
+  /** Pick the source of a channel another source's list hides, as a reminder asks. */
+  showSourceOf(channel: Channel): void {
+    const enabled = StorageService.getPlaylists().filter(isSourceEnabled);
+    const owner = enabled.find(entry => channel.playlistIds.includes(entry.id));
+    if (!owner) return;
+    StorageService.setSelectedXtreamAccountId(owner.id);
+    this.selectSource();
+    this.onSourceFollowed?.();
+  }
+
+  /** The picked source failed and left its list empty, whatever the others brought. */
+  get activeSourceFailed(): boolean {
+    const source = this.activeSourceId;
+    return !!source && this.failedSourceIds.has(source) && this.channels.length === 0;
+  }
+
+  /** The parental manager reviews every source, whichever is picked. */
+  setAllSources(all: boolean): void {
+    if (this.allSources === all) return;
+    this.allSources = all;
+    this.selectSource();
   }
 
   /** Edit mode reveals hidden channels so they can be un-hidden again. */
@@ -874,8 +914,11 @@ class PlaylistServiceImpl {
         playlistGroups.add(ch.group);
       }
     }
+    // A group whose channels are all on another source is not this source's.
+    const elsewhere = new Set(this.unconcealedChannels.map(ch => ch.group));
     for (const key of ChannelCustomizationService.customGroups) {
       const label = ChannelCustomizationService.groupLabel(key);
+      if (!groupSet.has(label) && elsewhere.has(label)) continue;
       groupSet.add(label);
       this.groupKeyByDisplay.set(label, key);
     }
@@ -941,7 +984,9 @@ class PlaylistServiceImpl {
     // including a playlist that loaded zero channels (empty/unreachable feed), so
     // it stays visible. Derived from the registry, not the cached channels, so a
     // stale/desynced channel cache can never blank out the playlist tabs.
-    const configured = StorageService.getPlaylists().filter(isSourceEnabled);
+    const source = this.activeSourceId;
+    const configured = StorageService.getPlaylists()
+      .filter(entry => isSourceEnabled(entry) && (this.allSources || entry.id === source));
     this.playlistTabs = configured.map(pl => ({ id: pl.id, name: pl.name || pl.url }));
   }
 

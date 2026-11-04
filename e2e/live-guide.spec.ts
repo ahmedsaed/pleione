@@ -264,17 +264,6 @@ test('a group clicked with the pointer picks the channels the Guide shows', asyn
 
 // Regression: another playlist picked with the keys kept the grid on the
 // old one's channels while the group stayed All.
-test('a playlist picked with the keys picks the channels the Guide shows', async ({ page }) => {
-  await setup(page, { second: true });
-  await expect(page.locator('#live-guide .guide-name')).toHaveText(['ch1', 'ch2', 'ch3', 'ch4']);
-  await press(page, 'back', 'up');
-  expect(await focused(page)).toEqual(['tab:']);
-  await press(page, 'right', 'right');
-  expect(await focused(page)).toEqual(['tab:p2']);
-  await press(page, 'ok');
-  await expect(page.locator('#live-guide .guide-name')).toHaveText(['ch4']);
-});
-
 // Regression: digits in the time grid echoed and did nothing.
 test('digits in the grid tune the channel, as from the groups column', async ({ page }) => {
   await setup(page);

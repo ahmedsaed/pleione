@@ -140,7 +140,7 @@ export default function Home() {
             alt="The Guide inside Live: the groups on the left, and a timeline of every channel's programs with the current time marked"
           >
             <ul>
-              <li>M3U and M3U8 playlists, and Xtream Codes accounts — several at once, each switchable on and off.</li>
+              <li>M3U and M3U8 playlists, and Xtream Codes accounts — several at once, one shown at a time.</li>
               <li>
                 Live in three panes: groups, channels with what is on now and next, and a preview that plays the
                 channel you rest on.

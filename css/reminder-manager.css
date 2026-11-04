@@ -126,7 +126,7 @@
 .reminder-manager-row {
   position: relative;
   display: grid;
-  grid-template-columns: calc(150px * var(--font-scale)) 1fr auto;
+  grid-template-columns: calc(190px * var(--font-scale)) 1fr auto;
   align-items: center;
   gap: 24px;
   min-height: 112px;

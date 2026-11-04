@@ -351,6 +351,7 @@ export interface Reminder {
 
 /** Which timezone EPG times are displayed in: the device's, or the feed's. */
 export type TzMode = 'device' | 'feed';
+export type TimeFormat = '12h' | '24h';
 
 export type BuiltinChannelGroup = 'all' | 'favorites' | 'recently-watched';
 export type ChannelGroupId = `builtin:${BuiltinChannelGroup}` | `source:${string}`;

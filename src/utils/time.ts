@@ -1,4 +1,4 @@
-import type { TzMode } from '../types';
+import type { TimeFormat, TzMode } from '../types';
 import { t } from '../i18n';
 
 const WEEKDAY_KEYS = [
@@ -20,6 +20,13 @@ let feedOffsetMin: number | null = null;
 export function setDisplayTz(mode: TzMode, offsetMin: number | null): void {
   tzMode = mode;
   feedOffsetMin = offsetMin;
+}
+
+// Display-only, like the timezone; the app sets the saved choice at boot.
+let timeFormat: TimeFormat = '24h';
+
+export function setTimeFormat(format: TimeFormat): void {
+  timeFormat = format;
 }
 
 // Resolved mode after the feed→device fallback.
@@ -82,7 +89,26 @@ export function parseXmltvOffsetMinutes(str: string | null): number | null {
 
 export function formatTime(date: Date): string {
   const p = displayParts(date);
-  return `${pad2(p.hours)}:${pad2(p.minutes)}`;
+  return formatClock(p.hours, p.minutes);
+}
+
+/** A wall-clock time in the chosen format, for times with no timezone to apply. */
+export function formatClock(hours: number, minutes: number): string {
+  if (timeFormat === '24h') return `${pad2(hours)}:${pad2(minutes)}`;
+  return t(hours < 12 ? 'time.am' : 'time.pm', { time: clock12(hours, minutes) });
+}
+
+const clock12 = (hours: number, minutes: number): string => `${hours % 12 || 12}:${pad2(minutes)}`;
+
+/** A program's times; in 12-hour format a marker both share is written once. */
+export function formatTimeRange(start: Date, stop: Date, separator = '–'): string {
+  const a = displayParts(start);
+  const b = displayParts(stop);
+  if (timeFormat === '12h' && a.hours < 12 === b.hours < 12) {
+    const time = `${clock12(a.hours, a.minutes)}${separator}${clock12(b.hours, b.minutes)}`;
+    return t(a.hours < 12 ? 'time.am' : 'time.pm', { time });
+  }
+  return `${formatTime(start)}${separator}${formatTime(stop)}`;
 }
 
 // Weekday + MM/DD label for a day, in the active display timezone.

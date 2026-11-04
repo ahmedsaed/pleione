@@ -841,6 +841,8 @@ async function walk(
   screens: Screen[],
 ): Promise<void> {
   const legacy = await newLegacyPage(browser);
+  // As `page` is, or every clock differs between the two engines.
+  await legacy.page.addInitScript(() => localStorage.setItem('iptv_time_format', '"24h"'));
   await mkdir(DIFF_DIR, { recursive: true });
   try {
     await Promise.all([setUp(page), setUp(legacy.page)]);

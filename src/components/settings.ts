@@ -1,4 +1,5 @@
-import type { Action, ChannelCycleMode, EpgSource, ManualEpgSource, NavDirection, PlaylistEntry, TzMode, XtreamLiveCategoryFilter, XtreamLiveCategorySnapshot } from '../types';
+import { formatClock } from '../utils/time';
+import type { Action, ChannelCycleMode, EpgSource, ManualEpgSource, NavDirection, PlaylistEntry, TimeFormat, TzMode, XtreamLiveCategoryFilter, XtreamLiveCategorySnapshot } from '../types';
 import { $, $$, html, raw, withInstantScroll, type Safe } from '../utils/dom';
 import { TMDB_LOGO, TMDB_NOTICE } from './tmdb-attribution';
 import { morph } from '../utils/morph';
@@ -106,11 +107,11 @@ function formatOffset(min: number): string {
 function correctedTime(min: number): string {
   const total = 20 * 60 + min;
   const wrapped = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
-  return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
+  return formatClock(Math.floor(wrapped / 60), wrapped % 60);
 }
 
 function correctionPreview(min: number): Safe {
-  return html`${t('settings.timeCorrectionExample')}: 20:00 -> ${correctedTime(min)}`;
+  return html`${t('settings.timeCorrectionExample')}: ${formatClock(20, 0)} -> ${correctedTime(min)}`;
 }
 
 function formatBytes(bytes: number): string {
@@ -833,6 +834,12 @@ export class Settings {
                   <div class="source-box setup-box-info device-setup-card"
                        id="setup-info">${t('settings.checkingSetup')}</div>
                 </div>` : ''}
+              </div>
+              <div class="settings-section">
+                <h3 class="settings-section-title">${t('settings.timeFormat')}</h3>
+                <div class="settings-item">
+                  ${toggleGroup('time-format', [{ value: '12h', label: t('settings.timeFormat12') }, { value: '24h', label: t('settings.timeFormat24') }], StorageService.getTimeFormat())}
+                </div>
               </div>
               <div class="settings-section">
                 <h3 class="settings-section-title parental-entry-title">${t('settings.parentalControls')}<span
@@ -3053,6 +3060,8 @@ export class Settings {
 
     const tzModeBtn = $('#tz-mode .toggle-option.active', this.container);
     if (tzModeBtn?.dataset.value) StorageService.setTzMode(tzModeBtn.dataset.value as TzMode);
+    const timeFormatBtn = $('#time-format .toggle-option.active', this.container);
+    if (timeFormatBtn?.dataset.value) StorageService.setTimeFormat(timeFormatBtn.dataset.value as TimeFormat);
     const sourceByChannel: Record<string, string> = {};
     const legacySources = new Map<string, string>();
     const ambiguousLegacyKeys = new Set<string>();

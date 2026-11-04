@@ -1,7 +1,7 @@
 import { CONFIG } from '../config';
 import { DEFAULT_THEME, DEFAULT_OVERLAY, DEFAULT_TEXT_SIZE, DEFAULT_INTERFACE_SIZE, isValidTextSize, isValidInterfaceSize, type OverlayStyle, type TextSize, type InterfaceSize } from '../config/themes';
 import { latestPerSeries } from './continue-watching';
-import type { AudioPref, CatchupProgressEntry, ChannelCustomization, ChannelCycleMode, ManualEpgSource, ParentalControlConfig, ParentalPinThrottle, PlaylistEntry, RecentlyWatchedLiveEntry, Reminder, ResumeEntry, ResumeKind, SubtitlePref, TzMode, WatchlistEntry, WatchlistKind, XtreamLiveCategorySnapshot } from '../types';
+import type { AudioPref, CatchupProgressEntry, ChannelCustomization, ChannelCycleMode, ManualEpgSource, ParentalControlConfig, ParentalPinThrottle, PlaylistEntry, RecentlyWatchedLiveEntry, Reminder, ResumeEntry, ResumeKind, SubtitlePref, TimeFormat, TzMode, WatchlistEntry, WatchlistKind, XtreamLiveCategorySnapshot } from '../types';
 import type { OnlineSubtitleConfig, PickedOnlineSub } from './subtitle-search/types';
 import { genPlaylistId } from '../utils/playlist';
 import { isCatalogSort, isCatalogSortDirection, type CatalogSortPreference } from '../utils/catalog-sort';
@@ -1374,6 +1374,13 @@ export const StorageService = {
   },
   setTzMode(mode: TzMode): void {
     set('tz_mode', mode);
+  },
+
+  getTimeFormat(): TimeFormat {
+    return get<unknown>('time_format', '12h') === '24h' ? '24h' : '12h';
+  },
+  setTimeFormat(format: TimeFormat): void {
+    set('time_format', format);
   },
 
   // Last-known feed UTC offset (minutes), captured from the EPG feed so

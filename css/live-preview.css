@@ -107,6 +107,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   color: var(--text-secondary);
   font-size: 20px;
   font-variant-numeric: tabular-nums;
@@ -115,6 +116,16 @@
 .live-preview-time-range,
 .live-preview-remaining {
   white-space: nowrap;
+}
+
+.live-preview-time-range {
+  flex-shrink: 0;
+}
+
+.live-preview-remaining {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .live-preview-progress {
@@ -162,7 +173,7 @@
 
 .live-preview-program time {
   flex-shrink: 0;
-  width: calc(140px * var(--font-scale));
+  min-width: calc(140px * var(--font-scale));
   font-size: 20px;
   line-height: 1.1;
   white-space: nowrap;

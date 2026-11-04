@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   parseXmltvDate,
   parseXmltvOffsetMinutes,
+  formatClock,
   formatTime,
+  formatTimeRange,
+  setTimeFormat,
   formatDayLabel,
   displayDayKey,
   startOfDisplayDay,
@@ -175,5 +178,38 @@ describe('isNow / getProgress', () => {
   it('getProgress returns 0 for a non-positive duration', () => {
     const now = Date.now();
     expect(getProgress(new Date(now), new Date(now))).toBe(0);
+  });
+});
+
+describe('formatTime in 12-hour format', () => {
+  afterEach(() => setTimeFormat('24h'));
+
+  it('shows the hour from 1 to 12 with its marker', () => {
+    setTimeFormat('12h');
+    const at = (h: number, m: number) => formatTime(new Date(2026, 0, 1, h, m));
+    expect(at(0, 5)).toBe('12:05 AM');
+    expect(at(9, 30)).toBe('9:30 AM');
+    expect(at(12, 0)).toBe('12:00 PM');
+    expect(at(23, 59)).toBe('11:59 PM');
+  });
+
+  it('writes a marker both ends of a range share once', () => {
+    setTimeFormat('12h');
+    const at = (h: number, m: number) => new Date(2026, 0, 1, h, m);
+    expect(formatTimeRange(at(12, 30), at(13, 0))).toBe('12:30–1:00 PM');
+    expect(formatTimeRange(at(9, 0), at(9, 30), ' - ')).toBe('9:00 - 9:30 AM');
+    expect(formatTimeRange(at(11, 30), at(12, 30))).toBe('11:30 AM–12:30 PM');
+  });
+
+  it('writes clock times with no timezone applied', () => {
+    setTimeFormat('12h');
+    expect(formatClock(20, 0)).toBe('8:00 PM');
+    setTimeFormat('24h');
+    expect(formatClock(20, 0)).toBe('20:00');
+  });
+
+  it('keeps 24-hour times when chosen', () => {
+    setTimeFormat('24h');
+    expect(formatTime(new Date(2026, 0, 1, 23, 59))).toBe('23:59');
   });
 });

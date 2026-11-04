@@ -4,7 +4,7 @@ import { html, raw, type Safe } from '../utils/dom';
 import { inlineStart } from '../utils/direction';
 import { morph } from '../utils/morph';
 import { channelKey, legacyChannelKey } from '../utils/channel';
-import { addDisplayDays, displayDayKey, formatDayLabel, formatTime } from '../utils/time';
+import { addDisplayDays, displayDayKey, formatDayLabel, formatTime, formatTimeRange } from '../utils/time';
 import { uiPx, uiTextPx } from '../utils/ui-scale';
 import { PlaylistService } from '../services/playlist-service';
 import { EpgService } from '../services/epg-service';
@@ -305,7 +305,7 @@ export class LiveGuide {
            style="${inlineStart()}:${box.left}%;width:${box.width}%">
         <span class="guide-cell-title">${catchup ? raw(REPLAY_ICON) : ''}${reminder ? raw(bellIcon(true)) : ''}<span>${
           program ? program.title : noData ? t('epg.noData') : ''}</span></span>
-        ${program ? html`<span class="guide-cell-time">${formatTime(program.start)}–${formatTime(program.stop)}</span>` : ''}
+        ${program ? html`<span class="guide-cell-time">${formatTimeRange(program.start, program.stop)}</span>` : ''}
         ${resume ? html`<span class="guide-cell-badge ${resume.completed ? 'watched' : 'resume'}">${
           t(resume.completed ? 'epg.watched' : 'common.resume')}</span>` : ''}
         ${state === 'live' && program ? html`<i class="guide-cell-progress" style="width:${Math.round(progress * 100)}%"></i>` : ''}

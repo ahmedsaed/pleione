@@ -15,7 +15,7 @@ import { channelKey } from '../utils/channel';
 import { html, raw, show, hide, type Safe } from '../utils/dom';
 import { morph } from '../utils/morph';
 import { isSourceEnabled } from '../utils/playlist';
-import { addDisplayDays, displayDayKey, formatDayLabel, formatTime } from '../utils/time';
+import { addDisplayDays, displayDayKey, formatDayLabel, formatTimeRange } from '../utils/time';
 import type { ChannelList } from './channel-list';
 import { favoriteIcon } from './icons';
 import { liveBadge } from './live-badge';
@@ -328,7 +328,7 @@ export class LivePreview {
   }
 
   private programTimeRange(program: Programme): string {
-    return `${formatTime(program.start)}–${formatTime(program.stop)}`;
+    return formatTimeRange(program.start, program.stop);
   }
 
   private renderUpcoming(upcoming: Programme[], now: Date): Safe {

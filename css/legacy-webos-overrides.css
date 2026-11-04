@@ -118,7 +118,7 @@ html.q-scroll-end-padding .catalog-category-rail::after { content: none; }
   }
 
   .reminder-manager-time {
-    flex: 0 0 calc(150px * var(--font-scale));
+    flex: 0 0 calc(190px * var(--font-scale));
   }
 
   .reminder-manager-remove {

@@ -47,7 +47,7 @@ import {
   ParentalControlService,
   vodParentalRequest,
 } from './services/parental-control';
-import { setDisplayTz } from './utils/time';
+import { setDisplayTz, setTimeFormat } from './utils/time';
 import {
   initTheme, applyTheme, applyOverlayStyle, applyTextSize, applyInterfaceSize, applyDirection,
 } from './services/theme-service';
@@ -829,6 +829,7 @@ class App {
     const offset = EpgService.tzOffsetMinutes ?? StorageService.getEpgTzOffset();
     if (EpgService.tzOffsetMinutes != null) StorageService.setEpgTzOffset(EpgService.tzOffsetMinutes);
     setDisplayTz(StorageService.getTzMode(), offset);
+    setTimeFormat(StorageService.getTimeFormat());
   }
 
   private epgSources(): EpgSource[] {

@@ -13,7 +13,7 @@ const mainCss = readFileSync(join(process.cwd(), 'css/main.css'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '');
 
 const REQUIRED_VARS = [
-  '--bg-primary', '--bg-secondary', '--bg-tertiary', '--bg-card',
+  '--bg-primary', '--bg-secondary', '--bg-tertiary',
   '--text-primary', '--text-secondary', '--text-muted',
   '--accent', '--accent-dim', '--accent-rgb', '--accent-glow',
   '--danger', '--danger-rgb', '--success',

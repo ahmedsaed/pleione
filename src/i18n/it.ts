@@ -264,8 +264,6 @@ export const IT_MESSAGES = {
   'settings.resetCustomizationTitle': 'Reimpostare la personalizzazione dei canali?',
   'settings.resetCustomizationMessage': 'Verranno rimossi tutti i riordini, i canali nascosti, le rinomine, i gruppi personalizzati, le associazioni EPG manuali e le correzioni orarie dei canali. I preferiti vengono mantenuti.',
   'settings.customizationReset': 'Personalizzazione dei canali reimpostata',
-  'settings.navChooseCategory': 'Scegli categoria',
-  'settings.navEnterReturn': 'Entra / torna',
   'settings.previewChannelOne': 'Canale uno',
   'settings.previewChannelTwo': 'Canale due',
   'settings.previewEpgNow': 'EPG · ora',

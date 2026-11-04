@@ -257,3 +257,30 @@ for (const textSize of ['100', '150']) {
     }
   });
 }
+
+test('at the largest sizes Settings keeps its content inside the panels', async ({ page }) => {
+  test.slow();
+  await seedXtream(page);
+  for (const locale of ['en', 'es', 'de', 'pt-BR']) {
+    await page.addInitScript((l) => {
+      localStorage.setItem('iptv_interface_size', JSON.stringify('130'));
+      localStorage.setItem('iptv_text_size', JSON.stringify('150'));
+      localStorage.setItem('iptv_locale', JSON.stringify(l));
+    }, locale);
+    await page.goto('/');
+    await pressKeys(page, 406);
+    await expect(page.locator('#view-settings')).toBeVisible();
+
+    for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
+      await page.locator(`[data-settings-target="${category}"]`).evaluate(el => (el as HTMLElement).click());
+      const scroll = page.locator('.settings-scroll');
+      const sideways = await scroll.evaluate(el => el.scrollWidth - el.clientWidth);
+      expect(sideways, `${locale} ${category} scrolls sideways`).toBeLessThanOrEqual(1);
+    }
+
+    await page.locator('[data-settings-target="advanced"]').evaluate(el => (el as HTMLElement).click());
+    const widths = await page.locator('.settings-advanced-description').evaluateAll(
+      list => list.map(el => el.getBoundingClientRect().width));
+    for (const width of widths) expect(width, `${locale} description`).toBeGreaterThanOrEqual(240);
+  }
+});

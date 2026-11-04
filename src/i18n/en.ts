@@ -267,8 +267,6 @@ export const EN_MESSAGES = {
   'settings.resetCustomizationTitle': 'Reset channel customization?',
   'settings.resetCustomizationMessage': 'Every reorder, hidden channel, rename, custom group, manual EPG mapping, and channel time correction will be removed. Favorites are kept.',
   'settings.customizationReset': 'Channel customization reset',
-  'settings.navChooseCategory': 'Choose category',
-  'settings.navEnterReturn': 'Enter / return',
   'settings.previewChannelOne': 'Channel one',
   'settings.previewChannelTwo': 'Channel two',
   'settings.previewEpgNow': 'EPG · now',

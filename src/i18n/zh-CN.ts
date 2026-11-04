@@ -259,8 +259,6 @@ export const ZH_CN_MESSAGES = {
   'settings.resetCustomizationTitle': '重置频道自定义设置？',
   'settings.resetCustomizationMessage': '所有排序、隐藏频道、重命名、自定义分组、手动 EPG 映射和频道时间校正都将被移除。收藏夹将保留。',
   'settings.customizationReset': '频道自定义设置已重置',
-  'settings.navChooseCategory': '选择分类',
-  'settings.navEnterReturn': '进入 / 返回',
   'settings.previewChannelOne': '频道一',
   'settings.previewChannelTwo': '频道二',
   'settings.previewEpgNow': '节目 · 当前',

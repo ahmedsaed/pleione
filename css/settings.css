@@ -9,38 +9,35 @@
 
 .settings-header {
   position: absolute;
-  top: 40px;
+  top: 34px;
   right: 80px;
   left: 80px;
 }
 
 .settings-body {
   position: absolute;
-  top: calc(64px + 53px * var(--font-scale));
+  top: calc(64px + 62px * var(--font-scale));
   right: 80px;
   bottom: 40px;
-  left: 80px;
+  left: 55px;
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 32px;
+  gap: 8px;
 }
 
 .settings-sidebar {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  min-width: 252px;
-  max-width: 328px;
-  padding: 20px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  min-width: 300px;
+  max-width: 420px;
+  margin-top: -6px;
+  padding: 6px 12px 6px 13px;
 }
 
-/* At a large Interface or text size the categories outgrow the box, so the
-   list scrolls and the help rows stay put. Its padding is the focus ring's
-   gutter inside the scrollport (one more on the left for the active bar over
-   the border), pulled back out by the margin. */
+/* At a large Interface or text size the categories outgrow the rail, so the
+   list scrolls. Its padding is the focus ring's gutter inside the scrollport
+   (one more on the left for the active bar), pulled back out by the margin. */
 .settings-nav-list {
   display: flex;
   flex-direction: column;
@@ -58,15 +55,14 @@
   align-items: center;
   gap: 14px;
   width: 100%;
-  min-height: var(--control-height);
+  min-height: calc(76px * var(--font-scale));
   padding: 10px 14px;
   color: var(--text-secondary);
-  font-size: 20px;
+  font-size: 28px;
   text-align: left;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius);
-  white-space: nowrap;
 }
 
 .settings-nav-item.active {
@@ -102,52 +98,11 @@
 }
 
 .settings-nav-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.settings-nav-help {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: auto;
-  padding: 18px 10px 0;
-  color: var(--text-muted);
-  font-size: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.settings-nav-help-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  white-space: nowrap;
-}
-
-.settings-nav-key {
-  display: flex;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.settings-nav-key svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -179,42 +134,37 @@
   display: block;
 }
 
-/* A page's last section has nothing below it to divide from. */
 .settings-category > .settings-section:last-child {
   margin-bottom: 0;
-  border-bottom: 0;
 }
 
+/* Each section is a panel, on the surface and radius of Home's cards. */
 .settings-section {
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  padding: 28px 36px 32px;
+  background: var(--bg-secondary);
+  border-radius: var(--card-radius);
 }
 
 .settings-section-title {
   margin-bottom: 20px;
   font-size: 30px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .settings-general-row {
   display: flex;
-  gap: 0;
+  gap: 24px;
 }
 
 .settings-general-row > .settings-section {
   min-width: 0;
 }
 
-.settings-general-language {
-  flex: 0 0 50%;
-}
-
+.settings-general-language,
 .settings-general-device {
-  flex: 0 0 50%;
-}
-
-.settings-general-device > .settings-section-title {
-  padding-left: 44px;
+  flex: 1 1 0;
 }
 
 .settings-row {
@@ -234,30 +184,25 @@
 
 .settings-item-title {
   margin-bottom: 10px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 26px;
 }
 
 .settings-item-hint {
   margin-top: 8px;
-  color: var(--text-muted);
-  font-size: 20px;
-  line-height: 1.35;
-}
-
-#settings-advanced > .settings-section {
-  padding-bottom: 0;
-  border-bottom: 0;
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1.4;
 }
 
 .settings-advanced-matrix {
-  background: var(--bg-secondary);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
 
 .settings-advanced-row {
   display: flex;
+  flex-wrap: wrap;
   min-height: 100px;
   align-items: center;
   padding: 14px 20px;
@@ -276,14 +221,14 @@
 .settings-advanced-group {
   flex: 0 0 160px;
   min-width: 0;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 20px;
   font-weight: 650;
   word-wrap: break-word;
 }
 
 .settings-advanced-description {
-  flex: 1 1 auto;
+  flex: 1 1 320px;
   min-width: 0;
   margin-left: 28px;
 }
@@ -363,7 +308,7 @@
 
 .manual-epg-source {
   padding: 16px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -528,7 +473,7 @@
   padding: 12px 16px;
   font-size: 22px;
   text-align: left;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-primary);
@@ -602,7 +547,7 @@
   min-height: var(--control-height);
   padding: 12px 16px;
   font-size: 22px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-primary);
@@ -681,7 +626,6 @@
   justify-content: flex-end;
   gap: 16px;
   padding: 20px 12px 8px;
-  border-top: 1px solid var(--border);
 }
 
 .settings-about {
@@ -704,13 +648,13 @@
 
 .empty-hint {
   font-size: 20px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   padding: 16px;
 }
 
 .source-box {
   flex: 1;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
@@ -734,7 +678,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 24px;
-  padding: 0 0 0 44px;
+  padding: 0;
   background: transparent;
   border: 0;
   text-align: left;
@@ -925,7 +869,7 @@
   max-width: 100%;
   padding: 16px 18px;
   margin-top: 28px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -1110,7 +1054,7 @@
 .xtream-card {
   padding: 20px;
   margin-bottom: 16px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -1138,6 +1082,7 @@
 
 .xtream-card-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
   margin-top: 16px;
@@ -1227,7 +1172,7 @@
   flex: 1;
   height: 44px;
   border-radius: 6px;
-  background: var(--bg-card);
+  background: var(--bg-tertiary);
   color: var(--text-secondary);
   border: 2px solid transparent;
   display: flex;
@@ -1344,12 +1289,13 @@
    a QR code away. */
 .settings-privacy-body {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 40px;
 }
 
 .settings-privacy-points {
-  flex: 1;
+  flex: 1 1 400px;
   margin: 0;
   padding-left: 28px;
   color: var(--text-secondary);
@@ -1363,7 +1309,8 @@
 
 .settings-privacy-link {
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   align-items: center;
   gap: 20px;
 }
@@ -1384,5 +1331,6 @@
 
 .settings-privacy-url .setup-url {
   font-size: 22px;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-all;
 }

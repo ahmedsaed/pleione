@@ -277,8 +277,6 @@ export const PL_MESSAGES = {
   'settings.resetCustomizationTitle': 'Zresetować zmiany listy kanałów?',
   'settings.resetCustomizationMessage': 'Zostaną usunięte: zmiany kolejności, ukrycie kanałów, zmienione nazwy, własne grupy, ręczne przypisania EPG i indywidualne korekty czasu EPG. Ulubione pozostaną.',
   'settings.customizationReset': 'Zresetowano zmiany listy kanałów',
-  'settings.navChooseCategory': 'Wybierz kategorię',
-  'settings.navEnterReturn': 'Otwórz / wróć',
   'settings.previewChannelOne': 'Kanał pierwszy',
   'settings.previewChannelTwo': 'Kanał drugi',
   'settings.previewEpgNow': 'EPG · teraz',

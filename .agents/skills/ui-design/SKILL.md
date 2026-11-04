@@ -179,7 +179,7 @@ broken.
 ## Color and tokens
 
 - **Only use tokens** from `css/main.css` `:root`: `--bg-primary` →
-  `--bg-secondary` → `--bg-tertiary` → `--bg-card` for elevation,
+  `--bg-secondary` → `--bg-tertiary` for elevation,
   `--text-primary/secondary/muted`, `--accent`/`--accent-dim`,
   `--danger`/`--success`/`--warning`, `--border`, `--focus-ring`.
 - Every theme in `css/themes.css` must look right — there are three light

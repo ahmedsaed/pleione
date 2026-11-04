@@ -278,8 +278,6 @@ export const RU_MESSAGES = {
   'settings.resetCustomizationTitle': 'Сбросить настройки списка каналов?',
   'settings.resetCustomizationMessage': 'Все изменения порядка, скрытые каналы, переименования, свои группы, ручные привязки EPG и коррекции времени каналов будут удалены. Избранное сохранится.',
   'settings.customizationReset': 'Настройки списка каналов сброшены',
-  'settings.navChooseCategory': 'Выбор раздела',
-  'settings.navEnterReturn': 'Войти / назад',
   'settings.previewChannelOne': 'Первый канал',
   'settings.previewChannelTwo': 'Второй канал',
   'settings.previewEpgNow': 'EPG · сейчас',

@@ -265,8 +265,6 @@ export const DE_MESSAGES = {
   'settings.resetCustomizationTitle': 'Kanalanpassungen zurücksetzen?',
   'settings.resetCustomizationMessage': 'Alle Sortierungen, ausgeblendeten Kanäle, Umbenennungen, eigenen Gruppen, manuellen EPG-Zuordnungen und Senderzeitkorrekturen werden entfernt. Favoriten bleiben erhalten.',
   'settings.customizationReset': 'Kanalanpassungen zurückgesetzt',
-  'settings.navChooseCategory': 'Kategorie wählen',
-  'settings.navEnterReturn': 'Öffnen / zurück',
   'settings.previewChannelOne': 'Sender eins',
   'settings.previewChannelTwo': 'Sender zwei',
   'settings.previewEpgNow': 'EPG · jetzt',

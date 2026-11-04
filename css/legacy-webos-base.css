@@ -74,9 +74,7 @@ html.q-no-flex-gap .subs-row > * + * { margin-left: 12px; }
 html.q-no-flex-gap .subs-count > * + * { margin-left: 5px; }
 html.q-no-flex-gap .settings-nav-list > * + * { margin-top: 6px; }
 html.q-no-flex-gap .settings-nav-item > * + * { margin-left: 14px; }
-html.q-no-flex-gap .settings-nav-help > * + * { margin-top: 8px; }
-html.q-no-flex-gap .settings-nav-help-row > * + * { margin-left: 9px; }
-html.q-no-flex-gap .settings-general-row > * + * { margin-left: 0; }
+html.q-no-flex-gap .settings-general-row > * + * { margin-left: 24px; }
 html.q-no-flex-gap .settings-row > * + * { margin-left: 16px; }
 html.q-no-flex-gap .epg-offset-controls > * + * { margin-left: 10px; }
 html.q-no-flex-gap .epg-offset-stepper > * + * { margin-left: 10px; }

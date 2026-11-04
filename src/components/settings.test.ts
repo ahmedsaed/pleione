@@ -320,10 +320,6 @@ describe('Settings.render', () => {
     expect(contentOrder).toEqual(navOrder);
     expect(container.querySelector('.settings-nav-item.active')?.getAttribute('data-settings-target'))
       .toBe('general');
-    expect(container.querySelector('.settings-nav-help')?.textContent)
-      .toContain('Choose category');
-    expect(container.querySelector('.settings-nav-help')?.textContent)
-      .toContain('Enter / return');
   });
 
   it('starts a manual channel health check from the Channels section', async () => {

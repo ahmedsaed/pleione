@@ -266,8 +266,6 @@ export const FR_MESSAGES = {
   'settings.resetCustomizationTitle': 'Réinitialiser la personnalisation des chaînes ?',
   'settings.resetCustomizationMessage': 'Tous les réordonnancements, chaînes masquées, renommages, groupes personnalisés, associations EPG manuelles et corrections horaires de chaînes seront supprimés. Les favoris sont conservés.',
   'settings.customizationReset': 'Personnalisation des chaînes réinitialisée',
-  'settings.navChooseCategory': 'Choisir une catégorie',
-  'settings.navEnterReturn': 'Entrer / revenir',
   'settings.previewChannelOne': 'Chaîne un',
   'settings.previewChannelTwo': 'Chaîne deux',
   'settings.previewEpgNow': 'EPG · maintenant',

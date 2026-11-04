@@ -388,7 +388,6 @@ export const FR_MESSAGES = {
   'settings.resetAppTitle': 'Réinitialiser l’application ?',
   'settings.resetAppMessage': 'Toutes les données locales et les caches seront définitivement supprimés. L’application redémarrera avec la configuration initiale.',
   'settings.resetFailed': 'La réinitialisation a échoué. Redémarrez l’application et réessayez.',
-  'settings.saveApply': 'Enregistrer les modifications',
   'settings.accountLabel': 'Libellé du compte',
   'settings.label': 'Libellé',
   'settings.serverUrl': 'URL du serveur',

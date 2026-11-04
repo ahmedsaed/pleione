@@ -386,7 +386,6 @@ export const IT_MESSAGES = {
   'settings.resetAppTitle': 'Reimpostare l’app?',
   'settings.resetAppMessage': 'Tutti i dati locali e le cache saranno rimossi definitivamente. L’app si riavvierà con la configurazione iniziale.',
   'settings.resetFailed': 'Reimpostazione non completata. Riavvia l’app e riprova.',
-  'settings.saveApply': 'Salva modifiche',
   'settings.accountLabel': 'Etichetta account',
   'settings.label': 'Etichetta',
   'settings.serverUrl': 'URL del server',

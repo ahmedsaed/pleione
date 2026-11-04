@@ -84,7 +84,6 @@ html.q-no-flex-gap .manual-epg-scope > * + * { margin-left: 12px; }
 html.q-no-flex-gap .manual-epg-scope-options > * + * { margin-left: 8px; }
 html.q-no-flex-gap .settings-field > * + * { margin-top: 6px; }
 html.q-no-flex-gap .dropdown-trigger > * + * { margin-left: 12px; }
-html.q-no-flex-gap .settings-actions > * + * { margin-left: 16px; }
 html.q-no-flex-gap .settings-attribution > * + * { margin-left: 12px; }
 html.q-no-flex-gap .setup-box-info > * + * { margin-top: 16px; }
 html.q-no-flex-gap .device-setup-card > * + * { margin-left: 24px; margin-top: 0; }

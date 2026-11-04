@@ -621,14 +621,6 @@
   background: currentColor;
 }
 
-.settings-actions {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  padding: 20px 12px 8px;
-}
-
 .settings-about {
   margin-top: 32px;
   text-align: center;

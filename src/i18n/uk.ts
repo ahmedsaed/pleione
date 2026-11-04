@@ -404,7 +404,6 @@ export const UK_MESSAGES = {
   'settings.resetAppTitle': 'Скинути застосунок?',
   'settings.resetAppMessage': 'Усі локальні дані застосунку та кеш буде остаточно видалено. Застосунок перезапуститься з початковим налаштуванням.',
   'settings.resetFailed': 'Скидання не завершено. Перезапустіть застосунок і спробуйте ще раз.',
-  'settings.saveApply': 'Зберегти зміни',
   'settings.accountLabel': 'Назва облікового запису',
   'settings.label': 'Назва',
   'settings.serverUrl': 'URL сервера',

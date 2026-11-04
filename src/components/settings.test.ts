@@ -493,7 +493,7 @@ describe('Settings.render', () => {
     expect(container.querySelector('#playlist-entries [data-source-entry]')
       ?.classList.contains('source-disabled')).toBe(true);
 
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setPlaylists).toHaveBeenCalledWith([
       { id: 'p1', name: 'P1', url: 'http://a', source: 'url', enabled: false },
@@ -608,7 +608,7 @@ describe('Settings.render', () => {
   it('persists and applies the selected animation mode', () => {
     settings.render();
     click('#animation-mode [data-value="full"]');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setAnimationMode).toHaveBeenCalledWith('full');
     expect(motionMock.applyAnimationMode).toHaveBeenCalledWith('full');
   });
@@ -617,7 +617,7 @@ describe('Settings.render', () => {
     settings.render();
     click('#number-entry-osd-timeout [data-dropdown-value="1800"]');
     click('#player-osd-timeout [data-dropdown-value="8000"]');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setNumberEntryOsdTimeoutMs).toHaveBeenCalledWith(1800);
     expect(storageMock.setPlayerOsdTimeoutMs).toHaveBeenCalledWith(8000);
   });
@@ -690,7 +690,7 @@ describe('Settings.render', () => {
     const minus = container.querySelector<HTMLElement>('[data-offset-delta="-15"]')!;
     minus.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     settings.handleAction('select');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setEpgOffsets).toHaveBeenCalledWith({
       'http://host/epg.xml': -15,
     });
@@ -710,7 +710,7 @@ describe('Settings.render', () => {
       .toBe('http://host/new.xml');
     expect(container.querySelector('.epg-offset-value')?.textContent?.trim()).toBe('0 min');
     click('[data-offset-delta="15"]');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setEpgOffsets).toHaveBeenCalledWith({
       'http://host/new.xml': 15,
     });
@@ -760,7 +760,7 @@ describe('Settings.render', () => {
       .toBe(true);
     expect(reordered[0].querySelector('.manual-epg-url')?.classList)
       .toContain('focused');
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setManualEpgSources).toHaveBeenCalledWith([
       { url: 'http://host/b.xml', playlistIds: ['p2'] },
@@ -819,7 +819,7 @@ describe('Settings.render', () => {
     const inputs = container.querySelectorAll<HTMLInputElement>('.manual-epg-url');
     inputs[1].value = inputs[0].value;
 
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setPlaylists).not.toHaveBeenCalled();
     expect(storageMock.setManualEpgSources).not.toHaveBeenCalled();
@@ -854,8 +854,10 @@ describe('Settings.render', () => {
       .mockImplementation(channel =>
         channel === first ? 'http://host/a.xml' : 'http://host/b.xml');
     settings.render();
+    click('#add-playlist');
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://host/new';
 
-    click('#save-settings');
+    settings.leave();
 
     const sourceMap = storageMock.migrateCatchupEpgOffsets.mock.calls[0][2];
     expect(sourceMap[channelKey(first)]).toBe('http://host/a.xml');
@@ -992,10 +994,8 @@ describe('Settings theme picker', () => {
     expect(themeMock.previewTheme.mock.calls).toEqual([['vintage-amber']]);
   });
 
-  it('persists the selected theme only on Save & Apply', () => {
+  it('saves the picked theme at once', () => {
     click('.theme-swatch[data-theme-id="vintage-amber"]');
-    expect(storageMock.setTheme).not.toHaveBeenCalled();
-    click('#save-settings');
     expect(storageMock.setTheme).toHaveBeenCalledWith('vintage-amber');
   });
 
@@ -1021,7 +1021,7 @@ describe('Settings theme picker', () => {
 
   it('persists the overlay style on Save & Apply', () => {
     click('#overlay-style .toggle-option[data-value="frosted"]');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setOverlayStyle).toHaveBeenCalledWith('frosted');
   });
 
@@ -1042,11 +1042,9 @@ describe('Settings theme picker', () => {
       .toBe('100% (Default)');
   });
 
-  it('previews the text size immediately and persists it on Save & Apply', () => {
+  it('applies and saves the text size at once', () => {
     click('#text-size .dropdown-option[data-dropdown-value="130"]');
     expect(themeMock.applyTextSize).toHaveBeenCalledWith('130');
-    expect(storageMock.setTextSize).not.toHaveBeenCalled();
-    click('#save-settings');
     expect(storageMock.setTextSize).toHaveBeenCalledWith('130');
   });
 
@@ -1062,11 +1060,9 @@ describe('Settings theme picker', () => {
       .toBe('100% (Default)');
   });
 
-  it('previews the interface size immediately and persists it on Save & Apply', () => {
+  it('applies and saves the interface size at once', () => {
     click('#interface-size .dropdown-option[data-dropdown-value="120"]');
     expect(themeMock.applyInterfaceSize).toHaveBeenCalledWith('120');
-    expect(storageMock.setInterfaceSize).not.toHaveBeenCalled();
-    click('#save-settings');
     expect(storageMock.setInterfaceSize).toHaveBeenCalledWith('120');
   });
 });
@@ -1106,7 +1102,7 @@ describe('Settings editing', () => {
 
     container.querySelectorAll<HTMLElement>('.remove-playlist')[2]
       .dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    click('#save-settings');
+    settings.leave();
 
     const saved = storageMock.setPlaylists.mock.calls.at(-1)![0] as { id: string; name: string }[];
     expect(saved.map(p => p.name)).toEqual(['Playlist 1', 'Playlist 2', 'Playlist 4', 'Playlist 5']);
@@ -1281,10 +1277,207 @@ describe('Settings editing', () => {
     });
   });
 
-  it('cancel discards; refresh reloads', () => {
-    click('#cancel-settings');
+  it('leaving with nothing changed saves nothing; refresh reloads', () => {
+    settings.leave();
     expect(onSave).toHaveBeenLastCalledWith('cancel');
+    settings.render();
     click('#refresh-data');
+    expect(onSave).toHaveBeenLastCalledWith('reload');
+  });
+});
+
+describe('Settings saving', () => {
+  const playlist = { id: 'p1', name: 'P1', url: 'http://a', source: 'url' as const };
+
+  it('saves a simple setting at once and leaves the sources for Back', () => {
+    state.playlists = [playlist];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://half-typed';
+    click('#overlay-style .toggle-option[data-value="frosted"]');
+    expect(storageMock.setOverlayStyle).toHaveBeenCalledWith('frosted');
+    expect(storageMock.setPlaylists).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('Back applies changed settings without reloading the channels', () => {
+    settings.render();
+    click('#overlay-style .toggle-option[data-value="frosted"]');
+    settings.leave();
+    expect(onSave).toHaveBeenLastCalledWith('apply');
+  });
+
+  it('Back loads changed sources once', () => {
+    state.playlists = [playlist];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://b';
+    settings.leave();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenLastCalledWith('reload');
+    settings.release();
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Settings open on a duplicate guide URL', () => {
+    settings.render();
+    click('#add-epg-source');
+    click('#add-epg-source');
+    container.querySelectorAll<HTMLInputElement>('.manual-epg-url')
+      .forEach((input) => { input.value = 'http://host/guide.xml'; });
+    settings.leave();
+    expect(toastMock.showToast).toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('keeps a saved source whose field was left empty', () => {
+    const account = {
+      id: 'x1', name: 'X1', url: 'http://host:8080', source: 'xtream' as const,
+      xtream: { username: 'u', password: 'p' },
+    };
+    state.playlists = [playlist, account];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = '';
+    container.querySelector<HTMLInputElement>('.xtream-password')!.value = '';
+    settings.leave();
+    expect(storageMock.setPlaylists).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenLastCalledWith('cancel');
+  });
+
+  it('saves on any other way out, leaving the view alone', () => {
+    state.playlists = [playlist];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://b';
+    settings.release();
+    expect(storageMock.setPlaylists).toHaveBeenCalled();
+    expect(onSave).toHaveBeenLastCalledWith('reload-behind');
+  });
+
+  it('Back with no edit leaves sources changed elsewhere alone', () => {
+    state.playlists = [playlist];
+    settings.render();
+    state.playlists = [playlist, { id: 'p2', name: 'From phone', url: 'http://phone', source: 'url' }];
+    settings.leave();
+    expect(storageMock.setPlaylists).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenLastCalledWith('cancel');
+  });
+
+  it('Back with no edit never rewrites the preferences', () => {
+    settings.render();
+    settings.leave();
+    expect(storageMock.setOnlineSubtitleConfig).not.toHaveBeenCalled();
+  });
+
+  it('never saves a form a phone made stale', () => {
+    state.playlists = [playlist];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://b';
+    settings.abandon();
+    settings.release();
+    expect(storageMock.setPlaylists).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('saves edits when the app may not come back, and loads them on the way out', () => {
+    state.playlists = [playlist];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://b';
+    settings.saveEdits();
+    expect(storageMock.setPlaylists).toHaveBeenCalledTimes(1);
+    settings.leave();
+    expect(storageMock.setPlaylists).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenLastCalledWith('reload');
+  });
+
+  it('keeps a half-filled account and a blanked saved one across a redraw', () => {
+    const account = {
+      id: 'x1', name: 'X1', url: 'http://host:8080', source: 'xtream' as const,
+      xtream: { username: 'u', password: 'p' },
+    };
+    state.playlists = [account];
+    settings.render();
+    const saved = container.querySelector<HTMLElement>('.xtream-card')!;
+    saved.querySelector<HTMLInputElement>('.xtream-name')!.value = 'Edited';
+    saved.querySelector<HTMLInputElement>('.xtream-password')!.value = '';
+    click('#add-xtream');
+    const fresh = container.querySelectorAll<HTMLElement>('.xtream-card')[1];
+    fresh.querySelector<HTMLInputElement>('.xtream-url')!.value = 'http://host:9090';
+
+    expect(settings.checkpoint()).toBe(true);
+    settings.redraw();
+
+    const cards = container.querySelectorAll<HTMLElement>('.xtream-card');
+    expect(cards).toHaveLength(2);
+    expect(cards[0].querySelector<HTMLInputElement>('.xtream-name')!.value).toBe('Edited');
+    expect(cards[1].querySelector<HTMLInputElement>('.xtream-url')!.value).toBe('http://host:9090');
+  });
+
+  it('saves the other edits when a duplicate guide URL meets a way out', () => {
+    state.playlists = [playlist];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://b';
+    click('#add-epg-source');
+    click('#add-epg-source');
+    container.querySelectorAll<HTMLInputElement>('.manual-epg-url')
+      .forEach((input) => { input.value = 'http://host/guide.xml'; });
+    settings.release();
+    expect(storageMock.setPlaylists).toHaveBeenCalled();
+    expect(storageMock.setManualEpgSources).toHaveBeenLastCalledWith([
+      { url: 'http://host/guide.xml', playlistIds: [] },
+    ]);
+  });
+
+  it('keeps a saved guide source whose URL was left empty', () => {
+    state.manualEpgSources = [{ url: 'http://host/guide.xml', playlistIds: [] }];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.manual-epg-url')!.value = '';
+    settings.leave();
+    expect(storageMock.setManualEpgSources).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenLastCalledWith('cancel');
+  });
+
+  it('a language change is never blocked by a duplicate guide URL', () => {
+    settings.render();
+    click('#add-epg-source');
+    click('#add-epg-source');
+    container.querySelectorAll<HTMLInputElement>('.manual-epg-url')
+      .forEach((input) => { input.value = 'http://host/guide.xml'; });
+    click('#app-language .dropdown-option[data-dropdown-value="de"]');
+    expect(onSave).toHaveBeenLastCalledWith('language');
+  });
+
+  it('a wait for the channels ends with a redraw or an edit', () => {
+    state.playlists = [playlist];
+    settings.render();
+    settings.setChannelsLoading(true);
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://b';
+    settings.leave();
+    expect(onSave).not.toHaveBeenCalled();
+    settings.render();
+    settings.setChannelsLoading(false);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('typing in a source field and reverting it changes nothing', () => {
+    state.playlists = [playlist];
+    settings.render();
+    const url = container.querySelector<HTMLInputElement>('.playlist-url')!;
+    url.value = 'http://b';
+    url.dispatchEvent(new Event('input', { bubbles: true }));
+    url.value = playlist.url;
+    url.dispatchEvent(new Event('input', { bubbles: true }));
+    settings.leave();
+    expect(onSave).toHaveBeenLastCalledWith('cancel');
+  });
+
+  it('a checkpoint saves the sources and leaves their load for the way out', () => {
+    state.playlists = [playlist];
+    settings.render();
+    container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://b';
+    expect(settings.checkpoint()).toBe(true);
+    expect(storageMock.setPlaylists).toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+    state.playlists = storageMock.setPlaylists.mock.calls.at(-1)![0] as PlaylistEntry[];
+    settings.render();
+    settings.leave();
     expect(onSave).toHaveBeenLastCalledWith('reload');
   });
 });
@@ -1520,7 +1713,7 @@ describe('Settings.save', () => {
     click('#add-epg-source');
     container.querySelector<HTMLInputElement>('.manual-epg-url')!.value = ' http://epg ';
 
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setPlaylists).toHaveBeenCalledWith([{ id: expect.any(String), name: 'My', url: 'http://x', source: 'url' }]);
     expect(storageMock.setManualEpgSources).toHaveBeenCalledWith([
@@ -1536,7 +1729,7 @@ describe('Settings.save', () => {
     settings.render();
     container.querySelector<HTMLElement>(
       '#playlist-entries .settings-row:not(.playlist-header-row)')!.dataset.id = 'b';
-    click('#save-settings');
+    settings.leave();
     expect(onSave).toHaveBeenCalledWith('reload');
   });
 
@@ -1544,7 +1737,7 @@ describe('Settings.save', () => {
     state.playlists = [{ id: 'p1', name: 'P', url: 'http://p' }]; // unchanged by the form
     settings.render();
     click('#tz-mode [data-value="feed"]'); // only the time zone changes
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setTzMode).toHaveBeenCalledWith('feed');
     expect(onSave).toHaveBeenCalledWith('apply'); // no re-fetch
   });
@@ -1553,7 +1746,7 @@ describe('Settings.save', () => {
     state.playlists = [{ id: 'p1', name: 'P', url: 'http://p' }];
     settings.render();
     click('#time-format [data-value="24h"]');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setTimeFormat).toHaveBeenCalledWith('24h');
     expect(onSave).toHaveBeenCalledWith('apply');
   });
@@ -1563,7 +1756,7 @@ describe('Settings.save', () => {
     settings.render();
     click('#app-language [data-dropdown-trigger]');
     click('#app-language [data-dropdown-value="zh-CN"]');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setLocalePreference).toHaveBeenCalledWith('zh-CN');
     expect(onSave).toHaveBeenCalledWith('apply');
   });
@@ -1573,7 +1766,7 @@ describe('Settings.save', () => {
     settings.render();
 
     click('#live-reconnect-attempts [data-dropdown-value="5"]');
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setLiveReconnectAttempts).toHaveBeenCalledWith(5);
     expect(onSave).toHaveBeenCalledWith('apply');
@@ -1585,7 +1778,7 @@ describe('Settings.save', () => {
     click('#playlist-refresh-interval [data-dropdown-value="12"]');
     click('#epg-refresh-interval [data-dropdown-value="0"]');
     state.playlists = [];
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setPlaylistRefreshIntervalHours).toHaveBeenCalledWith(12);
     expect(storageMock.setEpgRefreshIntervalHours).toHaveBeenCalledWith(0);
@@ -1604,7 +1797,7 @@ describe('Settings.save', () => {
     settings.render();
 
     click('#xtream-catalog-refresh-interval [data-dropdown-value="12"]');
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setXtreamCatalogRefreshIntervalHours).toHaveBeenCalledWith(12);
   });
@@ -1621,7 +1814,7 @@ describe('Settings.save', () => {
   it('defaults a missing name to "Playlist N"', () => {
     const urls = container.querySelectorAll<HTMLInputElement>('.playlist-url');
     urls[0].value = 'http://only';
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setPlaylists).toHaveBeenCalledWith([{ id: expect.any(String), name: 'Playlist 1', url: 'http://only', source: 'url' }]);
   });
 
@@ -1630,7 +1823,7 @@ describe('Settings.save', () => {
     expect(activeTz()).toBe('device'); // default
     click('#tz-mode [data-value="feed"]');
     expect(activeTz()).toBe('feed');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setTzMode).toHaveBeenCalledWith('feed');
   });
 
@@ -1639,7 +1832,7 @@ describe('Settings.save', () => {
     expect(activeMode()).toBe('active'); // default: the current group
     click('#channel-cycle-mode [data-value="global"]');
     expect(activeMode()).toBe('global');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setChannelCycleMode).toHaveBeenCalledWith('global');
   });
 
@@ -1650,7 +1843,7 @@ describe('Settings.save', () => {
     (container.querySelector('#os-user') as HTMLInputElement).value = 'u';
     (container.querySelector('#os-pass') as HTMLInputElement).value = 'p';
     click('#os-pref-lang [data-dropdown-value="zh-CN"]');
-    click('#save-settings');
+    settings.leave();
     const cfg = storageMock.getOnlineSubtitleConfig();
     expect(cfg.subdl.apiKey).toBe('SK');
     expect(cfg.opensubtitles).toMatchObject({ apiKey: 'OK', username: 'u', password: 'p' });
@@ -1660,7 +1853,8 @@ describe('Settings.save', () => {
   it('saves the Assrt token', () => {
     settings.render();
     (container.querySelector('#assrt-key') as HTMLInputElement).value = 'AZ';
-    click('#save-settings');
+    container.querySelector('#settings-subtitles input')!.dispatchEvent(new Event('input', { bubbles: true }));
+    settings.leave();
     expect(storageMock.getOnlineSubtitleConfig().assrt.apiKey).toBe('AZ');
   });
 
@@ -1669,7 +1863,8 @@ describe('Settings.save', () => {
     const input = container.querySelector('#tmdb-key') as HTMLInputElement;
     expect(input.value).toBe('');
     input.value = '  k1  ';
-    click('#save-settings');
+    container.querySelector('#settings-subtitles input')!.dispatchEvent(new Event('input', { bubbles: true }));
+    settings.leave();
     expect(storageMock.getTmdbApiKey()).toBe('k1');
   });
 
@@ -1904,8 +2099,8 @@ describe('Settings.handleAction', () => {
   it('keeps remote actions in an open dropdown after pointer focus escapes', () => {
     settings.render();
     click('#app-language [data-dropdown-trigger]');
-    const save = container.querySelector<HTMLElement>('#save-settings')!;
-    save.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+    const outside = container.querySelector<HTMLElement>('#refresh-data')!;
+    outside.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
 
     settings.handleAction('down');
 
@@ -1913,7 +2108,7 @@ describe('Settings.handleAction', () => {
     expect(container.querySelector('#app-language .dropdown-option.focused')).not.toBeNull();
     expect(storageMock.setPlaylists).not.toHaveBeenCalled();
 
-    save.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+    outside.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     settings.handleAction('select');
 
     expect(container.querySelector('#app-language .dropdown-option.active')
@@ -1924,10 +2119,10 @@ describe('Settings.handleAction', () => {
   it('select activates the focused control (remote OK)', () => {
     state.playlists = [{ name: 'P1', url: 'http://a' }];
     settings.render();
-    container.querySelector<HTMLElement>('#save-settings')!
+    container.querySelector<HTMLElement>('#refresh-data')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     settings.handleAction('select');
-    expect(storageMock.setPlaylists).toHaveBeenCalled();
+    expect(onSave).toHaveBeenLastCalledWith('reload');
   });
 
   // The highlighted category already names the page; the header holds the title alone.
@@ -1993,7 +2188,7 @@ describe('Settings.handleAction', () => {
 
     expect(container.querySelector('#channel-cycle-mode .toggle-option.active')?.getAttribute('data-value'))
       .toBe('active');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setChannelCycleMode).toHaveBeenCalledWith('active');
     expect(storageMock.setTheme).toHaveBeenCalledWith('arctic');
   });
@@ -2160,8 +2355,7 @@ describe('Settings uploads section', () => {
     settings.render();
     const urls = container.querySelectorAll<HTMLInputElement>('.playlist-url');
     urls[0].value = 'http://renamed';
-    container.querySelector<HTMLElement>('#save-settings')!
-      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    settings.leave();
 
     expect(storageMock.setPlaylists).toHaveBeenCalledWith([
       { id: expect.any(String), name: 'Manual', url: 'http://renamed', source: 'url' },
@@ -2287,7 +2481,7 @@ describe('Settings uploads auto-refresh', () => {
 
     expect(container.querySelector<HTMLElement>('#upload-entries .source-toggle')
       ?.dataset.enabled).toBe('true');
-    click('#save-settings');
+    settings.leave();
     expect(storageMock.setPlaylists).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'upload-source', source: 'upload' }),
     ]);
@@ -2378,8 +2572,9 @@ describe('Settings Xtream section', () => {
     const card = container.querySelector<HTMLElement>('#xtream-entries .xtream-card')!;
     expect(card.classList.contains('source-disabled')).toBe(true);
     expect(card.querySelector<HTMLElement>('.source-toggle')?.dataset.enabled).toBe('false');
+    card.querySelector<HTMLInputElement>('.xtream-name')!.value = 'Renamed';
 
-    click('#save-settings');
+    settings.leave();
 
     const saved = storageMock.setPlaylists.mock.calls.at(-1)![0] as PlaylistEntry[];
     expect(saved[0].enabled).toBe(false);
@@ -2479,7 +2674,7 @@ describe('Settings Xtream section', () => {
     fillCard(card, { name: 'My Provider', url: 'host:8080/', user: 'user1', pass: 'pass1' });
     const id = card.dataset.id!;
 
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setPlaylists).toHaveBeenCalledWith([
       { id: 'p1', name: 'M3U', url: 'http://m3u', source: 'url' },
@@ -2501,7 +2696,7 @@ describe('Settings Xtream section', () => {
     }];
     settings.render();
     click('#xtream-output-x1 [data-dropdown-value="m3u8"]');
-    click('#save-settings');
+    settings.leave();
     const saved = storageMock.setPlaylists.mock.calls.at(-1)![0] as PlaylistEntry[];
     expect(saved[0].xtream?.liveOutput).toBe('m3u8');
     expect(onSave).toHaveBeenCalledWith('reload');
@@ -2513,7 +2708,7 @@ describe('Settings Xtream section', () => {
     click('#add-xtream');
     const card = container.querySelector<HTMLElement>('#xtream-entries .xtream-card')!;
     fillCard(card, { url: 'http://host:8080', user: 'u', pass: 'p' });
-    click('#save-settings');
+    settings.leave();
     const saved = storageMock.setPlaylists.mock.calls.at(-1)![0] as { name: string }[];
     expect(saved).toHaveLength(1);
     expect(saved[0].name).toBe('host:8080');
@@ -2527,7 +2722,7 @@ describe('Settings Xtream section', () => {
     const cards = container.querySelectorAll<HTMLElement>('#xtream-entries .xtream-card');
     fillCard(cards[0], { name: 'A', url: 'http://a:8080', user: 'u', pass: 'p' });
     fillCard(cards[1], { name: 'B', url: 'http://b:8080', user: 'u', pass: '' });
-    click('#save-settings');
+    settings.leave();
     const saved = storageMock.setPlaylists.mock.calls.at(-1)![0] as { name: string; source?: string }[];
     const xtream = saved.filter(p => p.source === 'xtream');
     expect(xtream).toHaveLength(1);
@@ -2678,7 +2873,7 @@ describe('Settings Xtream Live categories', () => {
     const card = container.querySelector<HTMLElement>('#xtream-entries .xtream-card')!;
     card.querySelector<HTMLInputElement>('.xtream-url')!.value = 'host:8080/';
     card.querySelector<HTMLInputElement>('.xtream-password')!.value = 'p2';
-    click('#save-settings');
+    settings.leave();
     expect(savedXtream()[0].xtream).toEqual({
       username: 'u', password: 'p2', liveOutput: 'ts', liveCategories,
     });
@@ -2688,7 +2883,7 @@ describe('Settings Xtream Live categories', () => {
     state.playlists = [account({ liveCategories: { mode: 'include', ids: ['c1'] } })];
     settings.render();
     container.querySelector<HTMLInputElement>('#xtream-entries .xtream-username')!.value = 'u2';
-    click('#save-settings');
+    settings.leave();
     expect(savedXtream()[0].xtream).toEqual({ username: 'u2', password: 'p', liveOutput: 'ts' });
   });
 
@@ -2732,7 +2927,7 @@ describe('Settings Xtream Live categories', () => {
     });
     expect(button().querySelector('.xtream-live-categories-value')?.textContent).toBe('2 of 3');
 
-    click('#save-settings');
+    settings.leave();
     expect(savedXtream()[0].xtream?.liveCategories).toEqual({ mode: 'include', ids: ['c1', 'c3'] });
     expect(onSave).toHaveBeenCalledWith('reload');
   });
@@ -2747,7 +2942,7 @@ describe('Settings Xtream Live categories', () => {
     Focus.owner()!.handle('yellow');
     container.querySelector<HTMLInputElement>('#xtream-entries .xtream-username')!.value = 'u2';
 
-    click('#save-settings');
+    settings.leave();
 
     expect(savedXtream()[0].xtream?.liveCategories).toBeUndefined();
   });
@@ -2768,7 +2963,7 @@ describe('Settings Xtream Live categories', () => {
     expect(storageMock.setLiveCategorySnapshot).not.toHaveBeenCalled();
     expect(snapshots.get('x1')).toEqual({ knownIds: ['c1'], announcedIds: [], counts: {} });
 
-    click('#save-settings');
+    settings.leave();
 
     expect(savedXtream()[0].xtream?.username).toBe('u2');
     expect(snapshots.get('x1')).toEqual({ knownIds: ['c1', 'c2', 'c3'], announcedIds: [], counts: {} });
@@ -2785,7 +2980,7 @@ describe('Settings Xtream Live categories', () => {
     await flush();
     Focus.owner()!.handle('yellow');
 
-    click('#save-settings');
+    settings.leave();
 
     expect(storageMock.setPlaylists).toHaveBeenCalled();
     expect(storageMock.setLiveCategorySnapshot).not.toHaveBeenCalled();
@@ -2804,7 +2999,8 @@ describe('Settings Xtream Live categories', () => {
     expect(settings.isPromptVisible).toBe(false);
     expect(picker()!.classList.contains('hidden')).toBe(true);
     expect(storageMock.setLiveCategorySnapshot).not.toHaveBeenCalled();
-    click('#save-settings');
+    container.querySelector<HTMLInputElement>('.xtream-name')!.value = 'Renamed';
+    settings.leave();
     expect(savedXtream()[0].xtream?.liveCategories).toEqual({ mode: 'include', ids: ['c1'] });
   });
 });

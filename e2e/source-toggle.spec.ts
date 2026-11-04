@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   expect,
   enterTab,
   liveAfterSave,
@@ -63,7 +64,7 @@ test('disabling every M3U source hides channels until the source is enabled agai
   await expect(remove).toHaveCSS('background-color', focusColors.danger);
 
   await sourceToggle.click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
 
   await liveAfterSave(page);
   await expect(page.locator('.channel-main .channel-item')).toHaveCount(0);
@@ -76,7 +77,7 @@ test('disabling every M3U source hides channels until the source is enabled agai
 
   await enterTab(page, 'settings');
   await page.locator('#playlist-entries .source-toggle').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
 
   await liveAfterSave(page);
   await expect(page.locator('.channel-main .channel-item')).toHaveCount(2);
@@ -121,7 +122,7 @@ test('disabling the only Xtream account hides its sections until re-enabled', as
   await enterTab(page, 'settings');
   await page.locator('[data-settings-target="sources"]').click();
   await page.locator('#xtream-entries .source-toggle').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
 
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('[data-section="movies"]')).toHaveCount(0);
@@ -130,7 +131,7 @@ test('disabling the only Xtream account hides its sections until re-enabled', as
 
   await enterTab(page, 'settings');
   await page.locator('#xtream-entries .source-toggle').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
 
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('#view-home .home-card[data-section="movies"]')).toHaveCount(1);

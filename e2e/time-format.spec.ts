@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   test, expect, enterTab, openGuide, openLive, routeLiveManifest, routePlaylist, seedPlaylist, type Page,
 } from './helpers';
 
@@ -24,7 +25,7 @@ test('times show 12-hour by default, and the setting switches them to 24-hour', 
   await enterTab(page, 'settings');
   await expect(page.locator('#time-format .toggle-option.active')).toHaveAttribute('data-value', '12h');
   await page.locator('#time-format [data-value="24h"]').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(clock(page)).toHaveText(/^\d{2}:\d{2}$/);
 });

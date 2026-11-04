@@ -485,6 +485,7 @@ class App {
       if (document.visibilityState === lastVisibility) return;
       lastVisibility = document.visibilityState;
       if (document.visibilityState === 'hidden') {
+        this.settings.saveEdits();
         void this.flushUserData('background');
         log.info('App backgrounded — stopping bundled service');
         this.stopBundledService();
@@ -690,7 +691,8 @@ class App {
   private queueDeviceSetupSync(): Promise<void> {
     this.deviceSetupSync = this.deviceSetupSync
       .then(async () => {
-        if (await SetupClient.applyPendingActions()) {
+        if (await SetupClient.applyPendingActions(() => this.settings.saveEdits())) {
+          this.settings.abandon();
           await this.onSettingsSaved('reload');
         }
       })
@@ -1157,6 +1159,15 @@ class App {
     }
   }
 
+  // New sources from a way out of Settings: drop the old channels, and any
+  // load of them, so what shows them next loads and reports as usual.
+  private async unloadSavedSources(): Promise<void> {
+    this.search.invalidateCatalog();
+    await Promise.all([clearCachedPlaylist(), clearCachedCatalog()]);
+    this.unloadChannels(true);
+    this.syncSources();
+  }
+
   // Home starts with no channels; a reload drops any already loaded.
   private unloadChannels(forceEpgRefresh: boolean): void {
     if (this.channelsLoaded) {
@@ -1369,9 +1380,8 @@ class App {
     if (name !== 'channels' && this.channelList.isEditing) this.channelList.exitEditMode();
     if (name !== 'channels') this.liveDwell.cancel();
     this.placeLiveHeader(name);
-    // Re-assert the persisted theme on every view transition. This reverts any
-    // unsaved live preview when Settings closes (Back / section switch / Cancel)
-    // while keeping a just-saved theme, since save() persists before this runs.
+    // Re-assert the persisted theme on every view transition. This reverts a
+    // swatch previewed but not picked when Settings closes.
     applyTheme(StorageService.getTheme());
     applyOverlayStyle(StorageService.getOverlayStyle());
     applyTextSize(StorageService.getTextSize());
@@ -1445,7 +1455,8 @@ class App {
   // Show a section's view (Live = the channels view).
   private switchSection(section: Section): void {
     if (section === 'home') {
-      this.goHome();
+      if (this.isCurrentView('settings')) this.settings.leave();
+      else this.goHome();
       return;
     }
     if (section !== 'live' && this.channelList.isEditing) this.channelList.exitEditMode();
@@ -1496,9 +1507,12 @@ class App {
 
   // Settings opens at once; what needs the channels waits for them in place.
   private openSettings(): void {
+    const from = this.viewStack[this.viewStack.length - 1];
     this.loadChannelsBehind('settings');
-    this.settings.render();
+    // The form under a sub-page or the player still holds its edits.
+    if (from === 'parental-controls' || !this.settings.formLive) this.settings.render();
     this.showView('settings');
+    if (from === 'reminders') this.settings.focusReminderEntry();
   }
 
   // Search and Settings open before the channels load: each shows the load
@@ -1622,6 +1636,8 @@ class App {
   }
 
   private openParentalControls(): void {
+    // Coming back redraws Settings from what is saved.
+    if (!this.settings.checkpoint()) return;
     const open = () => {
       this.showView('parental-controls');
       this.parentalControls.open();
@@ -1690,7 +1706,7 @@ class App {
     this.switchSection(section);
     // A click leaves the pointer on Home, so the content's focus
     // waits for a key. Search keeps the keys in its own box.
-    if (via === 'pointer' && section !== 'search') {
+    if (via === 'pointer' && section !== 'search' && (section !== 'home' || this.isCurrentView('home'))) {
       FocusRing.defer(this.viewStack[this.viewStack.length - 1]);
     }
   }
@@ -2011,7 +2027,7 @@ class App {
       }
       if (currentView === 'settings') {
         if (this.settings.dismissDropdown()) return;
-        this.goUp('settings');
+        this.settings.leave();
         return;
       }
       if (currentView === 'reminders') {
@@ -2154,7 +2170,8 @@ class App {
 
 
   private async onSettingsSaved(action: SaveAction): Promise<void> {
-    if (action === 'edit-channels') {
+    if (action === 'reload-edit-channels') await this.unloadSavedSources();
+    if (action === 'edit-channels' || action === 'reload-edit-channels') {
       // Settings may have opened before the channels loaded.
       if (!this.channelsLoaded) {
         this.openLiveLoading('list', () => this.channelList.enterEditMode('builtin:all'));
@@ -2189,21 +2206,34 @@ class App {
       // holds up closing Settings.
       void SetupClient.publishState();
     }
+    if (action === 'language') {
+      this.settings.redraw();
+      return;
+    }
     if (action === 'reload') {
       this.search.invalidateCatalog();
       await Promise.all([clearCachedPlaylist(), clearCachedCatalog()]);
       await this.loadData(true, 'launch');
       return;
     }
+    if (action === 'reload-behind') {
+      await this.unloadSavedSources();
+      if (this.isCurrentView('channels')) {
+        if (StorageService.getPlaylists().some(isSourceEnabled)) this.openLiveLoading(this.liveMode);
+        else this.goHome();
+      }
+      return;
+    }
     // 'apply': only display settings changed — re-apply + re-render, no re-fetch.
-    if (action === 'apply') {
+    if (action === 'apply' || action === 'apply-behind') {
       this.search.invalidateCatalog();
       this.applyDisplayTz();
       this.scheduleEpgRefresh();
       this.schedulePlaylistRefresh();
     }
+    if (action === 'apply-behind') return;
     this.channelList.render();
-    this.goHome();
+    this.goHome('settings');
   }
 }
 

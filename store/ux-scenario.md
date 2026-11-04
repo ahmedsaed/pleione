@@ -39,7 +39,7 @@ the next two, a movie catalog and a series catalog.
 
    Leave **Live stream format** on **TS (compatible)** for now (section 10 changes it).
 4. Select **Check**. The account shows **Active**.
-5. Select **Save Changes**. The app returns to Home.
+5. Press **Back**. The account is saved and the app returns to Home.
 
 Expected: no error. Home now shows the app name, the clock, the account's initial in a circle at
 the top right, and five cards: **Live**, **Movies**, **Series**, **Search** and **Settings**,
@@ -160,8 +160,8 @@ Instead of typing on the TV, the account can be added from a phone (section 8).
 ## 7. Settings
 
 Open **Settings** from Home. The pages are listed on the left; press **Right** to enter a page
-and **Left** to return to the list. Changes apply with **Save Changes**; **Cancel** discards
-them. **Back** closes an open list first, then goes Home.
+and **Left** to return to the list. A setting applies as soon as it changes; sources and guide
+sources save on **Back**. **Back** closes an open list first, then goes Home.
 
 1. **General**: **Language** (System, or one of the app's 12 languages; in **العربية**
    (Arabic) the whole interface is laid out right to left, while the player's seek bar and
@@ -245,7 +245,7 @@ picture shows its resolution.
 1. Play each item full screen. **Channel Info** in the live controls shows the resolution.
 2. The adaptive channel steps between its variants with the network speed, and needs HLS: in
    **Settings › Sources**, set the test account's **Live stream format** to **HLS (m3u8)** or
-   **Auto**, select **Save Changes**, and play **Adaptive 360p-1080p** again. On **TS
+   **Auto**, press **Back**, and play **Adaptive 360p-1080p** again. On **TS
    (compatible)** it plays only the 360p variant.
 3. Network loss: unplug the network while a channel plays. The player shows "Reconnecting…" and
    retries; when the network returns, playback resumes or the channel can be played again from

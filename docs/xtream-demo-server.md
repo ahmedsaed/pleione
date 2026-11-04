@@ -37,7 +37,7 @@ addresses, and the credentials:
 ```
 
 In the app, open **Settings → Xtream Accounts**, add an account with one
-of those URLs and the credentials, and save.
+of those URLs and the credentials, and press Back to save.
 
 | Option | Env | Default | |
 | --- | --- | --- | --- |

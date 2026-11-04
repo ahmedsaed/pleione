@@ -1,4 +1,5 @@
 import {
+  leaveSettings,
   pressKeys,
   liveAfterSave,
   test,
@@ -72,7 +73,7 @@ test('live playback retries the current channel before switching', async ({ page
   const attempts = page.locator('#live-reconnect-attempts');
   await attempts.locator('.dropdown-trigger').click();
   await attempts.locator('[data-dropdown-value="1"]').click();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await liveAfterSave(page);
   await page.locator('.channel-main .channel-item').first().click();
   await expect(page.locator('.osd-channel-name')).toHaveText('Channel One');

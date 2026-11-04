@@ -1,4 +1,4 @@
-import { test, expect, enterTab, type Page } from './helpers';
+import { leaveSettings, test, expect, enterTab, type Page } from './helpers';
 import { seedXtream } from './fixtures/xtream';
 
 // Pleione's TV navigation: Home first, sections full screen, and Back one
@@ -379,7 +379,7 @@ test('the first-run cards open the Add flows by D-pad and pointer', async ({ pag
   await expect(page.locator('#xtream-entries .xtream-card')).toHaveCount(1);
   await expect(page.locator('#view-settings .focused')).toHaveClass(/\bxtream-name\b/);
   // Cancel returns to the first run, where it was left.
-  await page.locator('#cancel-settings').click();
+  await leaveSettings(page);
   await expect(page.locator('#view-home .home-first-run')).toBeVisible();
 
   await press(page, 'ArrowDown');
@@ -541,13 +541,13 @@ test('Save and Cancel in Settings return to Home, where Settings was opened', as
   await goHome(page);
   await enterTab(page, 'settings');
   await expect(page.locator('#view-settings')).toBeVisible();
-  await page.locator('#save-settings').click();
+  await leaveSettings(page);
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('#view-channels')).toBeHidden();
 
   await enterTab(page, 'settings');
   await expect(page.locator('#view-settings')).toBeVisible();
-  await page.locator('#cancel-settings').click();
+  await leaveSettings(page);
   await expect(page.locator('#view-home')).toBeVisible();
 });
 

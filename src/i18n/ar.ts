@@ -422,7 +422,6 @@ export const AR_MESSAGES = {
   'settings.resetAppTitle': 'هل تريد إعادة تعيين التطبيق؟',
   'settings.resetAppMessage': 'ستتم إزالة كل بيانات التطبيق المحلية وذاكرة التخزين المؤقت نهائيًا. سيُعاد تشغيل التطبيق بإعداده الأولي.',
   'settings.resetFailed': 'تعذّر إكمال إعادة التعيين. أعد تشغيل التطبيق وحاول مرة أخرى.',
-  'settings.saveApply': 'حفظ التغييرات',
   'settings.accountLabel': 'تسمية الحساب',
   'settings.label': 'التسمية',
   'settings.serverUrl': 'عنوان URL للخادم',

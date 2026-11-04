@@ -380,7 +380,6 @@ export const TR_MESSAGES = {
   'settings.resetAppTitle': 'Uygulama sıfırlansın mı?',
   'settings.resetAppMessage': 'Tüm yerel uygulama verileri ve önbellek kalıcı olarak silinecek. Uygulama ilk kurulumla yeniden başlayacak.',
   'settings.resetFailed': 'Sıfırlama tamamlanamadı. Uygulamayı yeniden başlatıp tekrar deneyin.',
-  'settings.saveApply': 'Değişiklikleri Kaydet',
   'settings.accountLabel': 'Hesap etiketi',
   'settings.label': 'Etiket',
   'settings.serverUrl': 'Sunucu URL’si',

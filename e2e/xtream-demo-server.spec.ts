@@ -1,5 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { test, expect, enterTab, liveAfterSave, type Page, openGuide, pressBack } from './helpers';
+import { leaveSettings, test, expect, enterTab, liveAfterSave, type Page, openGuide, pressBack } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
 test.use({ startOn: 'live' });
@@ -85,7 +85,7 @@ test('adds the demo server in Settings and loads live channels with a guide', as
   await card.locator('.xtream-url').fill(origin);
   await card.locator('.xtream-username').fill('u1');
   await card.locator('.xtream-password').fill('p1');
-  await page.click('#save-settings');
+  await leaveSettings(page);
 
   await liveAfterSave(page);
   const first = page.locator('.channel-main .channel-item').first();

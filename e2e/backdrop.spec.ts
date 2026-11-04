@@ -113,7 +113,7 @@ test('Settings, every Settings page, Reminders, and Parental controls sit on the
   for (const category of categories) {
     await page.locator(`[data-settings-target="${category}"]`).click();
     await expectBackdrop(page, '#view-settings', 'settings',
-      ['.settings-view', `#settings-${category}`, '.settings-actions']);
+      ['.settings-view', `#settings-${category}`]);
   }
 
   await page.locator('[data-settings-target="guide"]').click();

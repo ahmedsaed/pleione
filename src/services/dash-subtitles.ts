@@ -1,3 +1,4 @@
+import type { PlayerMedia } from '../components/player-media';
 import { parseMpd } from '../parsers/mpd-manifest';
 import type { DashSubtitleSegment, ManifestSubtitle } from '../types';
 import { parseWebVTT } from '../utils/webvtt';
@@ -10,7 +11,7 @@ const POLL_MS = 2000;
 const CUE_RETENTION_S = 30;
 
 export class DashSubtitles {
-  private video: HTMLVideoElement | null = null;
+  private video: PlayerMedia | null = null;
   private cueTrack = new WebVttCueTrack();
   private timer: ReturnType<typeof setInterval> | null = null;
   private seen = new Set<string>();
@@ -22,7 +23,7 @@ export class DashSubtitles {
   }
 
   async start(
-    video: HTMLVideoElement,
+    video: PlayerMedia,
     manifestUrl: string,
     want?: { name?: string; lang?: string },
   ): Promise<void> {

@@ -1,3 +1,4 @@
+import type { PlayerMedia } from '../components/player-media';
 import type { SidecarSubtitle } from '../types';
 import { parseSubtitleFile } from '../utils/srt';
 import { fetchText } from '../utils/fetch-helper';
@@ -22,7 +23,7 @@ export class VodSubtitles {
     cues?: VttCue[];
     loading?: Promise<VttCue[]>;
   }> = [];
-  private video: HTMLVideoElement | null = null;
+  private video: PlayerMedia | null = null;
   private cueTrack = new WebVttCueTrack();
   private gen = 0;
   private _activeIndex = -1;
@@ -31,7 +32,7 @@ export class VodSubtitles {
     return this._activeIndex;
   }
 
-  attach(video: HTMLVideoElement, sidecars: SidecarSubtitle[]): void {
+  attach(video: PlayerMedia, sidecars: SidecarSubtitle[]): void {
     this.clear();
     this.video = video;
     this.entries = sidecars.map(sidecar => ({
@@ -95,7 +96,7 @@ export class VodSubtitles {
   }
 
   /** Append a sidecar downloaded during playback and return its picker index. */
-  addOnline(video: HTMLVideoElement, sub: SidecarSubtitle): number {
+  addOnline(video: PlayerMedia, sub: SidecarSubtitle): number {
     if (this.video !== video) {
       this.clear();
       this.video = video;

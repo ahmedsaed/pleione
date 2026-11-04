@@ -29,6 +29,39 @@
 #video-player::cue(.red) { color: #ff6666; }
 #video-player::cue(.blue) { color: #6666ff; }
 
+/* rtl:ignore -- placed over the video's rectangle (src/components/dom-text-tracks.ts).
+   The same cues where the picture is the platform's own video plane (Samsung's
+   AVPlay), which Blink cannot draw ::cue over: over the video, under the OSD. */
+.cue-overlay {
+  position: fixed;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  pointer-events: none;
+  /* stylelint-disable-next-line plugin/no-unsupported-browser-features */
+  font-family: ui-monospace, "SFMono-Regular", "Droid Sans Mono", monospace;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.cue-overlay .cue {
+  max-width: 100%;
+  padding: 0 0.25em;
+  white-space: pre-line;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+}
+
+.cue-overlay .cyan { color: #00ffff; }
+.cue-overlay .yellow { color: #ffff00; }
+.cue-overlay .green { color: #00ff00; }
+.cue-overlay .magenta { color: #ff00ff; }
+.cue-overlay .red { color: #ff6666; }
+.cue-overlay .blue { color: #6666ff; }
+
 /* The buffering spinner of a movie, episode, or catch-up program: the loading
    ring drawn on the video, centered, under the OSD. A cue, never a target. */
 .player-buffering {

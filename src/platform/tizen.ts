@@ -1,5 +1,5 @@
 import { createLogger } from '../utils/logger';
-import { playWithAvplay, type AvplayApi } from './tizen-avplay';
+import { createAvplayMedia, type AvplayApi } from './tizen-avplay';
 import { createTizenLanTransport } from './tizen-lan';
 import type { LanTransport, Platform } from './types';
 
@@ -61,6 +61,12 @@ const REGISTERED_KEYS = [
   'ChannelUp', 'ChannelDown', 'MediaPlayPause', 'Info', 'Guide',
 ];
 
+
+/** The Tizen major version in a user agent ("Tizen 9.0"), or 0. */
+export function tizenMajor(userAgent: string): number {
+  const match = /\bTizen (\d+)\./.exec(userAgent);
+  return match ? Number(match[1]) : 0;
+}
 
 function host(): TizenHost['tizen'] {
   return (window as unknown as TizenHost).tizen;
@@ -147,9 +153,13 @@ export const tizen: Platform = {
         fail(e as { name?: string });
       }
     },
-    playPlatform(video: HTMLVideoElement, url: string) {
+    // From Tizen 8 the TV's <video> lists no audio or text tracks, and on
+    // Tizen 9 it decodes no raw TS; AVPlay does both (docs/tizen.md). On
+    // Tizen 5.5 it is the other way round, so older TVs stay native.
+    prefersPlatformMedia: () => tizenMajor(navigator.userAgent) >= 8,
+    createPlatformMedia(video: HTMLVideoElement, url: string) {
       const av = (window as unknown as TizenHost).webapis?.avplay;
-      return av ? playWithAvplay(av, video, url) : null;
+      return av ? createAvplayMedia(av, video, url) : null;
     },
     // Live DVR stays off: live HLS reports a finite duration here, which
     // dvrWindow() reads as not live, and native seeks to the live edge freeze

@@ -713,6 +713,30 @@ describe('Player live playback', () => {
     expect(keepAwake).toHaveBeenLastCalledWith(false);
   });
 
+  it('follows the platform\'s own player while it has the stream, and the element after', async () => {
+    const keepAwake = vi.spyOn(platform.media, 'keepAwake');
+    const pipeline = (player as unknown as {
+      pipeline: { callbacks: { onMediaChanged(media: unknown): void } };
+    }).pipeline;
+    player.play(0);
+    await flush();
+    const platformMedia = fakeVideo(0);
+
+    pipeline.callbacks.onMediaChanged(platformMedia);
+    keepAwake.mockClear();
+    video.dispatchEvent(new Event('playing'));
+    expect(keepAwake).not.toHaveBeenCalled();
+    platformMedia.dispatchEvent(new Event('playing'));
+    expect(keepAwake).toHaveBeenLastCalledWith(true);
+
+    pipeline.callbacks.onMediaChanged(null);
+    keepAwake.mockClear();
+    platformMedia.dispatchEvent(new Event('playing'));
+    expect(keepAwake).not.toHaveBeenCalled();
+    video.dispatchEvent(new Event('playing'));
+    expect(keepAwake).toHaveBeenLastCalledWith(true);
+  });
+
   it('tells the pipeline when the TV fails to decode the stream, so a retry can step down', async () => {
     const decode = vi.spyOn(
       (player as unknown as { pipeline: { noteDecodeError(): void } }).pipeline, 'noteDecodeError');
@@ -1848,6 +1872,22 @@ describe('Player VOD mode', () => {
     expect(container.querySelector('.osd-message')?.textContent).toBe('Reconnecting…');
   });
 
+  it('keeps a movie\'s subtitles through a retry, whose load clears them', () => {
+    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.pause = vi.fn();
+    HTMLMediaElement.prototype.load = vi.fn();
+    const video = document.createElement('video');
+    container.appendChild(video);
+    player.init(video);
+    const attach = vi.spyOn((player as unknown as { tracks: { attachVod(v: unknown): void } }).tracks, 'attachVod');
+    const r = req();
+    player.playVod(r);
+    expect(attach).toHaveBeenCalledTimes(1);
+    video.dispatchEvent(new Event('error'));
+    vi.advanceTimersByTime(CONFIG.PLAYER.VOD_RETRY_DELAYS[0]);
+    expect(attach).toHaveBeenCalledTimes(2);
+  });
+
   it('surfaces a source the element refused, which fires no error event', () => {
     const video = fakeVideo(3600);
     // NETWORK_NO_SOURCE: every <source> was skipped, so no 'error' ever arrives.
@@ -2260,6 +2300,23 @@ describe('Player catch-up save/restore lifecycle', () => {
     player.resume();
     const p = player as unknown as { pendingResumeSecs: number };
     expect(p.pendingResumeSecs).toBe(55);
+  });
+
+  it('reconnects a stalled catch-up program where it stalled, not at its start', () => {
+    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.pause = vi.fn();
+    HTMLMediaElement.prototype.load = vi.fn();
+    const v = document.createElement('video');
+    Object.defineProperty(v, 'duration', { value: 120, configurable: true });
+    container.appendChild(v);
+    player.init(v);
+
+    player.play(0, CATCHUP);
+    v.currentTime = 32;
+    (player as unknown as { reloadCurrentStream(): void }).reloadCurrentStream();
+
+    const p = player as unknown as { pendingResumeSecs: number };
+    expect(p.pendingResumeSecs).toBe(32);
   });
 
   it('preserves a pending resume seek when suspended before loadedmetadata applies it', () => {

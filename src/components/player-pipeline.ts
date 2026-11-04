@@ -15,7 +15,8 @@ import { FetchTextError, fetchLimitedText } from '../utils/fetch-helper';
 import { getLenientLoaders } from '../utils/hls-stable-loader';
 import { createLogger } from '../utils/logger';
 import { platform } from '../platform';
-import type { PlatformPlayback } from '../platform/types';
+import type { PlatformMedia } from '../platform/types';
+import type { PlayerMedia } from './player-media';
 import { StorageService } from '../services/storage-service';
 import { parseClosedCaptions, parseSubtitleRenditions } from '../utils/subtitle-tracks';
 import { parseVariants, type StreamVariant } from '../utils/stream-info';
@@ -126,12 +127,14 @@ export interface PipelineManifest {
 
 export interface PlayerPipelineOptions {
   playbackLabel: (loadToken: number) => string;
-  mediaState: (video: HTMLVideoElement) => string;
+  mediaState: (video: PlayerMedia) => string;
   isCatchup: () => boolean;
   onError: (reason?: 'unsupported') => void;
   onAudioTracksUpdated: () => void;
   onSubtitleTracksUpdated: () => void;
   onManifest: (manifest: PipelineManifest) => void;
+  /** The platform's own player took the stream (`media`), or gave it back to the element (null). */
+  onMediaChanged: (media: PlatformMedia | null) => void;
 }
 
 export class PlayerPipeline {
@@ -150,8 +153,8 @@ export class PlayerPipeline {
   private hlsRecoveries = 0;
   private manifestSeq = 0;
   private manifestController: AbortController | null = null;
-  private videoLoadLabels = new WeakMap<HTMLVideoElement, string>();
-  private platformPlayback: PlatformPlayback | null = null;
+  private videoLoadLabels = new WeakMap<object, string>();
+  private platformMedia: PlatformMedia | null = null;
   private tsCheckTimer: ReturnType<typeof setInterval> | null = null;
   private playReadyDrm = new PlayReadyDrm();
   private activeDrm = '';
@@ -170,7 +173,7 @@ export class PlayerPipeline {
     return this.loadToken;
   }
 
-  videoLabel(el: HTMLVideoElement): string {
+  videoLabel(el: PlayerMedia): string {
     return this.videoLoadLabels.get(el) ?? this.callbacks.playbackLabel(this.loadToken);
   }
 
@@ -511,7 +514,9 @@ export class PlayerPipeline {
       this.playNativeDash(url);
       return;
     }
-    if (mime === 'video/mp2t' && platform.media.playPlatform) {
+    if (platform.media.prefersPlatformMedia?.()
+        && this.playOnPlatform(url, this.loadToken, 'tracks')) return;
+    if (mime === 'video/mp2t' && platform.media.createPlatformMedia) {
       this.playTs(url);
       return;
     }
@@ -528,10 +533,13 @@ export class PlayerPipeline {
 
   private playOnPlatform(url: string, token: number, reason: string): boolean {
     const videoEl = this.videoEl;
-    if (!videoEl || !platform.media.playPlatform) return false;
-    const playback = platform.media.playPlatform(videoEl, url);
-    if (!playback) return false;
-    this.platformPlayback = playback;
+    if (!videoEl || !platform.media.createPlatformMedia) return false;
+    const media = platform.media.createPlatformMedia(videoEl, url);
+    if (!media) return false;
+    this.platformMedia = media;
+    // Player listens before the stream opens, so it sees every event.
+    this.callbacks.onMediaChanged(media);
+    media.start();
     log.info('Selected platform playback', 'event=playback.path.platform',
       this.callbacks.playbackLabel(token), `reason=${reason}`);
     return true;
@@ -582,8 +590,11 @@ export class PlayerPipeline {
 
   private releasePlatformPlayback(): void {
     this.stopNativeTsCheck();
-    this.platformPlayback?.release();
-    this.platformPlayback = null;
+    const media = this.platformMedia;
+    if (!media) return;
+    this.platformMedia = null;
+    media.release();
+    this.callbacks.onMediaChanged(null);
   }
 
   private playNativeDash(url: string, clientId = ''): void {

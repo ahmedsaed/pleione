@@ -139,6 +139,7 @@ describe('PlayerTracks', () => {
     } as unknown as HTMLVideoElement;
     tracks = new PlayerTracks(pipeline(), {
       getVideoElement: () => video,
+      getMedia: () => video,
       getChannel: () => channel,
       getVod: () => vod,
     });
@@ -1200,6 +1201,32 @@ describe('PlayerTracks', () => {
       expect(vodSubs.attach).toHaveBeenCalledWith(video, subtitles);
     });
 
+    it('moves a movie\'s subtitles to the platform\'s player when it takes over late', () => {
+      const vodSubs = { attach: vi.fn() };
+      const internals = trackInternals(tracks);
+      internals.vodSubs = vodSubs;
+      const request = vodRequest({ subtitles: [] });
+      vod = request;
+      let media: HTMLVideoElement = video;
+      const late = new PlayerTracks(pipeline(), {
+        getVideoElement: () => video,
+        getMedia: () => media,
+        getChannel: () => channel,
+        getVod: () => vod,
+      });
+      trackInternals(late).vodSubs = vodSubs;
+      late.attachVod(request);
+      expect(vodSubs.attach).toHaveBeenLastCalledWith(video, []);
+
+      late.mediaChanged();
+      expect(vodSubs.attach).toHaveBeenCalledTimes(1);
+
+      media = { audioTracks: undefined, textTracks: [] } as unknown as HTMLVideoElement;
+      late.mediaChanged();
+      expect(vodSubs.attach).toHaveBeenCalledTimes(2);
+      expect(vodSubs.attach).toHaveBeenLastCalledWith(media, []);
+    });
+
     it('splits sidecars: SRT/WebVTT to vodSubs, ASS to assSubs', () => {
       const vodSubs = { attach: vi.fn() };
       const assSubs = { attach: vi.fn() };
@@ -1228,6 +1255,7 @@ describe('PlayerTracks', () => {
         video,
         expect.anything(),
         [ass],
+        video,
       );
     });
 

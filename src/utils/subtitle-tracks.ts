@@ -184,9 +184,14 @@ interface ShiftableCue { startTime: number; endTime: number }
  *  the offset is absolute. Best-effort — a platform that rejects cue-time mutation just
  *  leaves the cues unshifted (never throws). */
 export function shiftForeignTrack(
-  track: { cues: ArrayLike<ShiftableCue> | null } | null,
+  track: { cues: ArrayLike<ShiftableCue> | null; cueOffset?: number } | null,
   offset: number,
 ): void {
+  // A track fed as its cues fall due applies the offset to each new one.
+  if (track?.cueOffset !== undefined) {
+    track.cueOffset = offset;
+    return;
+  }
   const cues = track?.cues;
   if (!cues) return;
   for (let i = 0; i < cues.length; i++) {

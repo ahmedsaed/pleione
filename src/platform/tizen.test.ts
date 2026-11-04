@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { tizen } from './tizen';
+import { tizen, tizenMajor } from './tizen';
 
 type Host = { tizen?: unknown };
 
@@ -118,5 +118,13 @@ describe('tizen adapter, LAN service detection', () => {
     expect(adapter.lanSetup).toBe(false);
     expect(adapter.lanTransport()).toBeNull();
     expect(getAppInfo).toHaveBeenCalledOnce();
+  });
+});
+
+describe('tizenMajor', () => {
+  it('reads the Tizen version from a TV\'s user agent', () => {
+    expect(tizenMajor('Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0) AppleWebKit/537.36')).toBe(9);
+    expect(tizenMajor('Mozilla/5.0 (SMART-TV; Linux; Tizen 5.5) AppleWebKit/537.36')).toBe(5);
+    expect(tizenMajor('Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0')).toBe(0);
   });
 });

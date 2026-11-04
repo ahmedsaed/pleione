@@ -1,3 +1,4 @@
+import type { PlayerMedia } from '../components/player-media';
 import type { Action } from '../types';
 
 export interface LanServiceStart {
@@ -15,8 +16,10 @@ export interface LanTransport {
   subscribe(onEvent: (event: unknown) => void): () => void;
 }
 
-/** A stream the platform's own player plays behind the page. */
-export interface PlatformPlayback {
+/** A stream the platform's own player plays into the <video> element's rectangle. */
+export interface PlatformMedia extends PlayerMedia {
+  /** Open the stream; call once its events are listened to. */
+  start(): void;
   release(): void;
 }
 
@@ -56,10 +59,15 @@ export interface Platform {
     /** Hold off the TV's screensaver while a video plays (Samsung's is the app's to switch). */
     keepAwake(on: boolean): void;
     /**
-     * Play `url` through the platform's own player (Samsung's AVPlay) behind
-     * `video`, which then reports that playback's state. Absent where there is
-     * none; null when it cannot start.
+     * The platform's own player (Samsung's AVPlay) for `url`, drawing into
+     * `video`'s rectangle. Absent where there is none; null when it cannot
+     * be created.
      */
-    playPlatform?(video: HTMLVideoElement, url: string): PlatformPlayback | null;
+    createPlatformMedia?(video: HTMLVideoElement, url: string): PlatformMedia | null;
+    /**
+     * Play HLS, raw TS and single-file streams through `createPlatformMedia`
+     * rather than the element, which lacks their tracks here (Tizen 8+).
+     */
+    prefersPlatformMedia?(): boolean;
   };
 }

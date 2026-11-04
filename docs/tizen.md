@@ -138,14 +138,9 @@ certificate listing the DUIDs of every test TV (this one from
 6. **Record it**: add the TV as a column in "Test TVs" and the sections
    below, from the probe's JSON.
 
-Two decisions wait on this TV's results:
-
-- **AVPlay** (`avplay` in the probe, and `audioSwitch` under `liveHls`):
-  if native audio switching fails here and AVPlay's works, an AVPlay
-  backend is worth building for Tizen 8+; if both behave as on Tizen 5.5,
-  AVPlay is worth it only for live rewind (plan §5.1, Stage B).
-- **Native MPEG-TS** (`liveTs`): it plays on every TV tested so far, so no
-  mpegts.js fallback is planned; this check keeps it that way.
+The 2025 TV settled two decisions: an AVPlay backend for Tizen 8+, as
+native audio tracks are gone there and AVPlay's work, and no mpegts.js
+fallback, as AVPlay plays raw TS (see "How the app plays on each TV").
 
 ## Test TVs
 
@@ -269,25 +264,71 @@ element cannot:
 So on Tizen 9 the native path loses multi-audio and raw TS, and AVPlay
 covers both.
 
-The app plays raw TS through AVPlay where the TV needs it
-(`src/platform/tizen-avplay.ts`). The first TS stream plays natively; if
-the element loads it (a frame size, `readyState` 2+) but decodes no frame
-for 4 s, the TV is marked (`iptv_native_ts_playback`,
-`event=playback.native_ts.checked`) and the stream moves to AVPlay
-(`event=playback.path.platform reason=detected`); later TS streams go
-straight there (`reason=remembered`). A TV whose element plays TS, like
-the 2020 one, is marked `ok` and stays native. While AVPlay plays, the
-player's `<video>` stays in place as its stand-in: it reads its state from
-AVPlay and fires the media events Player listens to, the page turns
-transparent over the video plane (`html.avplay-active`), and the display
-rectangle follows the element, the Live preview included. AVPlay's tracks
-fill the audio picker. HLS still plays natively here, so its audio picker
-stays empty on this TV, and live rewind stays off; both wait for routing
-more streams through AVPlay.
+### How the app plays on each TV
 
-AVPlay reports a buffering start and end around every live TS segment
-(about every 4 s on the demo server); the stand-in reports a `waiting`
-only once a pause lasts a second.
+Tizen 8 and later (`platform.media.prefersPlatformMedia()`, from the
+user agent) play HLS, raw TS and single-file streams through AVPlay.
+DASH and EME DRM stay on Shaka. Tizen 5.5-7 stay native, where audio
+switching works and AVPlay's does not; there the first TS stream checks
+the element: if it loads (a frame size, `readyState` 2+) but decodes no
+frame for 4 s, the TV is marked (`iptv_native_ts_playback`,
+`event=playback.native_ts.checked`) and TS moves to AVPlay
+(`event=playback.path.platform`).
+
+`AvplayMedia` (`src/platform/tizen-avplay.ts`) implements `PlayerMedia`
+(`src/components/player-media.ts`), the media surface Player, the track
+code and the subtitle services use, which the `<video>` element satisfies
+as it is. The element stays in the page as the rectangle AVPlay draws
+into. While AVPlay plays, the page is transparent over the video plane
+(`html.avplay-active`), and a view's backdrop opens over a playing
+picture (`html.avplay-playing`), so a Live preview shows through.
+
+Tracks use the standard media API, so the native track code runs
+unchanged: `audioTracks` switch through `setSelectTrack`; `textTracks`
+list the stream's own text tracks, and `addTextTrack()` takes the app's
+cues (HLS WebVTT, sidecar SRT/WebVTT, the subtitle offset). Their cues
+draw in a DOM overlay over the video (`src/components/dom-text-tracks.ts`),
+as Blink cannot show a `TextTrack` over the video plane. assjs gets a
+hidden clock element reading from `PlayerMedia`.
+
+A stream's own text arrives only when it is due, so Subtitle Sync can
+delay it but not bring it forward; a sidecar's cues shift both ways.
+
+### AVPlay's behavior on the 2025 TV
+
+| Check | Result |
+|---|---|
+| Live HLS, 2 audio renditions + WebVTT | Audio lists and switches; text arrives by `onsubtitlechange` |
+| MP4, 2 AAC + `mov_text` | Audio lists (`und`) and switches; the text track lists, but no text arrives, so it is not offered |
+| MKV, 2 AAC + SRT | Audio lists with its language and switches; text arrives with its duration |
+| MKV, 2 AAC + ASS | Audio switches; the text track is not listed |
+| `setSelectTrack` before playing | Refused (`InvalidStateError`), so a choice waits for `play()` |
+| Live window | `GET_LIVE_DURATION` gives `start\|end` in ms, on `currentTime`'s clock; empty on VOD and raw TS |
+| Buffering events | A start and end around every live TS segment, about every 4 s on the demo server |
+
+Live HLS reports what Tizen's own `<video>` does: `seekable` over the
+window, with a finite `duration` at its end. Cues anchor on the window,
+and `dvrWindow()` reads it as not live, so live rewind stays off. A
+`waiting` is reported only once a pause lasts a second, and a clock
+stopped for 3 s reads as `readyState` 2, so the stall watchdog reconnects.
+
+Seeking needs care:
+
+| Seek | Result |
+|---|---|
+| Before `play()` | Always lands; `play()` must wait for it, or AVPlay wedges |
+| In the first seconds after `play()` | Refused at once (`InvalidStateError`), or AVPlay freezes on the target and answers `InvalidValuesError` after 5 s; retrying does not help |
+| 8 s or more after `play()`, playing or paused | Lands, on a segment boundary |
+| While another seek runs | Refused |
+
+The trigger of the freeze is not fully understood: it reproduces in the
+app and not in a bare AVPlay, though a seek soon after `play()` is the
+common factor. So `AvplayMedia` runs one seek at a time, keeping the
+newest target; a seek in the first 8 s reopens the stream and seeks
+before playing (about 1.5 s), and a seek that freezes later or gets no
+answer in 6 s does the same (`event=playback.avplay.seek.stuck`), then
+fails as a playback error if that does not land either.
+`currentTime` reads the target from the assignment on, as the element does.
 
 ## DRM (Shaka 5.2.12 on MSE/EME)
 
@@ -420,6 +461,8 @@ takes the constructor there.
 
 For the 2020 TV, only the Exit key (15): its remote has none. Alarms (8)
 were dropped with plan D5. For the 2025 TV: the hands-on checks in
-Pleione (steps 4 and 5 of "Testing a new Samsung TV"), including how
-AVPlay's picture looks full screen and in the Live preview, CEA-608, DRM
-in the app, fonts, and the Exit key (its remote has none either).
+the app (steps 4 and 5 of "Testing a new Samsung TV"), an MKV movie's own
+SRT track in the app (measured on AVPlay directly; the demo server has no
+MKV), CEA-608, DRM in the app, fonts, and the Exit key (its remote has
+none either). No TV on Tizen 6.5-8 has been tested: the Tizen 8 cutoff
+comes from the Jellyfin project's reports and this TV.

@@ -138,8 +138,10 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
 - **Sections & Xtream catalog** — `Home` (`src/components/home.ts`) is the
   first screen: destinations for the **Live / Guide / Movies / Series /
   Search / Settings** sections (`sections.ts`), the Continue Watching and
-  Favorites rails, and the multi-account avatar switcher
-  (`account-switcher.ts`). Sections open full screen. Back goes up one
+  Favorites rails, and the avatar switcher (`account-switcher.ts`), which
+  picks the one source (account or playlist) every section shows: all
+  enabled sources stay loaded, and `PlaylistService.channels` holds only the
+  picked one's channels. Sections open full screen. Back goes up one
   level (`navigation/back-route.ts`): a section's top level returns to Home,
   where Back leaves the app in one press (`utils/platform-exit.ts`); the
   pointer gets a Home button (`home-button.ts`). Search keeps its
@@ -149,7 +151,7 @@ build constant; `scripts/sync-version.mjs` runs on `npm version`.
   `CatalogView` (`catalog-view.ts`) over the per-account `xtream-catalog`
   cache, with a **Continue Watching** resume rail. `search.ts` ranks
   channels, programs, movies, and series in one view. Movies/Series require
-  an Xtream account; M3U-only setups see Live/Guide/Settings/Search.
+  an Xtream account to be picked; a playlist shows Live/Guide/Settings/Search.
 - **Components** (`src/components/`) own a DOM subtree and re-render through
   `morph()` (`src/utils/morph.ts`), a keyed in-place reconciler fed by the
   `html` tagged template. Reused nodes keep listeners, focus, and scroll, so

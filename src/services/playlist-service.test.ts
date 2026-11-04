@@ -4,6 +4,8 @@ import { UNCATEGORIZED_GROUP } from '../types';
 
 const { storageMock, cacheMock, fetchTextMock } = vi.hoisted(() => ({
   storageMock: {
+    getSelectedXtreamAccountId: vi.fn(() => null),
+    setSelectedXtreamAccountId: vi.fn(),
     getPlaylists: vi.fn(),
     getFavorites: vi.fn(() => [] as string[]),
     getShowHiddenChannels: vi.fn(() => false),
@@ -131,6 +133,8 @@ http://stream/u2
 http://stream/u3`;
 
 beforeEach(() => {
+  storageMock.getPlaylists.mockReturnValue([]);
+  PlaylistService.setAllSources(true);
   vi.clearAllMocks();
   vi.restoreAllMocks();
   resetXtreamSignIns();
@@ -1545,5 +1549,80 @@ describe('PlaylistService customization', () => {
 http://stream/u4`);
     await PlaylistService.refresh();
     expect(PlaylistService.channels.map(c => c.name)).toEqual(['Bravo', 'Alpha', 'Delta']);
+  });
+});
+
+describe('PlaylistService picked source', () => {
+  const sources = [
+    { id: 'a', name: 'A', url: 'http://a' },
+    { id: 'b', name: 'B', url: 'http://b' },
+  ];
+  const item = (name: string, playlistIds: string[]) => ({
+    ...channel({ url: `http://host/${name}` }), name, playlistIds,
+  });
+
+  beforeEach(() => {
+    storageMock.getPlaylists.mockReturnValue(sources);
+    storageMock.getSelectedXtreamAccountId.mockReturnValue('b');
+    PlaylistService.setAllSources(false);
+    PlaylistService.allChannels = [item('One', ['a']), item('Two', ['b']), item('Both', ['a', 'b'])];
+    PlaylistService.selectSource();
+  });
+
+  it('lists only the picked source, one tab, and keeps the rest loaded', () => {
+    expect(PlaylistService.channels.map(entry => entry.name)).toEqual(['Two', 'Both']);
+    expect(PlaylistService.playlistTabs.map(tab => tab.id)).toEqual(['b']);
+    expect(PlaylistService.getUnconcealedChannels()).toHaveLength(3);
+  });
+
+  it('follows a new pick without loading anything', () => {
+    storageMock.getSelectedXtreamAccountId.mockReturnValue('a');
+    PlaylistService.selectSource();
+    expect(PlaylistService.channels.map(entry => entry.name)).toEqual(['One', 'Both']);
+  });
+
+  it('falls back when the picked source is turned off', () => {
+    storageMock.getPlaylists.mockReturnValue([sources[0], { ...sources[1], enabled: false }]);
+    PlaylistService.selectSource();
+    expect(PlaylistService.channels.map(entry => entry.name)).toEqual(['One', 'Both']);
+  });
+
+  it('reports the picked source failed only when it left its list empty', () => {
+    storageMock.getPlaylists.mockReturnValue([...sources, { id: 'c', name: 'C', url: 'http://c' }]);
+    storageMock.getSelectedXtreamAccountId.mockReturnValue('c');
+    PlaylistService.selectSource();
+    expect(PlaylistService.activeSourceFailed).toBe(false);
+    (PlaylistService as unknown as { failedSourceIds: Set<string> }).failedSourceIds.add('c');
+    expect(PlaylistService.activeSourceFailed).toBe(true);
+    (PlaylistService as unknown as { failedSourceIds: Set<string> }).failedSourceIds.clear();
+  });
+
+  it('keeps a custom group out of a source that holds none of its channels', () => {
+    const groups = vi.spyOn(ChannelCustomizationService, 'customGroups', 'get').mockReturnValue(['custom:g']);
+    const label = vi.spyOn(ChannelCustomizationService, 'groupLabel').mockReturnValue('Mine');
+    PlaylistService.allChannels = [{ ...item('One', ['a']), group: 'Mine' }, item('Two', ['b'])];
+    PlaylistService.selectSource();
+    expect(PlaylistService.getGroupsForPlaylist()).not.toContain('Mine');
+    storageMock.getSelectedXtreamAccountId.mockReturnValue('a');
+    PlaylistService.selectSource();
+    expect(PlaylistService.getGroupsForPlaylist()).toContain('Mine');
+    groups.mockRestore();
+    label.mockRestore();
+  });
+
+  it('shows every source to the parental manager', () => {
+    PlaylistService.setAllSources(true);
+    expect(PlaylistService.channels).toHaveLength(3);
+    PlaylistService.setAllSources(false);
+    expect(PlaylistService.channels).toHaveLength(2);
+  });
+
+  it('picks the source of a channel another source hides', () => {
+    const followed = vi.fn();
+    PlaylistService.onSourceFollowed = followed;
+    PlaylistService.showSourceOf(PlaylistService.getUnconcealedChannels()[0]);
+    PlaylistService.onSourceFollowed = null;
+    expect(storageMock.setSelectedXtreamAccountId).toHaveBeenCalledWith('a');
+    expect(followed).toHaveBeenCalled();
   });
 });

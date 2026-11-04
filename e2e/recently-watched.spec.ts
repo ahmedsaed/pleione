@@ -180,38 +180,3 @@ test('clears Recently Watched without clearing VOD resume', async ({ page }) => 
     .toBe('Movie Alpha');
 });
 
-test('filters Recently Watched by the selected playlist', async ({ page }) => {
-  await page.route('**/p1.m3u', route => route.fulfill({
-    status: 200,
-    contentType: 'application/x-mpegurl',
-    body: '#EXTM3U\n#EXTINF:-1 group-title="Group 1",Channel Alpha\nhttp://host/a.m3u8',
-  }));
-  await page.route('**/p2.m3u', route => route.fulfill({
-    status: 200,
-    contentType: 'application/x-mpegurl',
-    body: '#EXTM3U\n#EXTINF:-1 group-title="Group 2",Channel Bravo\nhttp://host/b.m3u8',
-  }));
-  await page.addInitScript((keys) => {
-    localStorage.setItem('iptv_playlists', JSON.stringify([
-      { id: 'p1', name: 'Playlist 1', url: 'http://host/p1.m3u', source: 'url' },
-      { id: 'p2', name: 'Playlist 2', url: 'http://host/p2.m3u', source: 'url' },
-    ]));
-    localStorage.setItem('iptv_recently_watched_live', JSON.stringify([
-      { channelKey: keys.bravo, updatedAt: 2000 },
-      { channelKey: keys.alpha, updatedAt: 1000 },
-    ]));
-  }, {
-    alpha: stableChannelKey(CATCHUP_CHANNEL_URL),
-    bravo: stableChannelKey(LIVE_URL),
-  });
-
-  await page.goto('/');
-  await expect(page.locator('#view-channels')).toBeVisible();
-  await page.locator('[data-playlist="p1"]').click();
-  await page.locator('[data-group="builtin:recently-watched"]').click();
-
-  await expect(page.locator('.recent-item')).toHaveCount(1);
-  await expect(page.locator('.recent-item')).toContainText('Channel Alpha');
-  await expect(page.locator('.recent-item')).not.toContainText('Channel Bravo');
-  await expect(page.locator('[data-group="builtin:recently-watched"] .group-count')).toHaveText('1');
-});

@@ -849,7 +849,7 @@ describe('Settings.render', () => {
       url: 'http://host/live?id=2',
       playlistIds: ['p2'],
     };
-    PlaylistService.channels = [first, second];
+    const channels = vi.spyOn(PlaylistService, 'getUnconcealedChannels').mockReturnValue([first, second]);
     const sourceUrl = vi.spyOn(EpgService, 'getSourceUrl')
       .mockImplementation(channel =>
         channel === first ? 'http://host/a.xml' : 'http://host/b.xml');
@@ -864,6 +864,7 @@ describe('Settings.render', () => {
     expect(sourceMap[channelKey(second)]).toBe('http://host/b.xml');
     expect(sourceMap).not.toHaveProperty(legacyChannelKey(first));
     sourceUrl.mockRestore();
+    channels.mockRestore();
   });
 
   it('switches between discovered EPG sources without mixing their offsets', () => {

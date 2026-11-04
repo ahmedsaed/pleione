@@ -72,7 +72,8 @@ class ReminderServiceImpl {
   listManageable(now = Date.now()): Reminder[] {
     this.prune(now);
     return this.list()
-      .filter(r => now < r.startMs && this.resolveChannelIndex(r.channelKey) >= 0)
+      .filter(r => now < r.startMs
+        && (this.resolveChannelIndex(r.channelKey) >= 0 || !!this.onOtherSource(r.channelKey)))
       .sort((a, b) => a.startMs - b.startMs);
   }
 
@@ -134,6 +135,22 @@ class ReminderServiceImpl {
     return indexOfChannelKey(PlaylistService.channels, chKey);
   }
 
+  private onOtherSource(chKey: string): Channel | null {
+    const channels = PlaylistService.getUnconcealedChannels();
+    const channel = channels[indexOfChannelKey(channels, chKey)];
+    const source = PlaylistService.activeSourceId;
+    if (!channel || !source || channel.playlistIds.includes(source)) return null;
+    // A concealed channel stays concealed, whichever source holds it.
+    return ParentalControlService.isConcealed(liveParentalRequest(channel)) ? null : channel;
+  }
+
+  // A reminder is for its channel whichever source is picked.
+  tuneIndex(chKey: string): number {
+    const channel = this.onOtherSource(chKey);
+    if (channel) PlaylistService.showSourceOf(channel);
+    return this.resolveChannelIndex(chKey);
+  }
+
   // Parental concealment hides a channel without removing it, so its
   // reminders and alarms must survive.
   private concealedByParental(chKey: string): boolean {
@@ -184,9 +201,10 @@ class ReminderServiceImpl {
     let changed = false;
     for (const reminder of reminders) {
       if (reminder.playlistIds?.length) continue;
-      const index = this.resolveChannelIndex(reminder.channelKey);
+      const channels = PlaylistService.getUnconcealedChannels();
+      const index = indexOfChannelKey(channels, reminder.channelKey);
       if (index < 0) continue;
-      reminder.playlistIds = PlaylistService.channels[index].playlistIds.slice();
+      reminder.playlistIds = channels[index].playlistIds.slice();
       changed = true;
     }
     if (changed) StorageService.setReminders(reminders);
@@ -247,13 +265,14 @@ class ReminderServiceImpl {
   // absent, malformed, or the channel is gone).
   resolveLaunchChannel(rawLaunchParams: unknown): number {
     const key = parseReminderChannelKey(rawLaunchParams);
-    return key ? this.resolveChannelIndex(key) : -1;
+    return key ? this.tuneIndex(key) : -1;
   }
 
   // A hidden locked channel isn't in the visible list; a reminder for it
   // still needs it to ask for the PIN.
   concealedChannel(chKey: string): Channel | null {
     if (this.resolveChannelIndex(chKey) >= 0) return null;
+    if (this.onOtherSource(chKey)) return null;
     const channels = PlaylistService.getUnconcealedChannels();
     return channels[indexOfChannelKey(channels, chKey)] ?? null;
   }

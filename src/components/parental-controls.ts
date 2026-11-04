@@ -252,6 +252,7 @@ export class ParentalControls {
     // Channels hidden by customization can be shown again from Settings, so
     // they must be reviewed and adopted too.
     PlaylistService.setIncludeHidden(true);
+    PlaylistService.setAllSources(true);
     this.requestController?.abort();
     this.sources = this.buildSources();
     for (const source of this.sources) {
@@ -285,6 +286,7 @@ export class ParentalControls {
     log.info('Parental manager closed', 'event=parental.manager.closed',
       `loading=${String(this.requestController !== null)}`);
     PlaylistService.setIncludeHidden(false);
+    PlaylistService.setAllSources(false);
     this.dismissPrompt();
     this.requestController?.abort();
     this.requestController = null;

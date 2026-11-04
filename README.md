@@ -32,7 +32,7 @@ for having the right to watch it.
 ## Highlights
 
 **Live TV**
-- M3U/M3U8 playlists and Xtream Codes accounts, several at once
+- M3U/M3U8 playlists and Xtream Codes accounts, several at once, one shown at a time
 - A program guide (XMLTV) found from your playlist or added by hand, with
   per-source time correction
 - Catch-up for programs that already aired, and pause and rewind where the

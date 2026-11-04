@@ -2,8 +2,6 @@ import {
   test,
   expect,
   enterTab,
-  neuterVideo,
-  routeLiveManifest,
   type Page,
 } from './helpers';
 import type { Locator } from '@playwright/test';
@@ -113,20 +111,6 @@ async function expectSteadyRate(page: Page, track: Locator): Promise<void> {
   expect(rate, 'edge scroll ran faster than its own speed').toBeLessThan(MAX_RATE);
   expect(moved).toBeGreaterThan(0);
   if (room > 600) expect(rate, 'edge scroll fell behind its own speed').toBeGreaterThan(MIN_RATE);
-}
-
-// The box stops moving once a sliding panel has come to rest.
-async function expectAtRest(track: Locator): Promise<void> {
-  let last = '';
-  await expect.poll(async () => {
-    const now = await track.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return `${String(r.left)},${String(r.top)}`;
-    });
-    const settled = now === last;
-    last = now;
-    return settled;
-  }, { intervals: [100] }).toBe(true);
 }
 
 // Settles within a couple of samples (a continuous scroll never does, and
@@ -243,24 +227,6 @@ async function seedCollections(page: Page, count = 30): Promise<void> {
     }
     localStorage.setItem('iptv_watchlist', JSON.stringify(watchlist));
     localStorage.setItem('iptv_resume', JSON.stringify(resume));
-  }, count);
-}
-
-// `count` URL playlists, each its own group of channels, so the Live and
-// player-sidebar playlist tabs overflow.
-const GROUP_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWX';
-async function seedPlaylists(page: Page, count = 24): Promise<void> {
-  await page.route('**/p*.m3u', (route) => {
-    const index = Number(/p(\d+)\.m3u/.exec(route.request().url())?.[1] ?? '0');
-    const body = ['#EXTM3U', ...[0, 1].map((j) => [
-      `#EXTINF:-1 group-title="Group ${GROUP_LETTERS[index]}",Channel ${String(index)}-${String(j)}`,
-      `http://streams.example.com/${String(index)}-${String(j)}.m3u8`,
-    ]).flat()].join('\n');
-    return route.fulfill({ status: 200, contentType: 'application/x-mpegurl', body });
-  });
-  await page.addInitScript((n) => {
-    localStorage.setItem('iptv_playlists', JSON.stringify(Array.from({ length: n }, (_, i) =>
-      ({ name: `Playlist ${String(i)}`, url: `http://host/p${String(i)}.m3u` }))));
   }, count);
 }
 
@@ -558,123 +524,3 @@ test('Search: a virtual results rail scrolls far and keeps a usable ring; a hidd
   expect((await pageScroll(page)).y).toBe(before.y);
 });
 
-test('Live playlist tabs scroll and reverse without selecting a playlist, and a press stops them', async ({ page }) => {
-  test.setTimeout(60_000);
-  await seedPlaylists(page);
-  await page.goto('/');
-  await expect(page.locator('#view-channels .channel-item').first()).toBeVisible();
-  const tabs = page.locator('#view-channels .playlist-tabs');
-  await expect(tabs.locator('.playlist-tab')).toHaveCount(25);
-  await expectEdgeTrack(tabs);
-  const active = tabs.locator('.playlist-tab.active');
-  await expect(active).toHaveText('All');
-  const firstChannel = await page.locator('#view-channels .channel-item').first().textContent();
-  const before = await pageScroll(page);
-
-  await pointAt(page, tabs, 'center');
-  await expectScrolling(tabs, 'right', (await enterEdgeAndDwell(page, tabs, 'right')).from);
-  await expectSteadyRate(page, tabs);
-  await expect.poll(() => left(tabs), { timeout: 10_000 }).toBeGreaterThan(300);
-  await pointAt(page, tabs, 'center');
-  const turned = await expectStopped(page, tabs);
-  await enterEdgeAndDwell(page, tabs, 'left');
-  await expectScrolling(tabs, 'left', turned);
-  await pointAt(page, tabs, 'center');
-  await expectStopped(page, tabs);
-
-  await expect(active).toHaveText('All');
-  await expect(tabs.locator('.playlist-tab.active')).toHaveCount(1);
-  expect(await page.locator('#view-channels .channel-item').first().textContent()).toBe(firstChannel);
-  expect(await pageScroll(page)).toEqual(before);
-
-  // Pressing the pointer stops it even before the button comes up.
-  const { from } = await enterEdgeAndDwell(page, tabs, 'right');
-  await expectScrolling(tabs, 'right', from);
-  await page.mouse.down();
-  expect(await expectStopped(page, tabs)).toBeLessThan(await maxLeft(tabs));
-  await page.mouse.up();
-});
-
-test('player sidebar tabs scroll without switching playlists and stop when the pointer leaves the window', async ({ page }) => {
-  await neuterVideo(page);
-  await routeLiveManifest(page);
-  await seedPlaylists(page);
-  await page.goto('/');
-  await expect(page.locator('#view-channels .channel-item.focused')).toHaveCount(1);
-  await page.keyboard.press('Enter');
-  await expect(page.locator('#view-player')).toBeVisible();
-  await page.keyboard.press('ArrowLeft');
-  const sidebar = page.locator('#player-sidebar');
-  await expect(sidebar).toBeVisible();
-  const tabs = sidebar.locator('.sidebar-tabs');
-  await expectEdgeTrack(tabs);
-  await expectAtRest(tabs);
-  const active = await sidebar.locator('.sidebar-tab.active').textContent();
-  const playing = await sidebar.locator('.sidebar-ch-item.playing').textContent();
-  const scope = await ownerScope(page);
-
-  await pointAt(page, tabs, 'center');
-  await expectScrolling(tabs, 'right', (await enterEdgeAndDwell(page, tabs, 'right')).from);
-  await expectSteadyRate(page, tabs);
-  await expect(sidebar).toBeVisible();
-
-  // The pointer leaves the window: a mouseout with no related target.
-  await page.evaluate(() => {
-    document.documentElement.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }));
-    document.documentElement.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: null }));
-  });
-  expect(await expectStopped(page, tabs)).toBeLessThan(await maxLeft(tabs));
-  await expect(sidebar.locator('.sidebar-tab.active')).toHaveText(active ?? '');
-  await expect(sidebar.locator('.sidebar-ch-item.playing')).toHaveText(playing ?? '');
-  expect(await ownerScope(page)).toBe(scope);
-});
-
-// channelKey mirrors src/utils/channel.ts (fnv1a of the URL sans query/fragment).
-function channelKey(url: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < url.length; i++) { h ^= url.charCodeAt(i); h = Math.imul(h, 0x01000193); }
-  return (h >>> 0).toString(16).padStart(8, '0');
-}
-
-test('a prompt that takes the keys stops the scroll, and the pointer cannot scroll the surface under it', async ({ page }) => {
-  test.setTimeout(90_000);
-  await neuterVideo(page);
-  await routeLiveManifest(page);
-  await seedPlaylists(page);
-  await page.goto('/');
-  await expect(page.locator('#view-channels .channel-item').first()).toBeVisible();
-
-  // A PIN-locked group: a reminder launch into it asks for the PIN.
-  await enterTab(page, 'settings');
-  await page.locator('#manage-parental-controls').click();
-  const prompt = page.locator('.parental-pin-prompt');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(prompt.locator('h2')).toContainText('Confirm');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(page.locator('#view-parental-controls')).toBeVisible();
-  await page.locator('[data-parental-group]').filter({ hasText: 'Group A' }).first().click();
-  await page.locator('[data-parental-tab="options"]').click();
-  await page.locator('#parental-duration [data-value="once"]').click();
-  await page.locator('[data-parental-back]').click();
-  await enterTab(page, 'live');
-  const tabs = page.locator('#view-channels .playlist-tabs');
-  await expect(page.locator('#view-channels')).toBeVisible();
-  await expectEdgeTrack(tabs);
-
-  await pointAt(page, tabs, 'center');
-  const { at, from } = await enterEdgeAndDwell(page, tabs, 'right');
-  await expectScrolling(tabs, 'right', from);
-  await page.evaluate((reminderChannelKey) => document.dispatchEvent(
-    new CustomEvent('webOSRelaunch', { detail: { reminderChannelKey } })),
-  channelKey('http://streams.example.com/0-1.m3u8'));
-  await expect(prompt).toBeVisible();
-  await expect.poll(() => ownerScope(page)).toBe('prompt.parental_pin');
-  const stopped = await expectStopped(page, tabs);
-  expect(stopped).toBeLessThan(await maxLeft(tabs));
-
-  // Real movement in the edge of a track the prompt covers does nothing.
-  await nudge(page, at);
-  await page.waitForTimeout(1000);
-  expect(await left(tabs)).toBe(stopped);
-  await expect(prompt).toBeVisible();
-});

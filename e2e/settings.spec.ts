@@ -1375,8 +1375,8 @@ test.describe('Settings Xtream live categories', () => {
       }))));
     });
     await page.goto('/');
-    // Each account's streams play from its own URLs.
-    await expect(channels(page)).toHaveCount(6);
+    // Live lists the picked account alone.
+    await expect(channels(page)).toHaveCount(3);
     await enterTab(page, 'settings');
     await page.locator('[data-settings-target="sources"]').click();
     await page.locator('.xtream-card[data-id="x1"] .xtream-live-categories').click();
@@ -1418,8 +1418,8 @@ test.describe('Settings Xtream live categories', () => {
       }))));
     });
     await page.goto('/');
-    // Each account's streams play from its own URLs.
-    await expect(channels(page)).toHaveCount(6);
+    // Live lists the picked account alone.
+    await expect(channels(page)).toHaveCount(3);
     await enterTab(page, 'settings');
     await page.locator('[data-settings-target="sources"]').click();
     await page.locator('.xtream-card[data-id="x1"] .xtream-live-categories').click();

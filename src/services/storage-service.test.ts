@@ -1445,4 +1445,12 @@ describe('StorageService Live category snapshots without IndexedDB', () => {
     expect(StorageService.getLiveCategorySnapshot('x2')).toBeNull();
     expect(StorageService.getLiveCategorySnapshot('x3')).toBeNull();
   });
+
+  it('defaults the time format to 12-hour and remembers a choice', () => {
+    expect(StorageService.getTimeFormat()).toBe('12h');
+    StorageService.setTimeFormat('24h');
+    expect(StorageService.getTimeFormat()).toBe('24h');
+    StorageService.setTimeFormat('12h');
+    expect(StorageService.getTimeFormat()).toBe('12h');
+  });
 });

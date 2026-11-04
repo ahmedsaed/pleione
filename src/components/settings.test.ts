@@ -92,6 +92,8 @@ const {
       getTextSize: vi.fn(() => state.textSize),
       getInterfaceSize: vi.fn(() => state.interfaceSize),
       getTzMode: vi.fn(() => state.tzMode),
+      getTimeFormat: vi.fn(() => '12h'),
+      setTimeFormat: vi.fn(),
       getChannelCycleMode: vi.fn(() => state.channelCycleMode),
       getLiveReconnectAttempts: vi.fn(() => state.liveReconnectAttempts),
       getNumberEntryOsdTimeoutMs: vi.fn(() => state.numberEntryOsdTimeoutMs),
@@ -1549,6 +1551,15 @@ describe('Settings.save', () => {
     click('#save-settings');
     expect(storageMock.setTzMode).toHaveBeenCalledWith('feed');
     expect(onSave).toHaveBeenCalledWith('apply'); // no re-fetch
+  });
+
+  it('saves the time format as a display-only change', () => {
+    state.playlists = [{ id: 'p1', name: 'P', url: 'http://p' }];
+    settings.render();
+    click('#time-format [data-value="24h"]');
+    click('#save-settings');
+    expect(storageMock.setTimeFormat).toHaveBeenCalledWith('24h');
+    expect(onSave).toHaveBeenCalledWith('apply');
   });
 
   it('persists the selected app language as a display-only change', () => {

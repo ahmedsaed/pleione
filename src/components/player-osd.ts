@@ -4,7 +4,7 @@ import { $, hide, html, inShownView, raw, type Safe, show } from '../utils/dom';
 import { isRtl, screenSide } from '../utils/direction';
 import { type DvrState } from '../utils/dvr';
 import { morph } from '../utils/morph';
-import { formatDuration, formatPosition, formatTime, getProgress } from '../utils/time';
+import { formatDuration, formatPosition, formatTime, formatTimeRange, getProgress } from '../utils/time';
 import { t, tp } from '../i18n';
 import { Focus, Tier, type FocusScope, type Via } from '../navigation/focus-scope';
 import {
@@ -306,7 +306,7 @@ export class PlayerOsd {
             <div class="osd-programme-info">
               <div class="osd-programme-title">${catchup.title}</div>
               <div class="osd-programme-time">
-                <span>${formatTime(start)} - ${formatTime(end)}</span>
+                <span>${formatTimeRange(start, end, ' - ')}</span>
                 <span class="osd-remaining">${formatDuration(end.getTime() - start.getTime())}</span>
               </div>
             </div>
@@ -338,7 +338,7 @@ export class PlayerOsd {
           <div class="osd-programme-info">
             <div class="osd-programme-title">${nowPlaying.title}</div>
             <div class="osd-programme-time">
-              <span>${formatTime(nowPlaying.start)} - ${formatTime(nowPlaying.stop)}</span>
+              <span>${formatTimeRange(nowPlaying.start, nowPlaying.stop, ' - ')}</span>
               <span class="osd-remaining">${t('player.remaining', {
                 duration: formatDuration(nowPlaying.stop.getTime() - Date.now()),
               })}</span>

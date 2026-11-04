@@ -259,6 +259,8 @@ export async function measureRowTextFit(
 const POST_TARGET_APIS = postTargetApis();
 
 export interface AppOptions {
+  /** Hold times to 24-hour, as most specs read them. */
+  pinTime24h: boolean;
   /** Where `page.goto` and `page.reload` leave the app. `home` is where it
    *  launches; `live` then opens Live from Home's Live card, as a viewer
    *  does, and waits for its channels (`openLive`). A first run has no Live
@@ -270,7 +272,14 @@ export interface AppOptions {
 // before each test so no file has to repeat it.
 export const test = base.extend<AppOptions>({
   startOn: ['home', { option: true }],
-  page: async ({ page, startOn }, use, testInfo) => {
+  // Specs read times as 24-hour; e2e/time-format.spec.ts covers the 12-hour default.
+  pinTime24h: [true, { option: true }],
+  page: async ({ page, startOn, pinTime24h }, use, testInfo) => {
+    if (pinTime24h) {
+      await page.addInitScript(() => {
+        if (localStorage.getItem('iptv_time_format') === null) localStorage.setItem('iptv_time_format', '"24h"');
+      });
+    }
     // A project on the simulated engine strips every API Chromium 53 lacks
     // before the app loads, so unguarded use fails here instead of on a TV.
     if (simulatesLegacyEngine(testInfo)) {

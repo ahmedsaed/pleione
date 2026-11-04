@@ -133,6 +133,8 @@ a new term after review, add a row here.
 | Name sort direction | A–Z / Z–A | A–Z / Z–A |
 | Date added / Year sort direction | Newest / Oldest | 最新 / 最早 |
 | Rating sort direction | Highest / Lowest | 最高 / 最低 |
+| Clock style setting | Time format | 时间格式 |
+| Time format options | 12-hour / 24-hour | 12 小时制 / 24 小时制 |
 | Leave the app (Samsung's Return at Home) | Exit {name}? / Exit | 退出 {name}？ / 退出 |
 
 Rejected: 片单 (watchlist), 正在播放 for NOW, 节目单 (guide),

@@ -529,6 +529,8 @@ export class Settings {
   // A control hovered while a text field has the caret, which takes the
   // ring once the caret leaves.
   private notedKey: string | null = null;
+  // When a key last moved the pane, to tell a held key.
+  private paneRevealAt = 0;
   // The control Settings came back to, until its first reveal.
   private landedKey: string | null = null;
   private currentRow: Element | null = null;
@@ -2097,7 +2099,7 @@ export class Settings {
   }
 
   // A swatch keeps a gutter beside it in its rail, and a category in its
-  // list, so the ring isn't cut; everything else takes the scope's own reveal.
+  // list, so the ring isn't cut; a control stays off the pane's edges.
   private revealKey(key: string): boolean {
     const el = this.resolveKey(key);
     if (key === this.landedKey) {
@@ -2106,7 +2108,35 @@ export class Settings {
     }
     if (!el) return false;
     if (el.classList.contains('settings-nav-item')) return this.revealNavItem(el);
-    return el.classList.contains('theme-swatch') && this.revealSwatch(el, false);
+    const slid = el.classList.contains('theme-swatch') && this.revealSwatch(el, false);
+    return this.revealInPane(el) || slid;
+  }
+
+  // Short of the pane's ends, where it cannot scroll further. A control too
+  // tall for the margins centers instead.
+  private revealInPane(el: HTMLElement): boolean {
+    const pane = el.closest<HTMLElement>('.settings-scroll');
+    if (!pane || el.closest('.dropdown-menu')) return false;
+    const rect = el.getBoundingClientRect();
+    const top = pane.getBoundingClientRect().top + pane.clientTop;
+    const bottom = top + pane.clientHeight;
+    const margin = Math.max(0, Math.min(
+      pane.clientHeight * CONFIG.NAVIGATION.SETTINGS_FOCUS_MARGIN,
+      (pane.clientHeight - rect.height) / 2,
+    ));
+    let delta = 0;
+    if (rect.top - top < margin) delta = rect.top - top - margin;
+    else if (bottom - rect.bottom < margin) delta = margin - (bottom - rect.bottom);
+    const end = pane.scrollHeight - pane.clientHeight;
+    const target = Math.max(0, Math.min(end, pane.scrollTop + delta));
+    if (Math.abs(target - pane.scrollTop) < 1) return false;
+    // A held key steps faster than a smooth scroll settles; each step jumps.
+    const now = Date.now();
+    const held = now - this.paneRevealAt <= CONFIG.NAVIGATION.FOCUS_REPEAT_WINDOW_MS;
+    this.paneRevealAt = now;
+    if (held) withInstantScroll([pane], () => { pane.scrollTop = target; });
+    else pane.scrollTop = target;
+    return true;
   }
 
   private revealNavItem(el: HTMLElement): boolean {
@@ -2125,8 +2155,8 @@ export class Settings {
     return true;
   }
 
-  // True when it scrolled: the rail with the ring's gutter, and the pane just
-  // enough to show the swatch whole.
+  // True when it scrolled: the rail with the ring's gutter, and, for a page
+  // just opened, the pane just enough to show the swatch whole.
   private revealSwatch(el: HTMLElement, instant: boolean): boolean {
     const rail = el.parentElement;
     if (!rail || !rail.classList.contains('theme-swatch-rail')) return false;
@@ -2145,7 +2175,7 @@ export class Settings {
     } else {
       setScrollFromLeft(rail, target);
     }
-    const pane = rail.closest<HTMLElement>('.settings-scroll');
+    const pane = instant ? rail.closest<HTMLElement>('.settings-scroll') : null;
     if (pane) {
       const r = el.getBoundingClientRect();
       const top = pane.getBoundingClientRect().top + pane.clientTop;

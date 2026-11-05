@@ -2138,6 +2138,40 @@ test.describe('Settings focus stays in view', () => {
     expect(reachedEnd).toBe(true);
     expect(await walk('ArrowUp')).toBeGreaterThan(3);
   });
+
+  // Chromium 69 (Tizen 5.5) sizes an implicit grid row to the page's content
+  // and keeps a flex item's automatic minimum height, so only the explicit
+  // row and the zero minimum keep the pane, not the view, scrolling there.
+  test('a long page scrolls inside its pane, never the view', async ({ page }) => {
+    await routePlaylist(page);
+    await seedPlaylist(page);
+    await page.goto('/');
+    await enterTab(page, 'settings');
+    await page.locator('[data-settings-target="advanced"]').click();
+    await page.keyboard.press('ArrowRight');
+    for (let step = 0; step < 30; step++) await page.keyboard.press('ArrowDown');
+
+    const layout = await page.evaluate(() => {
+      const view = document.querySelector<HTMLElement>('#view-settings .settings-view')!;
+      const body = view.querySelector<HTMLElement>('.settings-body')!;
+      const main = view.querySelector<HTMLElement>('.settings-main')!;
+      const pane = view.querySelector<HTMLElement>('.settings-scroll')!;
+      return {
+        viewScroll: view.scrollTop,
+        paneScroll: pane.scrollTop,
+        paneFits: main.getBoundingClientRect().height <= body.clientHeight + 1,
+        // The legacy engines lay the body out as a flex row instead.
+        rowsFit: getComputedStyle(body).display !== 'grid'
+          || parseFloat(getComputedStyle(body).gridTemplateRows) <= body.clientHeight + 1,
+        mainMin: getComputedStyle(main).minHeight,
+      };
+    });
+    expect(layout.viewScroll).toBe(0);
+    expect(layout.paneScroll).toBeGreaterThan(0);
+    expect(layout.paneFits).toBe(true);
+    expect(layout.rowsFit).toBe(true);
+    expect(layout.mainMin).toBe('0px');
+  });
 });
 
 test.describe('Settings saves without a button', () => {

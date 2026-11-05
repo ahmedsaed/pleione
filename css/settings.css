@@ -21,6 +21,10 @@
   bottom: 40px;
   left: 46px;
   display: grid;
+  /* A row as tall as the body: Chromium 69 (Tizen 5.5) grows an implicit
+     row, and even a `1fr` one, to the page's content, so the pane would not
+     scroll and the view would scroll instead, header and sidebar with it. */
+  grid-template-rows: 100%;
   grid-template-columns: max-content 1fr;
   gap: 8px;
 }
@@ -108,12 +112,11 @@
   stroke-linejoin: round;
 }
 
-/* The action bar is a sibling of the scroller, not a sticky child of it:
-   `position: sticky` is Chromium 56, so on webOS 4 it would scroll away. */
 .settings-main {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   overflow: hidden;
 }

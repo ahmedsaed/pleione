@@ -570,7 +570,10 @@ export class PlayerPipeline {
       } else if (videoEl.paused) {
         // A paused stream shows no frame on any TV; count only while it plays.
         loadedAt = 0;
-      } else if (videoEl.readyState >= 2 && videoEl.videoWidth > 0) {
+      } else if (videoEl.readyState >= 3 && videoEl.videoWidth > 0) {
+        // Only a stream with data to play counts: Tizen 5.5 holds a slow
+        // stream at readyState 2, frame size known, for seconds before it
+        // plays.
         if (!loadedAt) loadedAt = Date.now();
         else if (Date.now() - loadedAt >= CONFIG.PLAYER.NATIVE_TS_FRAME_TIMEOUT) {
           settle('broken', frames);

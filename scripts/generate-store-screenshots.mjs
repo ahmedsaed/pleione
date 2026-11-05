@@ -184,17 +184,19 @@ async function noLiveWindow(page) {
   });
 }
 
-async function newPage(extra = {}, { liveWindow = true, tizenStore = false } = {}) {
+async function newPage(extra = {}, { liveWindow = true, tizenStore = false, withAccount = true } = {}) {
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const page = await context.newPage();
   if (tizenStore) await fakeTizenStore(page);
   else await fakeLanService(page);
   if (!liveWindow) await noLiveWindow(page);
   await page.addInitScript(({ account, extra }) => {
-    localStorage.setItem('iptv_playlists', JSON.stringify([account]));
+    if (account) localStorage.setItem('iptv_playlists', JSON.stringify([account]));
     for (const [key, value] of Object.entries(extra)) localStorage.setItem(key, JSON.stringify(value));
   }, {
-    account: { id: 'demo', name: 'Demo', url: XTREAM, source: 'xtream', xtream: { username: USERNAME, password: PASSWORD } },
+    account: withAccount
+      ? { id: 'demo', name: 'Demo', url: XTREAM, source: 'xtream', xtream: { username: USERNAME, password: PASSWORD } }
+      : null,
     extra,
   });
   await page.goto((tizenStore ? `http://127.0.0.1:${store.port}` : base) + '/');
@@ -222,6 +224,18 @@ try {
       await enterSection(page, 'settings');
       await page.waitForTimeout(2500);
       await shoot(page, 'settings.png');
+      // Data Management, which opens on the privacy policy.
+      await remote(page, KEY.LEFT);
+      await remote(page, KEY.DOWN, 7);
+      await page.waitForTimeout(1500);
+      await shoot(page, 'data-management.png');
+      await context.close();
+    }
+    // First launch: the privacy notice over the welcome screen.
+    {
+      const { context, page } = await newPage({}, { tizenStore: true, withAccount: false });
+      await page.locator('.privacy-notice-dialog').waitFor({ state: 'visible', timeout: 20_000 });
+      await shoot(page, 'privacy.png');
       await context.close();
     }
   } else {

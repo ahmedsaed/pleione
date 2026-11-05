@@ -18,7 +18,8 @@ says otherwise.
 
 | Version | Date | Changes | Author | App version |
 |---|---|---|---|---|
-| 1.0 | (submission date) | First submission | Merope | (the `.wgt` version) |
+| 1.0 | 2026.11.03 | First submission | Merope | 2.3.0 |
+| 1.1 | 2026.11.05 | Settings saves automatically; content follows the picked source; Time format | Merope | 2.6.1 |
 
 Add a row for every update; the app version is `version` in `package.json`.
 
@@ -30,7 +31,7 @@ Home ──┬── Live ──── channel list ─┬── full-screen pla
        ├── Movies ── detail page ────── player (movie)
        ├── Series ── detail page ────── player (episode)
        ├── Search ── results ─────────── detail page / player
-       └── Settings ─ General (language, parental controls), Sources,
+       └── Settings ─ General (language, time format, parental controls), Sources,
                       Program Guide, Appearance, Playback, Online Subtitles,
                       Advanced, Data Management
 ```
@@ -38,7 +39,13 @@ Home ──┬── Live ──── channel list ─┬── full-screen pla
 Return goes up one level on every screen, back along the arrows above, and asks before exiting
 on Home. Screenshots for each screen: Home, Live, the Guide, the live player with its controls,
 Movies, a movie's detail page, Series, an episode list, Search, and Settings.
-`store/screenshots/` holds a capture of each.
+`store/screenshots/` holds a capture of each; `captures/` holds the store build's own Player,
+Settings, Data Management and privacy notice.
+
+The account picker on Home (the circle at the top right) lists the accounts and playlists added;
+Live, the Guide, Search, Movies and Series show only the one picked. Settings has no Save button:
+a setting applies as soon as it changes, and sources save on **Return**, which goes Home. The clock
+is 12-hour by default (**Settings › General › Time format**).
 
 ## Remote control keys
 

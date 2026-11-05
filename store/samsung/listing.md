@@ -22,7 +22,7 @@ Pleione plays the IPTV service you already have on your Samsung TV: live TV with
 Pleione does not include any channels, playlists or content. You add a playlist or an account from a provider of your own, and you are responsible for having the right to watch it.
 
 LIVE TV
-• M3U and M3U8 playlists, and Xtream Codes accounts, several at once
+• M3U and M3U8 playlists, and Xtream Codes accounts, several at once, one shown at a time
 • A program guide (XMLTV) found from your playlist or added by hand, with time correction
 • Catch-up for programs that already aired
 • Favorites, Recently Watched, number-key tuning, and reminders while Pleione is open
@@ -130,11 +130,12 @@ The Player page, as Seller Office lists its choices:
 | Container | MP4 (FMP4), MPEG-TS, Mstroska (Seller Office's spelling of Matroska) |
 | DRM | PlayReady, Widevine (Modular) |
 | Streaming engine | HLS, HTTP(HTTPS), MPEG-DASH |
-| Player API | MSE, Other |
+| Player API | MSE, AVPlay, Other |
 | Subtitle | WebVTT, Other |
 | Other (100 bytes) | `HTML5 video for native playback; E-AC-3 audio; SRT and ASS/SSA subtitles; HLS TS/fMP4 segments` |
 
-WebM, Smooth Streaming, AVPlay, Close Caption and SMPTE-TT are left out, untested or unused.
+WebM, Smooth Streaming, Close Caption and SMPTE-TT are left out, untested or unused. AVPlay
+plays HLS, TS and single-file streams on Tizen 8 and later (2024 models on), from app 2.6.0.
 The codecs are the ones `canPlayType` reports as playable on the 2020 TV (`docs/tizen.md`);
 Pleione does not decode media itself, so what plays is what the TV plays. Seller Office notes
 that PlayReady support ends with 2027 TV models; Widevine streams keep working.

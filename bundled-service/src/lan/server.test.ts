@@ -262,6 +262,9 @@ describe('setup actions', () => {
       ],
     })).status).toBe(201);
     expect((await postAction({
+      type: 'tmdb', tmdbApiKey: ' k3 ',
+    })).status).toBe(201);
+    expect((await postAction({
       type: 'remove-source', sourceId: 'x1',
     })).status).toBe(201);
     expect((await postAction({
@@ -301,6 +304,7 @@ describe('setup actions', () => {
           { url: 'http://host/epg-2.xml', playlistIds: [] },
         ],
       },
+      { id: expect.any(Number), type: 'tmdb', tmdbApiKey: 'k3' },
       { id: expect.any(Number), type: 'remove-source', sourceId: 'x1' },
       {
         id: expect.any(Number),

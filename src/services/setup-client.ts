@@ -30,6 +30,7 @@ export type SetupAction =
   | { id: number; type: 'playlist'; name: string; url: string }
   | { id: number; type: 'xtream'; name?: string; serverUrl: string; username: string; password: string }
   | { id: number; type: 'manual-epg-sources'; sources: ManualEpgSource[] }
+  | { id: number; type: 'tmdb'; tmdbApiKey: string }
   | { id: number; type: 'remove-source'; sourceId: string }
   | { id: number; type: 'set-source-enabled'; sourceId: string; enabled: boolean }
   | {
@@ -334,6 +335,9 @@ class SetupClientImpl {
             tokenTs: 0,
           };
         }
+        subtitleActionIds.push(action.id);
+      } else if (action.type === 'tmdb' && typeof action.tmdbApiKey === 'string') {
+        tmdbKey = action.tmdbApiKey.trim();
         subtitleActionIds.push(action.id);
       } else {
         log.warn('Ignoring invalid action:', action.id);

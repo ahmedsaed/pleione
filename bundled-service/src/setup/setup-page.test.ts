@@ -585,9 +585,76 @@ describe('setup page forms', () => {
       opensubtitles: { password: 'p1' },
     });
     expect(dom.window.document.querySelector('#subtitle-state')!.textContent)
-      .toBe('SubDL: Configured · Assrt: Not configured · OpenSubtitles: Configured · TMDB: Configured');
-    expect(form.querySelector<HTMLInputElement>('[name="tmdbApiKey"]')!.value).toBe('********');
+      .toBe('SubDL: Configured · Assrt: Not configured · OpenSubtitles: Configured');
+    expect(form.querySelector('[name="tmdbApiKey"]')).toBeNull();
     expect(password.value).toBe('********');
+    dom.window.close();
+  });
+
+  it('sets the TMDB key for cast photos in its own section', async () => {
+    let tmdbConfigured = true;
+    const fetchMock = vi.fn((url: string, options?: { method?: string; body?: string }) => {
+      if (url === '/uploads?token=abc123') return Promise.resolve(response([]));
+      if (url === '/setup-state?token=abc123') {
+        return Promise.resolve(response({
+          playlists: [],
+          xtreamAccounts: [],
+          manualEpgSources: [],
+          onlineSubtitles: {
+            preferredLanguage: '',
+            subdlConfigured: false,
+            assrtConfigured: false,
+            opensubtitlesConfigured: false,
+            opensubtitlesUsername: '',
+            tmdbConfigured,
+          },
+        }));
+      }
+      if (url === '/setup-actions?token=abc123' && options?.method === 'POST') {
+        tmdbConfigured = false;
+        return Promise.resolve(response({ id: 13, type: 'tmdb' }, 201));
+      }
+      if (url === '/setup-actions/13?token=abc123') {
+        return Promise.resolve(response({ id: 13, pending: false }));
+      }
+      return Promise.resolve(response({ error: 'unexpected request' }, 500));
+    });
+    const dom = new JSDOM(PAGE_HTML, {
+      runScripts: 'dangerously',
+      url: 'http://host/setup?token=abc123',
+      beforeParse(window) {
+        Object.defineProperty(window.navigator, 'languages', { value: ['en'] });
+        window.fetch = fetchMock as unknown as typeof window.fetch;
+        window.HTMLFormElement.prototype.reportValidity = () => true;
+      },
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const doc = dom.window.document;
+    const form = doc.querySelector<HTMLFormElement>('.config-fields[data-action="tmdb"]')!;
+    expect(form.closest('details')!.querySelector('summary')!.textContent).toContain('Cast photos');
+    expect(doc.querySelector('#tmdb-state')!.textContent).toBe('TMDB: Configured');
+    const key = form.querySelector<HTMLInputElement>('[name="tmdbApiKey"]')!;
+    expect(key.value).toBe('********');
+
+    // Unchanged: nothing to send.
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(fetchMock.mock.calls.some(call => call[1]?.method === 'POST')).toBe(false);
+
+    key.dispatchEvent(new dom.window.KeyboardEvent('keydown', {
+      key: 'Backspace',
+      bubbles: true,
+      cancelable: true,
+    }));
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const post = fetchMock.mock.calls.find(call => call[1]?.method === 'POST');
+    expect(JSON.parse(String(post![1]?.body))).toEqual({ type: 'tmdb', tmdbApiKey: '' });
+    expect(doc.querySelector('#tmdb-state')!.textContent).toBe('TMDB: Not configured');
+    expect(key.value).toBe('');
     dom.window.close();
   });
 });

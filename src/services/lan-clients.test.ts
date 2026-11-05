@@ -533,6 +533,28 @@ describe('SetupClient.applyPendingActions', () => {
     expect(saved[1].xtream).toEqual({ username: 'u2', password: 'p2', liveOutput: 'ts' });
   });
 
+  it('names a phone-added Xtream account, and keeps the name when none is given', async () => {
+    storageMock.playlists = [{
+      id: 'x1',
+      name: 'Alpha',
+      url: 'http://host',
+      source: 'xtream',
+      xtream: { username: 'u1', password: 'old', liveOutput: 'ts' },
+    }];
+    fetchWithTimeoutMock
+      .mockResolvedValueOnce(jsonResponse([
+        { id: 6, type: 'xtream', name: '', serverUrl: 'http://host', username: 'u1', password: 'new' },
+        { id: 7, type: 'xtream', name: ' Bravo ', serverUrl: 'http://host', username: 'u2', password: 'p2' },
+        { id: 8, type: 'xtream', name: '', serverUrl: 'http://host/b', username: 'u3', password: 'p3' },
+      ]))
+      .mockResolvedValue(jsonResponse({ deleted: true }));
+
+    await expect(SetupClient.applyPendingActions()).resolves.toBe(true);
+
+    const saved = storageMock.setPlaylists.mock.calls[0][0] as typeof storageMock.playlists;
+    expect(saved.map(item => item.name)).toEqual(['Alpha', 'Bravo', 'host/b']);
+  });
+
   it('removes an Xtream account and publishes the updated state', async () => {
     storageMock.playlists = [
       { id: 'p1', name: 'Alpha', url: 'http://host/a.m3u', source: 'url' },

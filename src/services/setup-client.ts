@@ -28,7 +28,7 @@ export interface ServiceInfo {
 
 export type SetupAction =
   | { id: number; type: 'playlist'; name: string; url: string }
-  | { id: number; type: 'xtream'; serverUrl: string; username: string; password: string }
+  | { id: number; type: 'xtream'; name?: string; serverUrl: string; username: string; password: string }
   | { id: number; type: 'manual-epg-sources'; sources: ManualEpgSource[] }
   | { id: number; type: 'remove-source'; sourceId: string }
   | { id: number; type: 'set-source-enabled'; sourceId: string; enabled: boolean }
@@ -250,7 +250,8 @@ class SetupClientImpl {
           item.xtream?.username === action.username);
         const entry: PlaylistEntry = {
           id: existing >= 0 ? playlists[existing].id : genPlaylistId(),
-          name: existing >= 0 ? playlists[existing].name : url.replace(/^https?:\/\//i, ''),
+          name: (typeof action.name === 'string' && action.name.trim()) ||
+            (existing >= 0 ? playlists[existing].name : url.replace(/^https?:\/\//i, '')),
           url,
           source: 'xtream',
           ...(existing >= 0 && playlists[existing].enabled === false

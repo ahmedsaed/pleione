@@ -252,6 +252,9 @@ describe('setup actions', () => {
       type: 'xtream', serverUrl: 'http://host', username: 'u1', password: 'p1',
     })).status).toBe(201);
     expect((await postAction({
+      type: 'xtream', name: ' Bravo ', serverUrl: 'http://host', username: 'u2', password: 'p2',
+    })).status).toBe(201);
+    expect((await postAction({
       type: 'manual-epg-sources',
       sources: [
         { url: 'http://host/epg.xml', playlistIds: ['p1'] },
@@ -277,9 +280,18 @@ describe('setup actions', () => {
       {
         id: expect.any(Number),
         type: 'xtream',
+        name: '',
         serverUrl: 'http://host',
         username: 'u1',
         password: 'p1',
+      },
+      {
+        id: expect.any(Number),
+        type: 'xtream',
+        name: 'Bravo',
+        serverUrl: 'http://host',
+        username: 'u2',
+        password: 'p2',
       },
       {
         id: expect.any(Number),

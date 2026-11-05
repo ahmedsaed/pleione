@@ -128,6 +128,12 @@ browser API) and leave the full E2E suite to CI. After a layout change,
 `esbuild.config.mjs` syncs it into `appinfo.json` and the `__APP_VERSION__`
 build constant; `scripts/sync-version.mjs` runs on `npm version`.
 
+A version bump carries its notes: add a `## [x.y.z] — date` section to
+`CHANGELOG.md` in the same change, opening with one bold headline
+sentence. The release job publishes that section as the GitHub release's
+notes (`scripts/release-notes.mjs`), and a test fails while
+`package.json` has a version with no section.
+
 ## Architecture
 
 - **Entry `src/app.ts`** — the `App` class instantiates the top-level

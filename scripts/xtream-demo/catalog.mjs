@@ -11,6 +11,15 @@ export const SIZES = {
     epgPastDays: 3, epgFutureDays: 2, archiveDays: 3,
     programmeMinutes: [15, 30, 30, 45, 60, 60, 90],
   },
+  // The engine smoke suite (scripts/engines): enough for scrolling lists
+  // and full rails, small enough for Chromium 53 to load in seconds.
+  smoke: {
+    liveCategories: 6, channels: 60,
+    vodCategories: 3, movies: 66,
+    seriesCategories: 2, series: 24,
+    epgPastDays: 1, epgFutureDays: 2, archiveDays: 1,
+    programmeMinutes: [30, 30, 45, 60, 60, 90],
+  },
   large: {
     liveCategories: 40, channels: 2000,
     vodCategories: 25, movies: 1500,

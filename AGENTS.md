@@ -85,6 +85,7 @@ npm test                       # vitest run (unit/integration)
 npm run test:watch             # vitest watch
 npm run test:e2e               # Playwright: webOS, simulated webOS 4 (see legacy-engine), tizen-sim
 npm run test:all               # lint + unit + e2e
+npm run test:engines           # smoke suite in real archived Chromium builds (Docker; docs/engine-suite.md)
 npm run screenshots            # regenerate README screenshots
 npm run xtream:demo            # demo Xtream server on :8090 (ffmpeg; docs/xtream-demo-server.md)
 npm run service:smoke          # bundled service on real Node.js 0.12.2
@@ -110,13 +111,16 @@ and `tsc` strictness are real gates.
 `.github/workflows/build.yml` runs typecheck (app, `service`, **and**
 `benchmarks`), `npm run lint` and the compat gate, `vitest run`, the esbuild
 bundle, `service:smoke:matrix`, and packages the IPK, while the E2E suite
-runs in both projects across six parallel shards. Pushes to `pleione` and every
+runs in both projects across six parallel shards. The `engines` job runs
+the engine smoke suite in real archived Chromium builds, one job per
+engine: 53, 68 and 69 on every PR and push, all eight on tags. Pushes to `pleione` and every
 PR build; tagged `v*` pushes publish a GitHub release with the `.ipk` once
 the build and every shard pass.
 
 Locally, run the unit tests and the E2E specs that cover the change with
 `--project=chromium` (both projects when it touches layout, CSS, or a
-browser API) and leave the full E2E suite to CI.
+browser API) and leave the full E2E suite to CI. After a layout change,
+`npm run test:engines -- --engine pr` runs the oldest real engines.
 
 ## Versioning
 

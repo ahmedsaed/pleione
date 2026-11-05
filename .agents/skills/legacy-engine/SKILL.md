@@ -156,5 +156,11 @@ degrades both axes from `scripts/chromium-53-simulation.mjs`:
 - Playwright reuses a running preview server. After source changes, rebuild
   with `node esbuild.config.mjs --preview` before rerunning against it.
 - The simulation removes what the source declares but cannot reproduce
-  layout or V8 differences at equal feature support; engine-level checks
-  still need a real device (see the `webos-device` skill).
+  layout or V8 differences at equal feature support. For those, the
+  engine smoke suite (`npm run test:engines`, `docs/engine-suite.md`)
+  runs the app in the real archived Chromium builds webOS and Tizen TVs
+  ship (53 to 120) and audits overflow, scrolling and focus rings on every
+  main screen; it caught the Chromium 68/69 Settings grid growing to its
+  content. Add a screen to `scripts/engines/checks.mjs` when a layout
+  change needs an old engine. Playback and timing still need a real
+  device (see the `webos-device` skill).

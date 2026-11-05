@@ -20,6 +20,7 @@ says otherwise.
 |---|---|---|---|---|
 | 1.0 | 2026.11.03 | First submission | Merope | 2.3.0 |
 | 1.1 | 2026.11.05 | Settings saves automatically; content follows the picked source; Time format | Merope | 2.6.1 |
+| 1.2 | 2026.11.05 | Layout fix for older TV engines | Merope | 2.6.2 |
 
 Add a row for every update; the app version is `version` in `package.json`.
 

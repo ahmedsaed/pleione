@@ -35,7 +35,8 @@ Movies is the one the listing can best spare. They are the same captures as the 
 ## Regenerating
 
 1. Refresh the captures, if the app changed: `npm run xtream:demo` in one terminal, then
-   `npm run screenshots:store` (see `store/README.md`).
+   `npm run screenshots:store` (see `store/README.md`) and `npm run screenshots:store -- --samsung`
+   for `captures/`.
 2. `npm run store:samsung` draws the icons and background from `assets/icon.svg` and encodes
    the screenshots, lowering the JPG quality only as far as a file's limit needs. It fails if a
    file cannot fit its limit.
@@ -59,9 +60,9 @@ The files are generated, never edited by hand.
 3. **The UI description.** [`ui-description.pptx`](ui-description.pptx) is Samsung's
    [Application UI description](https://developer.samsung.com/tv-seller-office/checklists-for-distribution/application-ui-description.html)
    template filled in from [`ui-description.md`](ui-description.md), with a labeled screenshot
-   of each screen (the Player and Settings captures come from `captures/`, written by
-   `node scripts/generate-store-screenshots.mjs --samsung`). Before uploading it, replace the
-   three test-account placeholders on the "Use Cases – Test Account" slide, **[Server URL]**,
+   of each screen (the Player, Settings, Data Management and privacy notice captures come from
+   `captures/`, written by `node scripts/generate-store-screenshots.mjs --samsung`). Before
+   uploading it, replace the three test-account placeholders on the "Use Cases – Test Account" slide, **[Server URL]**,
    **[Username]** and **[Password]**, with the account from step 4, and never commit the filled-in
    copy. Update it, and upload it again, with every app update.
 4. **The testers' accounts.** Host the demo Xtream server on an address Samsung's testers can

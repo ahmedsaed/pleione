@@ -533,6 +533,19 @@ describe('SetupClient.applyPendingActions', () => {
     expect(saved[1].xtream).toEqual({ username: 'u2', password: 'p2', liveOutput: 'ts' });
   });
 
+  it('stores a phone-set TMDB key and acknowledges it', async () => {
+    fetchWithTimeoutMock
+      .mockResolvedValueOnce(jsonResponse([{ id: 9, type: 'tmdb', tmdbApiKey: ' k1 ' }]))
+      .mockResolvedValue(jsonResponse({ deleted: true }));
+
+    await expect(SetupClient.applyPendingActions()).resolves.toBe(true);
+
+    expect(storageMock.setTmdbApiKey).toHaveBeenCalledWith('k1');
+    expect(storageMock.setPlaylists).not.toHaveBeenCalled();
+    expect(fetchWithTimeoutMock).toHaveBeenCalledWith(
+      expect.stringContaining('/setup-actions/9'), expect.objectContaining({ method: 'DELETE' }), expect.anything());
+  });
+
   it('names a phone-added Xtream account, and keeps the name when none is given', async () => {
     storageMock.playlists = [{
       id: 'x1',

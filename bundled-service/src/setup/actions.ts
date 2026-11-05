@@ -15,6 +15,7 @@ export type SetupActionPayload =
   | { type: 'playlist'; name: string; url: string }
   | { type: 'xtream'; name: string; serverUrl: string; username: string; password: string }
   | { type: 'manual-epg-sources'; sources: ManualEpgSourcePayload[] }
+  | { type: 'tmdb'; tmdbApiKey: string }
   | { type: 'remove-source'; sourceId: string }
   | { type: 'set-source-enabled'; sourceId: string; enabled: boolean }
   | {
@@ -96,6 +97,11 @@ export function parseSetupAction(value: unknown): SetupActionPayload {
       sourceId: stringValue(input.sourceId, 'source id', 120),
       enabled: booleanValue(input.enabled, 'source enabled state'),
     };
+  }
+  if (input.type === 'tmdb') {
+    const tmdbApiKey = optionalApiKey(input.tmdbApiKey, 'TMDB API key');
+    if (tmdbApiKey === undefined) throw new Error('Invalid TMDB API key');
+    return { type: 'tmdb', tmdbApiKey };
   }
   if (input.type === 'online-subtitles') {
     const subdlApiKey = optionalApiKey(input.subdlApiKey, 'SubDL API key');

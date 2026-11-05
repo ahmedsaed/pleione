@@ -72,7 +72,7 @@ function collectFlexContext(stylesheets) {
     postcss.parse(css).walkRules((rule) => {
       if (rule.parent.type !== 'root') return;
       rule.walkDecls((decl) => {
-        if (decl.prop !== 'display' && decl.prop !== 'flex-direction') return;
+        if (decl.prop !== 'display' && decl.prop !== 'flex-direction' && decl.prop !== 'flex-wrap') return;
         for (const part of selectorParts(rule.selector)) record(part, decl.prop, decl.value.trim());
       });
     });
@@ -211,6 +211,7 @@ export function generateFlexGapFallback(stylesheets) {
       if (rule.parent.type !== 'root') return;
       let display = '';
       let direction = '';
+      let wrap = '';
       let gap = '';
       let rowGap = '';
       let columnGap = '';
@@ -220,6 +221,7 @@ export function generateFlexGapFallback(stylesheets) {
         const value = decl.value.trim();
         if (decl.prop === 'display') display = value;
         if (decl.prop === 'flex-direction') direction = value;
+        if (decl.prop === 'flex-wrap') wrap = value;
         if (decl.prop === 'gap') gap = value;
         if (decl.prop === 'row-gap') rowGap = value;
         if (decl.prop === 'column-gap') columnGap = value;
@@ -262,6 +264,17 @@ export function generateFlexGapFallback(stylesheets) {
       // flex container, whose fallback margin sits on the other axis. That margin
       // is not ours to inherit, so zero it — real gap never spans both axes.
       const reset = !isGrid && direction && !display ? ` ${column ? 'margin-left' : 'margin-top'}: 0;` : '';
+      // A wrapping row's leading margin would indent the first item of every
+      // later line. A trailing one ends each line instead, where the row's
+      // own negative margin takes it back, so every line spans the row.
+      const wraps = !isGrid && !column && (wrap || inherited('flex-wrap') || 'nowrap') !== 'nowrap';
+      if (wraps) {
+        const rows = parts.map((part) => `${NO_FLEX_GAP_QUIRK} ${part}`).join(', ');
+        const items = parts.map((part) => `${NO_FLEX_GAP_QUIRK} ${part} > *`).join(', ');
+        rules.push(`${rows} { margin-right: ${negateLength(spacing)}; }`);
+        rules.push(`${items} { margin-right: ${spacing}; }`);
+        return;
+      }
       const selector = parts.map((part) => `${NO_FLEX_GAP_QUIRK} ${part} > * + *`).join(', ');
       const declaration = `${selector} { ${margin}: ${spacing};${reset} }`;
       rules.push(isGrid ? `@supports not (display: grid) {\n  ${declaration}\n}` : declaration);

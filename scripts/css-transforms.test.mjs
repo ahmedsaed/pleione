@@ -23,6 +23,18 @@ describe('generateFlexGapFallback', () => {
     expect(out).toContain('html.q-no-flex-gap .column > * + * { margin-top: 16px; }');
   });
 
+  // webOS 4 indented the first field on a wrapped line of an Xtream card.
+  it('spaces a wrapping row from the end, so a wrapped line starts flush', () => {
+    const out = generateFlexGapFallback([`
+      .fields { display: flex; flex-wrap: wrap; gap: 16px; }
+      .column-wrap { display: flex; flex-direction: column; flex-wrap: wrap; gap: 4px; }
+    `]);
+    expect(out).toContain('html.q-no-flex-gap .fields { margin-right: -16px; }');
+    expect(out).toContain('html.q-no-flex-gap .fields > * { margin-right: 16px; }');
+    expect(out).toContain('html.q-no-flex-gap .column-wrap > * + * { margin-top: 4px; }');
+    expect(out).not.toContain('.fields > * + *');
+  });
+
   it('uses the directional gap for the flex main axis', () => {
     const out = generateFlexGapFallback([`
       .row { display: flex; row-gap: 8px; column-gap: 14px; }

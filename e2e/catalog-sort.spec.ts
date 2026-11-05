@@ -366,7 +366,9 @@ for (const size of ['80', '150']) {
         }),
         clipped: Array.from(dd.querySelectorAll<HTMLElement>('.dropdown-option'))
           .some(option => option.scrollWidth > option.clientWidth),
-        right: el.getBoundingClientRect().right,
+        // Without flex gap a wrapping row's negative margin takes back its
+        // last item's trailing one, so measure to the margin edge.
+        right: el.getBoundingClientRect().right + parseFloat(getComputedStyle(el).marginRight),
         availableRight: el.parentElement!.getBoundingClientRect().right
           - parseFloat(getComputedStyle(el.parentElement!).paddingRight),
       };

@@ -79,7 +79,8 @@ html.q-no-flex-gap .epg-offset-stepper > * + * { margin-left: 10px; }
 html.q-no-flex-gap .manual-epg-sources > * + * { margin-top: 12px; }
 html.q-no-flex-gap .manual-epg-source-head > * + * { margin-left: 10px; }
 html.q-no-flex-gap .manual-epg-scope > * + * { margin-left: 12px; }
-html.q-no-flex-gap .manual-epg-scope-options > * + * { margin-left: 8px; }
+html.q-no-flex-gap .manual-epg-scope-options { margin-right: -8px; }
+html.q-no-flex-gap .manual-epg-scope-options > * { margin-right: 8px; }
 html.q-no-flex-gap .settings-field > * + * { margin-top: 6px; }
 html.q-no-flex-gap .dropdown-trigger > * + * { margin-left: 12px; }
 html.q-no-flex-gap .settings-attribution > * + * { margin-left: 12px; }
@@ -87,21 +88,25 @@ html.q-no-flex-gap .setup-box-info > * + * { margin-top: 16px; }
 html.q-no-flex-gap .device-setup-card > * + * { margin-left: 24px; margin-top: 0; }
 html.q-no-flex-gap #playlist-entries .settings-row > * + * { margin-left: 12px; }
 html.q-no-flex-gap .channel-health-actions > * + * { margin-left: 12px; }
-html.q-no-flex-gap .channel-health-summary > * + * { margin-left: 24px; }
+html.q-no-flex-gap .channel-health-summary { margin-right: -24px; }
+html.q-no-flex-gap .channel-health-summary > * { margin-right: 24px; }
 html.q-no-flex-gap .channel-health-progress > * + * { margin-left: 16px; }
 html.q-no-flex-gap .settings-maintenance > * + * { margin-left: 16px; }
 html.q-no-flex-gap .cache-usage-value > * + * { margin-top: 4px; }
 html.q-no-flex-gap .cache-usage-breakdown > * + * { margin-top: 8px; }
 html.q-no-flex-gap .cache-usage-breakdown span > * + * { margin-left: 16px; }
 html.q-no-flex-gap .source-toggle > * + * { margin-left: 10px; }
-html.q-no-flex-gap .xtream-fields > * + * { margin-left: 16px; }
-html.q-no-flex-gap .xtream-card-foot > * + * { margin-left: 16px; }
+html.q-no-flex-gap .xtream-fields { margin-right: -16px; }
+html.q-no-flex-gap .xtream-fields > * { margin-right: 16px; }
+html.q-no-flex-gap .xtream-card-foot { margin-right: -16px; }
+html.q-no-flex-gap .xtream-card-foot > * { margin-right: 16px; }
 html.q-no-flex-gap .theme-swatch-rail > * + * { margin-left: 18px; }
 html.q-no-flex-gap .tsp-tabs > * + * { margin-left: 14px; }
 html.q-no-flex-gap .tsp-tiles > * + * { margin-left: 8px; }
 html.q-no-flex-gap .tsp-rows > * + * { margin-top: 6px; }
 html.q-no-flex-gap .tsp-dots > * + * { margin-left: 8px; }
-html.q-no-flex-gap .settings-privacy-body > * + * { margin-left: 40px; }
+html.q-no-flex-gap .settings-privacy-body { margin-right: -40px; }
+html.q-no-flex-gap .settings-privacy-body > * { margin-right: 40px; }
 html.q-no-flex-gap .settings-privacy-link > * + * { margin-left: 20px; }
 html.q-no-flex-gap .reminder-manager-back > * + *, html.q-no-flex-gap .reminder-manager-clear > * + *, html.q-no-flex-gap .reminder-manager-remove > * + * { margin-left: 10px; }
 html.q-no-flex-gap .reminder-manager-list > * + * { margin-top: 28px; }
@@ -122,7 +127,8 @@ html.q-no-flex-gap .home-bento-cols-1 > * + * { margin-left: 48px; }
 html.q-no-flex-gap .home-bento-row > * + * { margin-left: 32px; }
 html.q-no-flex-gap .search-busy > * + * { margin-left: 16px; }
 html.q-no-flex-gap .catalog-rail-track > * + * { margin-left: 20px; }
-html.q-no-flex-gap .catalog-sort > * + * { margin-left: 16px; }
+html.q-no-flex-gap .catalog-sort { margin-right: -16px; }
+html.q-no-flex-gap .catalog-sort > * { margin-right: 16px; }
 html.q-no-flex-gap .catalog-sort .catalog-sort-direction > * + * { margin-left: 10px; }
 html.q-no-flex-gap .detail-actions > * + * { margin-left: 20px; }
 html.q-no-flex-gap .detail-btn > * + * { margin-left: 14px; }

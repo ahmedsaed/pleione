@@ -41,7 +41,6 @@ vi.mock('../services/playlist-service', () => ({
   PlaylistService: {
     groupsRevision: 0,
     channels,
-    playlistTabs: [{ id: 'PL1', name: 'PL1' }, { id: 'PL2', name: 'PL2' }],
     getByIndex: (i: number) => channels[i],
     indexOf: (channel: Channel) => channels.indexOf(channel),
     getGroupsForPlaylist: (playlist?: string) => {
@@ -415,78 +414,13 @@ describe('Sidebar', () => {
     });
 
     it('up from the top channel highlights the search box (no caret)', () => {
-      const tabs = PlaylistService.playlistTabs.slice();
-      PlaylistService.playlistTabs.splice(1);
-      try {
-        sidebar.refresh();
-        const search = el.querySelector<HTMLInputElement>('.sidebar-search-input')!;
-        sidebar.handleAction('up'); // 1 -> 0
-        sidebar.handleAction('up'); // from 0 -> search box
-        expect(items().some(i => i.classList.contains('focused'))).toBe(false);
-        expect(search.classList.contains('focused')).toBe(true);
-        expect(document.activeElement).not.toBe(search);
-      } finally {
-        PlaylistService.playlistTabs.splice(0, PlaylistService.playlistTabs.length, ...tabs);
-      }
-    });
-
-    it('moves through search, sources, and channels in visual order', () => {
+      sidebar.refresh();
       const search = el.querySelector<HTMLInputElement>('.sidebar-search-input')!;
       sidebar.handleAction('up'); // 1 -> 0
-      sidebar.handleAction('up'); // from 0 -> active source
+      sidebar.handleAction('up'); // from 0 -> search box
       expect(items().some(i => i.classList.contains('focused'))).toBe(false);
-      expect(el.querySelector('[data-sidebar-playlist=""]')?.classList.contains('focused'))
-        .toBe(true);
-      sidebar.handleAction('up'); // source -> search
       expect(search.classList.contains('focused')).toBe(true);
       expect(document.activeElement).not.toBe(search);
-      sidebar.handleAction('down'); // search -> active source
-      expect(el.querySelector('[data-sidebar-playlist=""]')?.classList.contains('focused'))
-        .toBe(true);
-      sidebar.handleAction('down'); // source -> first channel
-      expect(items()[0].classList.contains('focused')).toBe(true);
-    });
-
-    it('uses left and right to focus and select a source', () => {
-      sidebar.handleAction('up'); // 1 -> 0
-      sidebar.handleAction('up'); // 0 -> All source
-      sidebar.handleAction('right'); // All -> PL1
-      expect(el.querySelector('[data-sidebar-playlist="PL1"]')?.classList.contains('focused'))
-        .toBe(true);
-      sidebar.handleAction('select');
-      expect(el.querySelector('[data-sidebar-playlist="PL1"]')?.classList.contains('active'))
-        .toBe(true);
-      expect(items()).toHaveLength(2);
-      expect(items()[1].classList.contains('focused')).toBe(true);
-    });
-
-    it('opens groups when moving left past the first source', () => {
-      sidebar.handleAction('up'); // 1 -> 0
-      sidebar.handleAction('up'); // 0 -> All source
-      sidebar.handleAction('right'); // All -> PL1
-      sidebar.handleAction('left'); // PL1 -> All
-
-      expect(el.querySelector('[data-sidebar-playlist=""]')?.classList.contains('focused'))
-        .toBe(true);
-
-      sidebar.handleAction('left'); // All -> Groups
-
-      expect(el.classList.contains('groups-expanded')).toBe(true);
-      expect(groupItems()[0].classList.contains('focused')).toBe(true);
-      expect(groupItems()[0].dataset.groupId).toBe('builtin:all');
-    });
-
-    it('resets expanded group focus to All after selecting a source', () => {
-      sidebar.handleAction('left');
-      for (let i = 0; i < 4; i++) sidebar.handleAction('down');
-      sidebar.handleAction('select');
-      sidebar.handleAction('up');
-      sidebar.handleAction('right');
-      sidebar.handleAction('select');
-      sidebar.handleAction('left');
-
-      expect(groupItems()[0].classList.contains('focused')).toBe(true);
-      expect(groupItems()[0].dataset.groupId).toBe('builtin:all');
     });
 
     it('scrolls only channel names that overflow', () => {
@@ -839,18 +773,6 @@ describe('Sidebar', () => {
       expect(items()[1].classList.contains('focused')).toBe(true);
     });
 
-    it('drops playlist scope on reopen when it excludes the current channel', () => {
-      el.querySelector<HTMLElement>('[data-sidebar-playlist="PL1"]')!
-        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      sidebar.hide();
-      getCurrentIndex.mockReturnValue(2);
-      sidebar.show();
-
-      expect(items()).toHaveLength(3);
-      expect(el.querySelector('[data-sidebar-playlist=""]')?.classList.contains('active')).toBe(true);
-      expect(items()[2].classList.contains('focused')).toBe(true);
-    });
-
     it('updates Favorites count when reopened after membership changes', () => {
       sidebar.show();
       sidebar.handleAction('left');
@@ -1136,17 +1058,6 @@ describe('Sidebar', () => {
       expect(el.classList.contains('groups-expanded')).toBe(true);
     });
 
-    it('leaves the tab row edge to edge scrolling instead of opening groups', () => {
-      sidebar.handlePointerMove(30, true, true);
-      finishOpening();
-      vi.advanceTimersByTime(1000);
-      expect(el.classList.contains('groups-expanded')).toBe(false);
-
-      sidebar.handlePointerMove(30, true);
-      vi.advanceTimersByTime(500);
-      expect(el.classList.contains('groups-expanded')).toBe(true);
-    });
-
     it('scales the group edge with the Interface size', () => {
       document.documentElement.dataset.interfaceSize = '90';
       try {
@@ -1228,15 +1139,6 @@ describe('Sidebar', () => {
       expect(onSelect).toHaveBeenCalledWith(2, undefined, { group: 'builtin:all', playlist: undefined });
     });
 
-    it('clicking a playlist tab filters the list and resets focus', () => {
-      const tab = el.querySelector<HTMLElement>('[data-sidebar-playlist="PL2"]')!;
-      tab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      // Only Charlie belongs to PL2, retaining its global index of 2
-      expect(items()).toHaveLength(1);
-      expect(items()[0].dataset.sidebarIndex).toBe('2');
-      expect(onSelect).not.toHaveBeenCalled();
-    });
-
     it('hovering an item moves the focus highlight', () => {
       hover(items()[2]);
       expect(ringed()).toEqual([items()[2]]);
@@ -1301,7 +1203,6 @@ describe('Sidebar', () => {
 
     it.each([
       ['a group', () => groupItems()[1]],
-      ['a source tab', () => el.querySelector<HTMLElement>('[data-sidebar-playlist="PL2"]')!],
     ])('Down from the search box lands on the first channel after hovering %s', (_, target) => {
       sidebar.handleAction('left');
       const search = el.querySelector<HTMLInputElement>('.sidebar-search-input')!;
@@ -1316,7 +1217,7 @@ describe('Sidebar', () => {
       sidebar.handleAction('left');
       const lit = [
         el.querySelector('.sidebar-search-input')!,
-        ...Array.from(el.querySelectorAll('.sidebar-tab, .sidebar-group-item, .sidebar-ch-item')),
+        ...Array.from(el.querySelectorAll('.sidebar-group-item, .sidebar-ch-item')),
       ];
       for (const item of lit) {
         expect(item.matches('[data-focusable], [data-hover-target]')).toBe(true);
@@ -1361,21 +1262,6 @@ describe('Sidebar', () => {
       const lines = logs.mock.calls.map(args => args.join(' '))
         .filter(line => line.includes('event=sidebar.wheel.scroll '));
       expect(lines).toEqual([expect.stringContaining('pane=channels')]);
-    });
-
-    it('hovering a half-hidden source tab scrolls it into view', () => {
-      const strip = el.querySelector<HTMLElement>('.sidebar-tabs')!;
-      strip.style.overflowX = 'auto';
-      vi.spyOn(strip, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 100, 40));
-      Object.defineProperty(strip, 'clientWidth', { value: 100 });
-      Object.defineProperty(strip, 'clientHeight', { value: 40 });
-      const tab = el.querySelector<HTMLElement>('[data-sidebar-playlist="PL2"]')!;
-      vi.spyOn(tab, 'getBoundingClientRect').mockReturnValue(new DOMRect(90, 0, 60, 40));
-      const reveal = vi.fn();
-      tab.scrollIntoView = reveal;
-      hover(tab);
-      expect(ringed()).toEqual([tab]);
-      expect(reveal).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
     });
 
     it('lights a half-hidden row under the pointer where it is', () => {

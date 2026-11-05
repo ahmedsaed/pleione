@@ -46,7 +46,6 @@ export const DE_MESSAGES = {
   'search.all': 'Sender, Filme und Serien durchsuchen…',
   'search.channels': 'Sender durchsuchen…',
   'search.sidebarAll': 'Alle Sender durchsuchen…',
-  'search.sidebarPlaylist': '{name} durchsuchen…',
   'search.ariaChannels': 'Sender durchsuchen',
   'search.programs': 'Sendungen',
   'search.empty': 'Keine Ergebnisse gefunden.',

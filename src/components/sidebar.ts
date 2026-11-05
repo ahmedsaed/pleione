@@ -38,7 +38,7 @@ type SidebarEntry = { ch: Channel; globalIdx: number; recent?: RecentlyWatchedIt
 type SidebarSource =
   | { kind: 'channels'; channels: Channel[] }
   | { kind: 'recent'; items: RecentlyWatchedItem[] };
-type SidebarPane = 'channels' | 'sources' | 'groups';
+type SidebarPane = 'channels' | 'groups';
 type SidebarGroup = {
   id: ChannelGroupId;
   label: string;
@@ -63,7 +63,7 @@ const FALLBACK_LIST_HEIGHT = 800;
 
 /**
  * The channel overlay shown on the left edge during playback. Owns its own
- * visibility, auto-hide timer, focus index and playlist tab. Delegated DOM
+ * visibility, auto-hide timer and focus index. Delegated DOM
  * listeners are bound once in the constructor so they do not accumulate across
  * re-renders.
  */
@@ -78,10 +78,8 @@ export class Sidebar {
   private activePane: SidebarPane = 'channels';
   private groupsExpanded = false;
   private channelFocusIdx = -1; // -1 here means the search box is focused
-  private sourceFocusIdx = 0;
   private groupFocusIdx = 0;
   private group: ChannelGroupId = 'builtin:all';
-  private playlist = ''; // '' = All
   private searchQuery = '';
   keyboardOn = false; // while on, the sidebar never auto-hides
   readonly focusScope: FocusScope;
@@ -114,7 +112,6 @@ export class Sidebar {
   private channelSearchScope: Channel[] = [];
   private channelSearchRoot: Channel[] | null = null;
   private channelSearchGroup: ChannelGroupId = 'builtin:all';
-  private channelSearchPlaylist = '';
   private channelSearchRevision = -1;
   private readonly channelSearch = new WorkerListSearch(
     'sidebar',
@@ -123,7 +120,6 @@ export class Sidebar {
   );
   private groupSource: SidebarGroup[] | null = null;
   private groupSourceChannels: Channel[] | null = null;
-  private groupSourcePlaylist = '';
   private groupSourceRevision = -1;
   private groupSourceLocale: SupportedLocale | null = null;
   private groupWidthProbe: SidebarGroup | null = null;
@@ -185,8 +181,7 @@ export class Sidebar {
     this.resetTimer();
   }
 
-  // `overTabs`: the tab row's own edge belongs to edge scrolling.
-  handlePointerMove(clientX: number, overSidebar: boolean, overTabs = false): boolean {
+  handlePointerMove(clientX: number, overSidebar: boolean): boolean {
     if (!this.isVisible || this.keyboardOn) {
       this.pointerAtGroupEdge = false;
       this.clearGroupDwell();
@@ -195,7 +190,7 @@ export class Sidebar {
 
     if (overSidebar) this.resetTimer();
 
-    this.pointerAtGroupEdge = clientX <= uiPx(GROUP_DWELL_EDGE) && !overTabs;
+    this.pointerAtGroupEdge = clientX <= uiPx(GROUP_DWELL_EDGE);
     if (!this.groupsExpanded && this.pointerAtGroupEdge && !this.opening) {
       this.startGroupDwell();
     } else {
@@ -324,7 +319,6 @@ export class Sidebar {
 
   // Updates the pane state; true when focus should then be painted.
   private applyAction(action: Action): boolean {
-    if (this.activePane === 'sources') return this.handleSourceAction(action);
 
     // Left/Right still run after a resume so they don't reveal a stale row.
     if (action === 'left' || action === 'right') this.resumeDetachedFocus();
@@ -365,45 +359,13 @@ export class Sidebar {
     this.resetTimer();
 
     if (action === 'up' || action === 'channel_up') {
-      if (this.channelFocusIdx === 0 && this.hasSourceTabs()) {
-        this.focusActiveSource();
-        return true;
-      }
       this.channelFocusIdx = this.channelFocusIdx <= 0 ? -1 : this.channelFocusIdx - 1;
     } else if (action === 'down' || action === 'channel_down') {
-      if (this.channelFocusIdx === -1 && this.hasSourceTabs()) {
-        this.focusActiveSource();
-        return true;
-      }
       if (this.channelFocusIdx < len - 1) this.channelFocusIdx += 1;
     } else if (action === 'select') {
       const entry = this.getChannelEntry(this.channelFocusIdx);
       if (entry) this.selectEntry(entry);
       return false;
-    }
-    return true;
-  }
-
-  private handleSourceAction(action: Action): boolean {
-    const sources = this.getSourceIds();
-    this.resetTimer();
-    if (action === 'left') {
-      if (this.sourceFocusIdx > 0) {
-        this.sourceFocusIdx -= 1;
-      } else {
-        this.openGroups();
-      }
-    } else if (action === 'right') {
-      this.sourceFocusIdx = Math.min(sources.length - 1, this.sourceFocusIdx + 1);
-    } else if (action === 'up' || action === 'channel_up') {
-      this.activePane = 'channels';
-      this.channelFocusIdx = -1;
-    } else if (action === 'down' || action === 'channel_down') {
-      this.activePane = 'channels';
-      this.channelFocusIdx = this.getChannelCount() ? 0 : -1;
-    } else if (action === 'select') {
-      const playlist = sources[this.sourceFocusIdx];
-      if (playlist !== undefined) this.selectPlaylist(playlist);
     }
     return true;
   }
@@ -431,9 +393,8 @@ export class Sidebar {
   private getChannelSource(): SidebarSource {
     if (this.channelSource) return this.channelSource;
 
-    const playlist = this.playlist || undefined;
     if (this.group === 'builtin:recently-watched') {
-      let items = RecentlyWatchedService.getItems(playlist);
+      let items = RecentlyWatchedService.getItems();
       const q = this.searchQuery.trim();
       if (q) {
         const folded = q.toLocaleLowerCase();
@@ -489,15 +450,12 @@ export class Sidebar {
   private searchScopedChannels(): Channel[] {
     if (this.channelSearchRoot !== PlaylistService.channels
         || this.channelSearchGroup !== this.group
-        || this.channelSearchPlaylist !== this.playlist
         || this.channelSearchRevision !== PlaylistService.groupsRevision) {
       this.channelSearchRoot = PlaylistService.channels;
       this.channelSearchGroup = this.group;
-      this.channelSearchPlaylist = this.playlist;
       this.channelSearchRevision = PlaylistService.groupsRevision;
       this.channelSearchScope = PlaylistService.getByGroup(
         this.group,
-        this.playlist || undefined,
       );
     }
     return this.channelSearchScope;
@@ -507,7 +465,7 @@ export class Sidebar {
   // to be confused with channelSearchScope above (the in-sidebar search's
   // own filtered list).
   private currentLaunchScope(): ChannelScope {
-    return { group: this.group, playlist: this.playlist || undefined };
+    return { group: this.group };
   }
 
   private getChannelCount(): number {
@@ -564,10 +522,6 @@ export class Sidebar {
 
   // The data-key of the item the pane indices point at.
   private stateKey(): string | null {
-    if (this.activePane === 'sources') {
-      const id = this.getSourceIds()[this.sourceFocusIdx];
-      return id === undefined ? null : `tab:${id}`;
-    }
     if (this.activePane === 'groups') {
       const group = this.getGroups()[this.groupFocusIdx];
       return group ? `group:${group.id}` : null;
@@ -594,7 +548,7 @@ export class Sidebar {
   // Scroll a virtual list to the focused row and render it; the tab strip is
   // not virtual, so it takes the geometric reveal.
   private reveal(key: string): boolean {
-    if (key !== this.stateKey() || this.activePane === 'sources') return false;
+    if (key !== this.stateKey()) return false;
     const moved = this.activePane === 'groups'
       ? this.ensureGroupFocusVisible()
       : this.ensureFocusVisible();
@@ -602,26 +556,11 @@ export class Sidebar {
     return moved;
   }
 
-  private getSourceIds(): string[] {
-    return ['', ...PlaylistService.playlistTabs.map(tab => tab.id)];
-  }
-
-  private hasSourceTabs(): boolean {
-    return PlaylistService.playlistTabs.length > 1;
-  }
-
-  private focusActiveSource(): void {
-    const sources = this.getSourceIds();
-    const selected = sources.indexOf(this.playlist);
-    this.sourceFocusIdx = selected >= 0 ? selected : 0;
-    this.activePane = 'sources';
-  }
-
   // The wheel scrolls without moving focus, so the focused row is lost when the
   // pointer stops over padding or a key beats the hover sync. Resume at the
   // nearest row in view instead of scrolling back to it.
   private resumeDetachedFocus(): boolean {
-    if (!this.el || this.activePane === 'sources') return false;
+    if (!this.el) return false;
     const channels = this.activePane === 'channels';
     const list = this.el.querySelector<HTMLElement>(
       channels ? '.sidebar-channel-list' : '.sidebar-group-list',
@@ -688,42 +627,39 @@ export class Sidebar {
   private getGroups(): SidebarGroup[] {
     if (this.groupSource
         && this.groupSourceChannels === PlaylistService.channels
-        && this.groupSourcePlaylist === this.playlist
         && this.groupSourceRevision === PlaylistService.groupsRevision
         && this.groupSourceLocale === getLocale()) {
       return this.groupSource;
     }
-    const playlist = this.playlist || undefined;
     const groups: SidebarGroup[] = [
       {
         id: 'builtin:all',
         label: t('common.all'),
-        count: PlaylistService.getGroupCount('builtin:all', playlist),
+        count: PlaylistService.getGroupCount('builtin:all'),
         builtin: 'all',
       },
       {
         id: 'builtin:favorites',
         label: t('channel.favorites'),
-        count: PlaylistService.getGroupCount('builtin:favorites', playlist),
+        count: PlaylistService.getGroupCount('builtin:favorites'),
         builtin: 'favorites',
       },
       {
         id: 'builtin:recently-watched',
         label: t('channel.recentlyWatched'),
-        count: RecentlyWatchedService.getItems(playlist).length,
+        count: RecentlyWatchedService.getItems().length,
         builtin: 'recently-watched',
       },
     ];
-    PlaylistService.getGroupsForPlaylist(playlist).forEach(name => {
+    PlaylistService.getGroupsForPlaylist().forEach(name => {
       groups.push({
         id: `source:${name}`,
         label: groupDisplayLabel(name),
-        count: PlaylistService.getGroupCount(`source:${name}`, playlist),
+        count: PlaylistService.getGroupCount(`source:${name}`),
       });
     });
     this.groupSource = groups;
     this.groupSourceChannels = PlaylistService.channels;
-    this.groupSourcePlaylist = this.playlist;
     this.groupSourceRevision = PlaylistService.groupsRevision;
     this.groupSourceLocale = getLocale();
     this.groupWidthProbe = groups.reduce((widest, item) =>
@@ -736,11 +672,6 @@ export class Sidebar {
     let position = this.findChannelPosition(currentIdx);
     if (position < 0 && fallbackToAll && this.group !== 'builtin:all') {
       this.group = 'builtin:all';
-      this.channelSource = null;
-      position = this.findChannelPosition(currentIdx);
-    }
-    if (position < 0 && fallbackToAll && this.playlist) {
-      this.playlist = '';
       this.channelSource = null;
       position = this.findChannelPosition(currentIdx);
     }
@@ -777,21 +708,6 @@ export class Sidebar {
     this.group = group;
     this.searchQuery = '';
     this.channelSource = null;
-    this.activePane = 'channels';
-    this.focusCurrentChannel(false);
-    this.render();
-    this.resetTimer();
-  }
-
-  private selectPlaylist(playlist: string): void {
-    this.playlist = playlist;
-    this.group = 'builtin:all';
-    this.groupFocusIdx = 0;
-    this.groupVirtualizer.setScrollOffset(0);
-    this.applyGroupScrollOffset();
-    this.searchQuery = '';
-    this.channelSource = null;
-    this.groupSource = null;
     this.activePane = 'channels';
     this.focusCurrentChannel(false);
     this.render();
@@ -845,13 +761,6 @@ export class Sidebar {
       ? []
       : Array.from(el.querySelectorAll<HTMLElement>('.ch-name-text.scrolling, .ch-now-text.scrolling'))
         .map(span => ({ span, dist: span.style.getPropertyValue('--scroll-dist') }));
-    const tabs = PlaylistService.playlistTabs;
-    if (this.playlist && !tabs.some(t => t.id === this.playlist)) this.playlist = '';
-    const showTabs = tabs.length > 1;
-    if (this.activePane === 'sources') {
-      const sourceCount = tabs.length + 1;
-      this.sourceFocusIdx = Math.max(0, Math.min(sourceCount - 1, this.sourceFocusIdx));
-    }
     const groups = this.getGroups();
     if (!groups.some(item => item.id === this.group)) {
       this.group = 'builtin:all';
@@ -878,12 +787,9 @@ export class Sidebar {
     const textDir = isRtl() ? 'auto' : '';
     const currentIdx = this.getCurrentIndex();
     const currentCatchupStart = this.getCurrentCatchupStart();
-    const currentTab = tabs.find(t => t.id === this.playlist);
     const activeGroup = groups.find(item => item.id === this.group) || groups[0];
     const widthProbeGroup = this.groupWidthProbe ?? groups[0];
-    const searchPlaceholder = currentTab
-      ? t('search.sidebarPlaylist', { name: currentTab.name })
-      : t('search.sidebarAll');
+    const searchPlaceholder = t('search.sidebarAll');
 
     morph(el, html`
       <div class="sidebar-group-panel" data-key="group-panel">
@@ -905,7 +811,7 @@ export class Sidebar {
                  style="top:${this.groupVirtualizer.getItemOffset(i)}px">
               <span class="sidebar-group-icon">${raw(groupIcon(item.label, item.builtin))}</span>
               <span class="sidebar-group-name">${
-                raw(liveGroupLockBadge(item.id, this.playlist))}${item.label}</span>
+                raw(liveGroupLockBadge(item.id, ''))}${item.label}</span>
               <span class="sidebar-group-count">${item.count}</span>
             </div>
           `;
@@ -925,18 +831,6 @@ export class Sidebar {
                data-search-query="${this.channelSearchResultQuery}"
                data-search-pending="${this.channelSearchPending ? 'true' : 'false'}"
                placeholder="${searchPlaceholder}" value="${this.searchQuery}">
-        ${showTabs ? html`
-          <div class="sidebar-tabs" data-edge-scroll>
-            <div class="sidebar-tab ${!this.playlist ? 'active' : ''}" data-hover-target
-                 data-key="tab:"
-                 data-sidebar-playlist="">${t('common.all')}</div>
-            ${tabs.map((tab) => html`
-              <div class="sidebar-tab ${tab.id === this.playlist ? 'active' : ''}" data-hover-target
-                   data-key="tab:${tab.id}"
-                   data-sidebar-playlist="${tab.id}">${tab.name}</div>
-            `)}
-          </div>
-        ` : ''}
         <div class="sidebar-channel-list" data-key="channel-list">
           <div class="sidebar-channel-spacer" data-key="channel-spacer"
                style="height:${this.channelVirtualizer.getTotalSize(entryCount)}px">
@@ -1268,7 +1162,7 @@ export class Sidebar {
       }
     });
 
-    // Click to select a group, channel, or playlist tab.
+    // Click to select a group or channel.
     el.addEventListener('click', (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('[data-open-groups]')) {
@@ -1283,11 +1177,6 @@ export class Sidebar {
         this.selectGroup(group.dataset.groupId as ChannelGroupId);
         return;
       }
-      const tab = target.closest<HTMLElement>('[data-sidebar-playlist]');
-      if (tab) {
-        this.selectPlaylist(tab.dataset.sidebarPlaylist!);
-        return;
-      }
       const chItem = target.closest<HTMLElement>('[data-sidebar-index]');
       if (chItem) {
         const position = parseInt(chItem.dataset.sidebarPos!, 10);
@@ -1300,15 +1189,10 @@ export class Sidebar {
     el.addEventListener('nav:hover', (e: Event) => {
       const target = e.target as HTMLElement;
       const groupItem = target.closest<HTMLElement>('[data-group-pos]');
-      const sourceItem = target.closest<HTMLElement>('[data-sidebar-playlist]');
       const item = target.closest<HTMLElement>('[data-sidebar-pos]');
       if (groupItem) {
         this.activePane = 'groups';
         this.groupFocusIdx = parseInt(groupItem.dataset.groupPos!, 10);
-      } else if (sourceItem) {
-        this.activePane = 'sources';
-        this.sourceFocusIdx = Array.from(el.querySelectorAll('[data-sidebar-playlist]'))
-          .indexOf(sourceItem);
       } else if (item || target.closest('.sidebar-search-input')) {
         this.activePane = 'channels';
         this.channelFocusIdx = item ? parseInt(item.dataset.sidebarPos!, 10) : -1;

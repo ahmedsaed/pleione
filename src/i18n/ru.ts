@@ -46,7 +46,6 @@ export const RU_MESSAGES = {
   'search.all': 'Поиск каналов, фильмов и сериалов…',
   'search.channels': 'Поиск каналов…',
   'search.sidebarAll': 'Поиск по всем каналам…',
-  'search.sidebarPlaylist': 'Поиск в {name}…',
   'search.ariaChannels': 'Поиск каналов',
   'search.programs': 'Передачи',
   'search.empty': 'Ничего не найдено.',

@@ -37,8 +37,7 @@ interface ChannelListEditorOptions {
   onEpgMappingChanged: () => void;
   onEpgOffsetChanged: () => void;
   getCurrentGroup: () => ChannelGroupId;
-  getCurrentPlaylist: () => string;
-  setLocation: (group: ChannelGroupId, playlist: string) => void;
+  setLocation: (group: ChannelGroupId) => void;
   // A row's place in its list, whether or not it is rendered; -1 if absent.
   rowPosition: (key: string) => number;
   // Edit mode behind the parental guard; never call enterEditMode directly.
@@ -281,7 +280,7 @@ export class ChannelListEditor {
   enterEditMode(group: ChannelGroupId): void {
     if (this.editing || group === 'builtin:recently-watched') return;
     this.options.onEnterManagement();
-    this.options.setLocation(group, this.options.getCurrentPlaylist());
+    this.options.setLocation(group);
     this.favoriteSelection = null;
     this.editActionTarget = this.nav.focused
       ? this.editTargetForElement(this.nav.focused)
@@ -453,7 +452,7 @@ export class ChannelListEditor {
       const index = PlaylistService.indexOfKey(target.key);
       return index < 0 ? null : `ch:${String(index)}`;
     }
-    const display = PlaylistService.getGroupsForPlaylist(this.options.getCurrentPlaylist() || undefined)
+    const display = PlaylistService.getGroupsForPlaylist()
       .find(name => this.groupKeyForDisplay(name) === target.key);
     return display === undefined ? null : `g:source:${display}`;
   }
@@ -764,15 +763,8 @@ export class ChannelListEditor {
     if (!focused) return;
     if (focused.dataset.editChannels !== undefined) {
       this.options.requestEditMode(this.options.getCurrentGroup());
-    } else if (focused.dataset.playlist !== undefined) {
-      this.options.setLocation('builtin:all', focused.dataset.playlist);
-      this.favoriteSelection = null;
-      this.options.render();
     } else if (focused.dataset.group !== undefined) {
-      this.options.setLocation(
-        focused.dataset.group as ChannelGroupId,
-        this.options.getCurrentPlaylist(),
-      );
+      this.options.setLocation(focused.dataset.group as ChannelGroupId);
       this.favoriteSelection = null;
       this.options.render();
     } else {
@@ -794,10 +786,7 @@ export class ChannelListEditor {
   private selectAllFavorites(): void {
     const selection = this.favoriteSelection;
     if (!selection) return;
-    const favorites = PlaylistService.getByGroup(
-      'builtin:favorites',
-      this.options.getCurrentPlaylist() || undefined,
-    );
+    const favorites = PlaylistService.getByGroup('builtin:favorites');
     const allSelected = favorites.length > 0
       && favorites.every(channel => selection.has(channelKey(channel)));
     selection.clear();
@@ -855,10 +844,7 @@ export class ChannelListEditor {
     if (!grabbed) return;
 
     if (grabbed.kind === 'channel') {
-      const list = PlaylistService.getByGroup(
-        this.options.getCurrentGroup(),
-        this.options.getCurrentPlaylist() || undefined,
-      );
+      const list = PlaylistService.getByGroup(this.options.getCurrentGroup());
       const pos = list.findIndex(channel => channelKey(channel) === grabbed.key);
       const target = list[pos + delta];
       if (pos < 0 || !target) return;
@@ -874,9 +860,7 @@ export class ChannelListEditor {
       return;
     }
 
-    const visibleKeys = PlaylistService.getGroupsForPlaylist(
-      this.options.getCurrentPlaylist() || undefined,
-    ).map(display => this.groupKeyForDisplay(display));
+    const visibleKeys = PlaylistService.getGroupsForPlaylist().map(display => this.groupKeyForDisplay(display));
     const pos = visibleKeys.indexOf(grabbed.key);
     const targetKey = visibleKeys[pos + delta];
     if (pos < 0 || !targetKey) return;
@@ -1426,10 +1410,7 @@ export class ChannelListEditor {
 
   private renderFavoriteHints(): Safe {
     const selected = this.favoriteSelection?.size ?? 0;
-    const total = PlaylistService.getByGroup(
-      'builtin:favorites',
-      this.options.getCurrentPlaylist() || undefined,
-    ).length;
+    const total = PlaylistService.getByGroup('builtin:favorites').length;
     const selectAllLabel = total > 0 && selected === total
       ? t('channel.favoriteDeselectAll')
       : t('channel.favoriteSelectAll');

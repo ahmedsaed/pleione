@@ -82,7 +82,7 @@ export class LivePreview {
         if (this.state.status === 'error' && index >= 0) {
           const { channelList } = this.options;
           this.options.playFullscreen(index, undefined,
-            { group: channelList.group, playlist: channelList.playlist || undefined });
+            { group: channelList.group });
         } else {
           this.expand();
         }

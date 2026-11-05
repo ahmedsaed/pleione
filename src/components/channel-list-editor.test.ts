@@ -26,7 +26,6 @@ const { data, customization, playlistMock, epgMock, storageMock, recentMock, toa
     playlistMock: {
       channels,
       groupsRevision: 0,
-      playlistTabs: [] as { id: string; name: string }[],
       getGroupsForPlaylist: () => ['News', 'Sports'],
       getGroupKeyForDisplay: (display: string) => display,
       getByGroup: (_group: string, _playlist?: string): Channel[] => channels,
@@ -191,7 +190,6 @@ beforeEach(() => {
   recentMock.getItems.mockClear();
   recentMock.catchupInfo.mockReset();
   toastMock.showToast.mockClear();
-  playlistMock.playlistTabs = [];
   storageMock.toggleFavorite.mockClear();
   storageMock.setFavorites.mockClear();
   storageMock.setChannelCustomization.mockClear();
@@ -1380,30 +1378,6 @@ describe('ChannelList edit mode', () => {
     expect(groups.slice(-2)).toEqual(['source:Sports', 'source:News']);
   });
 
-  it('preserves other playlists groups when reordering within one playlist', () => {
-    data.raw[0].playlistIds = ['a'];
-    data.raw[1].playlistIds = ['b'];
-    data.raw[2].playlistIds = ['a'];
-    data.raw[2].group = 'Movies';
-    playlistMock.playlistTabs = [
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' },
-    ];
-    list.render();
-    const playlistA = container.querySelector<HTMLElement>('[data-playlist="a"]')!;
-    hover(playlistA);
-    list.handleAction('select');
-    enterEdit();
-    const news = Array.from(container.querySelectorAll<HTMLElement>('.group-item'))
-      .find(el => el.dataset.group === 'source:News');
-    hover(news!);
-    list.handleAction('select');
-
-    list.handleAction('down');
-
-    expect(playlistMock.getGroupsForPlaylist()).toEqual(['Sports', 'Movies', 'News']);
-  });
-
   it('renames a source group without changing its channels', () => {
     enterEdit();
     const news = Array.from(container.querySelectorAll<HTMLElement>('.group-item'))
@@ -1453,32 +1427,6 @@ describe('ChannelList edit mode', () => {
     expect(toastMock.showToast).toHaveBeenLastCalledWith(
       'A group with that name already exists.',
     );
-  });
-
-  it('rejects a group name used only by another playlist', () => {
-    data.raw[0].playlistIds = ['a'];
-    data.raw[1].playlistIds = ['b'];
-    data.raw[2].playlistIds = ['a'];
-    playlistMock.playlistTabs = [
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' },
-    ];
-    list.render();
-    const playlistA = container.querySelector<HTMLElement>('[data-playlist="a"]')!;
-    hover(playlistA);
-    list.handleAction('select');
-    enterEdit();
-    const news = Array.from(container.querySelectorAll<HTMLElement>('.group-item'))
-      .find(el => el.dataset.group === 'source:News');
-    hover(news!);
-    list.handleAction('select');
-    list.handleAction('blue');
-    container.querySelector<HTMLInputElement>('.edit-text-input')!.value = 'Sports';
-
-    list.handleAction('select');
-
-    expect(container.querySelector('.edit-text-input')).not.toBeNull();
-    expect(data.raw[0].group).toBe('News');
   });
 
   it('falls back to All when the active group is renamed', () => {

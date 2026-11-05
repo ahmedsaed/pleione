@@ -47,7 +47,6 @@ export const TR_MESSAGES = {
   'search.all': 'Kanal, film ve dizi ara…',
   'search.channels': 'Kanal ara…',
   'search.sidebarAll': 'Tüm kanallarda ara…',
-  'search.sidebarPlaylist': '{name} içinde ara…',
   'search.ariaChannels': 'Kanal ara',
   'search.programs': 'Programlar',
   'search.empty': 'Sonuç bulunamadı.',

@@ -32,7 +32,6 @@ const {
     playlistMock: {
       channels,
       groupsRevision: 0,
-      playlistTabs: [] as { id: string; name: string }[],
       getGroupsForPlaylist: () => ['News', 'Sports'],
       getGroupKeyForDisplay: (display: string) => display,
       getByGroup: (_group: string, _playlist?: string): Channel[] => channels,
@@ -169,7 +168,6 @@ beforeEach(() => {
   recentMock.catchupInfo.mockReset();
   toastMock.showToast.mockClear();
   healthMock.records = {};
-  playlistMock.playlistTabs = [];
   storageMock.toggleFavorite.mockClear();
   storageMock.setFavorites.mockClear();
   storageMock.setChannelCustomization.mockClear();
@@ -795,85 +793,6 @@ describe('ChannelList interaction', () => {
     );
   });
 
-  it('follows the visual source, group, channel order', () => {
-    playlistMock.playlistTabs = [
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' },
-    ];
-    list.render();
-
-    hover(container.querySelector<HTMLElement>('[data-group-position="0"]')!);
-    expect(list.handleAction('up')).toBe(true);
-    expect(ringed(container.querySelector('.playlist-tab.active')))
-      .toBe(true);
-    expect(list.handleAction('down')).toBe(true);
-    const group = container.querySelector<HTMLElement>('.group-item.active')!;
-    expect(ringed(group)).toBe(true);
-    expect(list.handleAction('right')).toBe(true);
-    expect(ringed(channelItems()[0])).toBe(true);
-    expect(list.handleAction('left')).toBe(true);
-    expect(ringed(container.querySelector('.group-item.active')))
-      .toBe(true);
-  });
-
-  it('hands Up from the first channel to the tab bar instead of jumping diagonally', () => {
-    playlistMock.playlistTabs = [
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' },
-    ];
-    list.render();
-
-    expect(list.handleAction('up')).toBe(false);
-    expect(ringed(channelItems()[0])).toBe(true);
-  });
-
-  it('moves horizontally within the source list without jumping regions', () => {
-    playlistMock.playlistTabs = [
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' },
-    ];
-    list.render();
-    hover(container.querySelector<HTMLElement>('[data-group-position="0"]')!);
-    list.handleAction('up');
-
-    expect(list.handleAction('right')).toBe(true);
-    expect(ringed(container.querySelector('[data-playlist="a"]')))
-      .toBe(true);
-    expect(list.handleAction('right')).toBe(true);
-    expect(ringed(container.querySelector('[data-playlist="b"]')))
-      .toBe(true);
-    expect(list.handleAction('right')).toBe(true);
-    expect(ringed(container.querySelector('[data-playlist="b"]')))
-      .toBe(true);
-  });
-
-  it('reveals the active group when source selection follows a deep group scroll', () => {
-    const originalGroups = playlistMock.getGroupsForPlaylist;
-    playlistMock.playlistTabs = [
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' },
-    ];
-    playlistMock.getGroupsForPlaylist = () =>
-      Array.from({ length: 50 }, (_, index) => `Group ${String(index)}`);
-    playlistMock.groupsRevision++;
-    try {
-      list.render();
-      const groupList = container.querySelector<HTMLElement>('.group-list')!;
-      groupList.scrollTop = 2000;
-      list.render(false);
-      expect(container.querySelector('[data-group-position="0"]')).toBeNull();
-
-      hover(container.querySelector<HTMLElement>('[data-playlist="a"]')!);
-      list.handleAction('select');
-      expect(list.handleAction('down')).toBe(true);
-      expect(ringed(container.querySelector('[data-group-position="0"]')))
-        .toBe(true);
-    } finally {
-      playlistMock.getGroupsForPlaylist = originalGroups;
-      playlistMock.groupsRevision++;
-    }
-  });
-
   it('does not rerender when the next virtual item is already mounted', () => {
     const render = vi.spyOn(list, 'render');
 
@@ -1150,18 +1069,6 @@ describe('ChannelList interaction', () => {
 });
 
 describe('ChannelList listener lifecycle', () => {
-  it('falls back to the All tab when the selected playlist was removed', () => {
-    playlistMock.playlistTabs = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }];
-    list.render();
-    hover(container.querySelector<HTMLElement>('[data-playlist="b"]')!);
-    list.handleAction('select');
-    expect(container.querySelector('.playlist-tab.active')?.getAttribute('data-playlist')).toBe('b');
-
-    playlistMock.playlistTabs = [{ id: 'a', name: 'A' }, { id: 'c', name: 'C' }]; // 'b' deleted
-    list.render();
-    expect(container.querySelector('.playlist-tab.active')?.getAttribute('data-playlist')).toBe('');
-  });
-
   it('binds the nav:hover listener once, not per render', () => {
     const c = document.createElement('div');
     document.body.appendChild(c);

@@ -144,7 +144,6 @@ beforeEach(() => {
   PlaylistService.allChannels = [];
   PlaylistService.channels = [];
   PlaylistService.groups = [];
-  PlaylistService.playlistTabs = [];
   PlaylistService.epgSources = [];
 });
 
@@ -249,80 +248,6 @@ describe('PlaylistService.refresh', () => {
   it('builds the group set and one tab per loaded playlist', async () => {
     await PlaylistService.refresh();
     expect(PlaylistService.groups).toEqual(['News', UNCATEGORIZED_GROUP, 'Sports']);
-    expect(PlaylistService.playlistTabs).toEqual([
-      { id: 'a', name: 'P1' },
-      { id: 'b', name: 'P2' },
-    ]);
-  });
-
-  it('keeps a fully-duplicated playlist as its own tab showing its channels', async () => {
-    // P3 has the same content as P1: every channel is de-duplicated away, but
-    // its tab must still appear and list those shared channels.
-    storageMock.getPlaylists.mockReturnValue([
-      { id: 'a', name: 'P1', url: 'http://host1/p1.m3u' },
-      { id: 'b', name: 'P2', url: 'http://host2/p2.m3u' },
-      { id: 'c', name: 'P3', url: 'http://host3/p1.m3u' },
-    ]);
-    await PlaylistService.refresh();
-    expect(PlaylistService.playlistTabs).toEqual([
-      { id: 'a', name: 'P1' },
-      { id: 'b', name: 'P2' },
-      { id: 'c', name: 'P3' },
-    ]);
-    expect(PlaylistService.getByGroup('builtin:all', 'c').map(c => c.name)).toEqual(['Alpha', 'Bravo']);
-  });
-
-  it('keeps a same-URL sibling tab after the other is deleted', async () => {
-    // The reported case: two playlists share a URL; deleting one must not drop
-    // the other. Each has its own id, so the survivor keeps its tab + channels.
-    storageMock.getPlaylists.mockReturnValue([
-      { id: 'a', name: 'P1', url: 'http://host1/p1.m3u' },
-      { id: 'c', name: 'P3', url: 'http://host3/p1.m3u' }, // same content as P1
-    ]);
-    await PlaylistService.refresh();
-    expect(PlaylistService.playlistTabs).toEqual([
-      { id: 'a', name: 'P1' },
-      { id: 'c', name: 'P3' },
-    ]);
-
-    // Delete P1; only P3 remains configured.
-    storageMock.getPlaylists.mockReturnValue([
-      { id: 'c', name: 'P3', url: 'http://host3/p1.m3u' },
-    ]);
-    await PlaylistService.refresh();
-    expect(PlaylistService.playlistTabs).toEqual([{ id: 'c', name: 'P3' }]);
-    expect(PlaylistService.getByGroup('builtin:all', 'c').map(ch => ch.name)).toEqual(['Alpha', 'Bravo']);
-  });
-
-  it('still shows a tab for a configured playlist that loaded no channels', async () => {
-    storageMock.getPlaylists.mockReturnValue([
-      { id: 'a', name: 'P1', url: 'http://host1/p1.m3u' },
-      { id: 'x', name: 'Down', url: 'http://host9/down.m3u' }, // unreachable
-    ]);
-    fetchTextMock.mockImplementation((url: string) =>
-      url.includes('down') ? Promise.reject(new Error('unreachable')) : Promise.resolve(P1));
-    await PlaylistService.refresh();
-    expect(PlaylistService.playlistTabs).toEqual([
-      { id: 'a', name: 'P1' },
-      { id: 'x', name: 'Down' },
-    ]);
-    expect(PlaylistService.getByGroup('builtin:all', 'x')).toEqual([]); // its tab is empty when selected
-  });
-
-  it('shows two same-named playlists as separate tabs, each with its own channels', async () => {
-    storageMock.getPlaylists.mockReturnValue([
-      { id: 'a', name: 'Combo', url: 'http://host1/p1.m3u' },
-      { id: 'b', name: 'Combo', url: 'http://host2/p2.m3u' },
-    ]);
-    await PlaylistService.refresh();
-    expect(PlaylistService.playlistTabs).toEqual([
-      { id: 'a', name: 'Combo' },
-      { id: 'b', name: 'Combo' },
-    ]);
-    // Each tab shows only its own playlist's channels; "All" still de-dups.
-    expect(PlaylistService.getByGroup('builtin:all', 'a').map(c => c.name)).toEqual(['Alpha', 'Bravo']);
-    expect(PlaylistService.getByGroup('builtin:all', 'b').map(c => c.name)).toEqual(['Bravo', 'Charlie']);
-    expect(PlaylistService.channels.map(c => c.name)).toEqual(['Alpha', 'Bravo', 'Charlie']);
   });
 
   it('persists the merged result to the cache', async () => {
@@ -369,7 +294,6 @@ describe('PlaylistService.refresh', () => {
     expect(fetchTextMock).toHaveBeenCalledTimes(1);
     expect(fetchTextMock).toHaveBeenCalledWith('http://host2/p2.m3u', 60000);
     expect(channels.map(channel => channel.name)).toEqual(['Bravo Dup', 'Charlie']);
-    expect(PlaylistService.playlistTabs).toEqual([{ id: 'b', name: 'P2' }]);
   });
 
   it('clears in-memory channels when every source is disabled', async () => {
@@ -384,7 +308,6 @@ describe('PlaylistService.refresh', () => {
     await expect(PlaylistService.refresh()).resolves.toEqual([]);
 
     expect(PlaylistService.allChannels).toEqual([]);
-    expect(PlaylistService.playlistTabs).toEqual([]);
     expect(fetchTextMock).not.toHaveBeenCalled();
   });
 
@@ -706,7 +629,6 @@ http://host:8080/movie/u1/p1/301.mp4`;
 
     expect(await PlaylistService.refresh()).toEqual([]);
     expect(PlaylistService.loadFailed).toBe(true);
-    expect(PlaylistService.playlistTabs).toEqual([{ id: 'x', name: 'Acct' }]);
   });
 
   it('uses a usable direct source and drops an unsafe one', async () => {
@@ -755,13 +677,6 @@ http://host:8080/movie/u1/p1/301.mp4`;
     });
   });
 
-  it('keeps one tab for the account even when its feed is unreachable', async () => {
-    fetchTextMock.mockRejectedValue(new Error('down'));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await PlaylistService.refresh();
-    expect(PlaylistService.playlistTabs).toEqual([{ id: 'x', name: 'Acct' }]);
-  });
 });
 
 describe('PlaylistService.refresh (Xtream Live categories)', () => {
@@ -1306,7 +1221,7 @@ describe('PlaylistService.getGroupsForPlaylist', () => {
 });
 
 describe('PlaylistService.reset', () => {
-  it('clears channels, groups, playlistTabs and epgSources', async () => {
+  it('clears channels, groups and epgSources', async () => {
     storageMock.getPlaylists.mockReturnValue([
       { id: 'a', name: 'P1', url: 'http://host/1.m3u' },
     ]);
@@ -1314,14 +1229,12 @@ describe('PlaylistService.reset', () => {
     await PlaylistService.refresh();
     expect(PlaylistService.channels.length).toBeGreaterThan(0);
     expect(PlaylistService.groups.length).toBeGreaterThan(0);
-    expect(PlaylistService.playlistTabs).toEqual([{ id: 'a', name: 'P1' }]);
     expect(PlaylistService.epgSources.length).toBeGreaterThan(0);
 
     PlaylistService.reset();
 
     expect(PlaylistService.channels).toEqual([]);
     expect(PlaylistService.groups).toEqual([]);
-    expect(PlaylistService.playlistTabs).toEqual([]);
     expect(PlaylistService.epgSources).toEqual([]);
   });
 });
@@ -1569,9 +1482,8 @@ describe('PlaylistService picked source', () => {
     PlaylistService.selectSource();
   });
 
-  it('lists only the picked source, one tab, and keeps the rest loaded', () => {
+  it('lists only the picked source and keeps the rest loaded', () => {
     expect(PlaylistService.channels.map(entry => entry.name)).toEqual(['Two', 'Both']);
-    expect(PlaylistService.playlistTabs.map(tab => tab.id)).toEqual(['b']);
     expect(PlaylistService.getUnconcealedChannels()).toHaveLength(3);
   });
 

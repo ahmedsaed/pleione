@@ -74,13 +74,6 @@ export interface ChannelHealthRecord {
   error?: string;
 }
 
-/** One playlist tab. `id` is the configured playlist's stable id (so two
- *  playlists sharing a name stay distinct); `name` is the display label. */
-export interface PlaylistTab {
-  id: string;
-  name: string;
-}
-
 export interface EpgSource {
   url: string;
   playlistIds: string[];

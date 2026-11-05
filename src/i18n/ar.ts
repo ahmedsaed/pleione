@@ -49,7 +49,6 @@ export const AR_MESSAGES = {
   'search.all': 'ابحث في القنوات والأفلام والمسلسلات…',
   'search.channels': 'ابحث في القنوات…',
   'search.sidebarAll': 'ابحث في كل القنوات…',
-  'search.sidebarPlaylist': 'ابحث في {name}…',
   'search.ariaChannels': 'البحث في القنوات',
   'search.programs': 'برامج',
   'search.empty': 'لا توجد نتائج.',

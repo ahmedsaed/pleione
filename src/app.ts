@@ -113,7 +113,6 @@ class App {
       }
       this.livePreview.retune(index, {
         group: this.channelList.group,
-        playlist: this.channelList.playlist || undefined,
       });
     });
   private settings!: Settings;
@@ -275,7 +274,6 @@ class App {
     this.liveGuide = new LiveGuide($('#live-guide')!, {
       scope: () => ({
         group: this.channelList.group,
-        playlist: this.channelList.playlist || undefined,
       }),
       play: (index, catchup, scope) => {
         if (!catchup) this.channelList.setWatching(index);
@@ -1837,9 +1835,9 @@ class App {
   // Channel Up/Down from a reminder steps through Live's group when the
   // channel is in it, else through every channel.
   private liveScopeFor(index: number): ChannelScope {
-    const scope = { group: this.channelList.group, playlist: this.channelList.playlist || undefined };
+    const scope = { group: this.channelList.group };
     const channel = PlaylistService.getByIndex(index);
-    return channel && PlaylistService.getByGroup(scope.group, scope.playlist).includes(channel)
+    return channel && PlaylistService.getByGroup(scope.group).includes(channel)
       ? scope : { group: 'builtin:all' };
   }
 
@@ -2147,13 +2145,12 @@ class App {
 
       // Protect the full-width area beside and below the OSD too: its edge
       // controls sit next to margins where an imprecise cursor can open a panel.
-      const overTabs = !!(e.target as HTMLElement).closest('.player-sidebar .sidebar-tabs');
       if (!overOsd && !vod && !modal && e.clientX < 80 && !this.player.pickerVisible()) {
         this.sidebar.show();
-        this.sidebar.handlePointerMove(e.clientX, false, overTabs);
+        this.sidebar.handlePointerMove(e.clientX, false);
       } else if (this.sidebar.visible) {
         const overSidebar = !!(e.target as HTMLElement).closest('.player-sidebar');
-        const delayingDismiss = this.sidebar.handlePointerMove(e.clientX, overSidebar, overTabs);
+        const delayingDismiss = this.sidebar.handlePointerMove(e.clientX, overSidebar);
         if (!delayingDismiss && !overSidebar
             && e.clientX > this.sidebar.pointerDismissX && !this.sidebar.keyboardOn) {
           // Never dismiss while the keyboard is on — the pointer naturally

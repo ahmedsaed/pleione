@@ -46,7 +46,6 @@ export const PT_BR_MESSAGES = {
   'search.all': 'Buscar canais, filmes e séries…',
   'search.channels': 'Buscar canais…',
   'search.sidebarAll': 'Buscar em todos os canais…',
-  'search.sidebarPlaylist': 'Buscar em {name}…',
   'search.ariaChannels': 'Buscar canais',
   'search.programs': 'Programas',
   'search.empty': 'Nenhum resultado encontrado.',

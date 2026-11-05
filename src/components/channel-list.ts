@@ -76,7 +76,7 @@ export interface ChannelListOptions {
   onCount?: (count: number | null) => void;
   // Try again after a failed load.
   onRetry?: () => void;
-  // The group or playlist the list shows changed, by key or pointer.
+  // The group the list shows changed, by key or pointer.
   onScopeChange?: () => void;
   authorizeEdit?: (proceed: () => void) => void;
 }
@@ -95,7 +95,7 @@ export class ChannelList {
   private readonly onCount: (count: number | null) => void;
   private readonly onRetry: () => void;
   private readonly onScopeChange: () => void;
-  // The group and playlist the last render showed.
+  // The group the last render showed.
   private renderedScope = '';
   private loadState: ChannelLoadState = null;
   // How far a long load has got, in place of the plain loading label.
@@ -106,7 +106,6 @@ export class ChannelList {
   private nav: SpatialNav;
   private editor: ChannelListEditor;
   private currentGroup: ChannelGroupId = 'builtin:all';
-  private currentPlaylist = '';  // '' = All playlists
   private playingIndex = -1;
   private playingCatchupStart: number | null = null;
   private recentItems: RecentlyWatchedItem[] = [];
@@ -137,7 +136,6 @@ export class ChannelList {
   private readonly scrollGuard = new VirtualScrollGuard();
   private groupEntries: { id: ChannelGroupId; label: string; builtin?: BuiltinChannelGroup }[] = [];
   private groupEntriesChannels: Channel[] | null = null;
-  private groupEntriesPlaylist = '';
   private groupEntriesRevision = -1;
   private groupEntriesLocale: SupportedLocale | null = null;
 
@@ -221,17 +219,15 @@ export class ChannelList {
       onEpgMappingChanged,
       onEpgOffsetChanged,
       getCurrentGroup: () => this.currentGroup,
-      getCurrentPlaylist: () => this.currentPlaylist,
       requestEditMode: group => this.enterEditMode(group),
       rowPosition: key => this.rowPosition(key)?.position ?? -1,
-      setLocation: (group, playlist) => {
+      setLocation: (group) => {
         this.currentGroup = group;
-        this.currentPlaylist = playlist;
       },
     });
 
     // Activate the item under the pointer by coordinate hit-test, so a click plays
-    // the channel (or switches group/playlist) regardless of what holds D-pad focus
+    // the channel (or switches group) regardless of what holds D-pad focus
     // — the global click path would instead route select to whatever owns the keys
     // (swallowed while the search box is open). The container is marked
     // `data-self-activate` so that global handler skips this subtree.
@@ -296,7 +292,7 @@ export class ChannelList {
   // which PlaylistService.getByGroup already treats as the full list, same
   // as no scope at all.
   private currentScope(): ChannelScope {
-    return { group: this.currentGroup, playlist: this.currentPlaylist || undefined };
+    return { group: this.currentGroup };
   }
 
   private lastMarkup = '';
@@ -313,21 +309,14 @@ export class ChannelList {
       this.renderLoadState(loadState);
       return;
     }
-    const tabs = PlaylistService.playlistTabs;
-    // The selected playlist may have just been deleted in settings — fall back to All.
-    if (this.currentPlaylist && !tabs.some(t => t.id === this.currentPlaylist)) this.currentPlaylist = '';
-    const showTabs = tabs.length > 1;
     const groups = this.getGroupEntries();
     if (!groups.some(group => group.id === this.currentGroup)) this.currentGroup = 'builtin:all';
     if (ensureFocus || this.recentItems.length === 0) {
-      this.recentItems = RecentlyWatchedService.getItems(this.currentPlaylist || undefined);
+      this.recentItems = RecentlyWatchedService.getItems();
     }
     const showingRecent = this.currentGroup === 'builtin:recently-watched';
-    const filteredChannels = PlaylistService.getByGroup(this.currentGroup, this.currentPlaylist || undefined);
-    const totalChannels = PlaylistService.getGroupCount(
-      'builtin:all',
-      this.currentPlaylist || undefined,
-    );
+    const filteredChannels = PlaylistService.getByGroup(this.currentGroup);
+    const totalChannels = PlaylistService.getGroupCount('builtin:all');
     const favs = StorageService.getFavorites();
     const editing = this.editor.isChannelEditing;
     const managingFavorites = this.editor.isManagingFavorites;
@@ -387,18 +376,6 @@ export class ChannelList {
           ? 'has-channel-hints'
           : ''}">
         <div class="sidebar" data-nav-container>
-          ${showTabs ? html`
-            <div class="playlist-tabs" data-edge-scroll>
-              <div class="playlist-tab ${!this.currentPlaylist ? 'active' : ''}"
-                   data-key="tab:"
-                   data-focusable data-playlist="">${t('common.all')}</div>
-              ${tabs.map(t => html`
-                <div class="playlist-tab ${t.id === this.currentPlaylist ? 'active' : ''}"
-                     data-key="tab:${t.id}"
-                     data-focusable data-playlist="${t.id}">${t.name}</div>
-              `)}
-            </div>
-          ` : ''}
           <div class="group-list">
             <div class="group-list-spacer"
                  style="height:${this.groupVirtualizer.getTotalSize(groups.length)}px">
@@ -469,7 +446,7 @@ export class ChannelList {
         ? this.container.querySelector<HTMLElement>(`.channel-main [data-channel-index="${this.playingIndex}"]`)
         : null;
       // Default focus: the first channel (an empty list falls through to the
-      // first focusable — a group or playlist tab — below).
+      // first focusable — a group — below).
       const target0 = this.container.querySelector<HTMLElement>('.channel-main [data-channel-index]');
       target = playingChannel ?? target0;
       if (!target && !this.focusActiveGroup()) this.nav.focusFirst();
@@ -488,7 +465,7 @@ export class ChannelList {
     if (Focus.owner() === this.focusScope) this.editor.focusTextInput();
     if (ensureFocus && showingRecent) this.recentToReveal = this.nav.focused?.dataset.key ?? null;
     this.syncScope(ensureFocus ? 'key' : 'render');
-    const scope = `${this.currentGroup}\n${this.currentPlaylist}`;
+    const scope = this.currentGroup;
     if (scope !== this.renderedScope) {
       this.renderedScope = scope;
       this.onScopeChange();
@@ -681,10 +658,6 @@ export class ChannelList {
 
         if (focused.dataset.favoriteManage !== undefined) {
           this.editor.enterFavoriteManagement();
-        } else if (focused.dataset.playlist !== undefined) {
-          this.currentPlaylist = focused.dataset.playlist;
-          this.currentGroup = 'builtin:all';
-          this.render();
         } else if (focused.dataset.group !== undefined) {
           this.currentGroup = focused.dataset.group as ChannelGroupId;
           this.render();
@@ -738,22 +711,6 @@ export class ChannelList {
     const focused = this.nav.focused;
     if (!focused) return false;
 
-    if (focused.dataset.playlist !== undefined) {
-      const tabs = Array.from(
-        this.container.querySelectorAll<HTMLElement>('.playlist-tab[data-playlist]'),
-      );
-      const index = tabs.indexOf(focused);
-      if (action === 'left' || action === 'right') {
-        const next = index + (action === 'left' ? -1 : 1);
-        if (tabs[next]) this.nav.focus(tabs[next]);
-        return !!tabs[next] || action === 'right';
-      }
-      // Above the tabs sits the host's header.
-      if (action === 'up') return false;
-      if (action === 'down') return this.focusActiveGroup();
-      return false;
-    }
-
     if (action === 'left' && focused.closest('.channel-main')) {
       return this.focusActiveGroup();
     }
@@ -763,22 +720,7 @@ export class ChannelList {
       return !this.guideMode() && this.nav.focusContainerEntry('.channel-main');
     }
 
-    if (action !== 'up' || !this.hasPlaylistTabs()) return false;
-    if (focused.dataset.groupPosition === '0') {
-      return this.focusActivePlaylist();
-    }
     return false;
-  }
-
-  private hasPlaylistTabs(): boolean {
-    return this.container.querySelector('.playlist-tabs') !== null;
-  }
-
-  private focusActivePlaylist(): boolean {
-    const active = this.container.querySelector<HTMLElement>('.playlist-tab.active');
-    if (!active) return false;
-    this.nav.focus(active);
-    return true;
   }
 
   private focusActiveGroup(): boolean {
@@ -818,7 +760,7 @@ export class ChannelList {
     const renaming = this.editor.isGroupRenaming(key);
     const count = g.id === 'builtin:recently-watched'
       ? this.recentItems.length
-      : PlaylistService.getGroupCount(g.id, this.currentPlaylist || undefined);
+      : PlaylistService.getGroupCount(g.id);
 
     return html`
       <div class="group-item ${g.id === this.currentGroup ? 'active' : ''} ${hidden ? 'hidden-entry' : ''} ${grabbed ? 'grabbed' : ''}"
@@ -829,7 +771,7 @@ export class ChannelList {
         ${renaming
           ? html`<input class="edit-text-input" type="text" value="${this.editor.renameValue(g.label)}">`
           : html`<span class="group-name">${
-              raw(liveGroupLockBadge(g.id, this.currentPlaylist))}${g.label}</span>`}
+              raw(liveGroupLockBadge(g.id, ''))}${g.label}</span>`}
         <span class="group-count">${count}</span>
       </div>
     `;
@@ -859,7 +801,7 @@ export class ChannelList {
 
   private channelPosition(globalIdx: number): number {
     return PlaylistService
-      .getByGroup(this.currentGroup, this.currentPlaylist || undefined)
+      .getByGroup(this.currentGroup)
       .findIndex(ch => PlaylistService.indexOf(ch) === globalIdx);
   }
 
@@ -869,10 +811,6 @@ export class ChannelList {
     let position = this.channelPosition(globalIdx);
     if (position < 0 && this.currentGroup !== 'builtin:all') {
       this.currentGroup = 'builtin:all';
-      position = this.channelPosition(globalIdx);
-    }
-    if (position < 0 && this.currentPlaylist) {
-      this.currentPlaylist = '';
       position = this.channelPosition(globalIdx);
     }
     if (position < 0) return false;
@@ -1075,13 +1013,8 @@ export class ChannelList {
     return this.currentGroup;
   }
 
-  get playlist(): string {
-    return this.currentPlaylist;
-  }
-
   /** Show `group` (falling back to All when this list has no such group). */
-  setGroup(group: ChannelGroupId, playlist: string): void {
-    this.currentPlaylist = playlist;
+  setGroup(group: ChannelGroupId): void {
     this.currentGroup = group;
   }
 
@@ -1296,10 +1229,7 @@ export class ChannelList {
     if (rawPosition === undefined) return false;
     if (this.currentGroup === 'builtin:recently-watched') return false;
     const position = parseInt(rawPosition, 10);
-    const count = PlaylistService.getGroupCount(
-      this.currentGroup,
-      this.currentPlaylist || undefined,
-    );
+    const count = PlaylistService.getGroupCount(this.currentGroup);
     const next = position + delta;
     if (next < 0 || next >= count) return false;
     const selector = `[data-list-position="${String(next)}"]`;
@@ -1318,13 +1248,11 @@ export class ChannelList {
 
   private getGroupEntries(): { id: ChannelGroupId; label: string; builtin?: BuiltinChannelGroup }[] {
     if (this.groupEntriesChannels === PlaylistService.channels
-        && this.groupEntriesPlaylist === this.currentPlaylist
         && this.groupEntriesRevision === PlaylistService.groupsRevision
         && this.groupEntriesLocale === getLocale()) {
       return this.groupEntries;
     }
     this.groupEntriesChannels = PlaylistService.channels;
-    this.groupEntriesPlaylist = this.currentPlaylist;
     this.groupEntriesRevision = PlaylistService.groupsRevision;
     this.groupEntriesLocale = getLocale();
     this.groupEntries = [
@@ -1335,7 +1263,7 @@ export class ChannelList {
         label: t('channel.recentlyWatched'),
         builtin: 'recently-watched',
       },
-      ...PlaylistService.getGroupsForPlaylist(this.currentPlaylist || undefined)
+      ...PlaylistService.getGroupsForPlaylist()
         .map(name => ({
           id: `source:${name}` as ChannelGroupId,
           label: groupDisplayLabel(name),

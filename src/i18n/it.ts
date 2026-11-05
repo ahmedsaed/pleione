@@ -46,7 +46,6 @@ export const IT_MESSAGES = {
   'search.all': 'Cerca canali, film e serie…',
   'search.channels': 'Cerca canali…',
   'search.sidebarAll': 'Cerca in tutti i canali…',
-  'search.sidebarPlaylist': 'Cerca in {name}…',
   'search.ariaChannels': 'Cerca canali',
   'search.programs': 'Programmi',
   'search.empty': 'Nessun risultato.',

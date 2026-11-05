@@ -46,7 +46,6 @@ export const ZH_CN_MESSAGES = {
   'search.all': '搜索频道、电影和剧集…',
   'search.channels': '搜索频道…',
   'search.sidebarAll': '搜索所有频道…',
-  'search.sidebarPlaylist': '搜索{name}…',
   'search.ariaChannels': '搜索频道',
   'search.programs': '节目',
   'search.empty': '未找到相关结果。',

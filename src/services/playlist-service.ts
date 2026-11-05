@@ -5,7 +5,6 @@ import {
   type EpgSource,
   type ParsedPlaylist,
   type PlaylistEntry,
-  type PlaylistTab,
 } from '../types';
 import { fetchAndParseM3U } from '../parsers/m3u-loader';
 import type { M3ULoadProgress } from '../parsers/m3u-loader';
@@ -165,7 +164,6 @@ class PlaylistServiceImpl {
   private channelSourceIndices = new Uint32Array(0);
   groups: string[] = [];
   groupsRevision = 0;
-  playlistTabs: PlaylistTab[] = [];
   epgSources: EpgSource[] = [];
   private indexMap = new Map<Channel, number>(); // channel -> global index, O(1) indexOf
   private channelsByGroup = new Map<string, Channel[]>();
@@ -287,7 +285,6 @@ class PlaylistServiceImpl {
     this.channelSourceIndices = new Uint32Array(0);
     this.groups = [];
     this.groupsRevision++;
-    this.playlistTabs = [];
     this.epgSources = [];
     this.indexMap = new Map();
     this.channelsByGroup = new Map();
@@ -341,7 +338,6 @@ class PlaylistServiceImpl {
         : cached.epgSources;
       log.info('Cache hit:', this.allChannels.length, 'channels,', this.epgSources.length, 'epg sources');
       this.applyCustomization();
-      this.buildPlaylistTabs();
       this.logLoadCompleted('cache', enabledIds.size, 0);
       return this.channels;
     }
@@ -540,7 +536,6 @@ class PlaylistServiceImpl {
       log.warn('Skipping cache write because one or more playlists failed');
     }
     this.applyCustomization();
-    this.buildPlaylistTabs();
     log.info('Refresh complete:', allChannels.length, 'total channels,', epgSources.length, 'epg sources');
     this.logLoadCompleted('network', playlists.length, failedPlaylists);
     done();
@@ -828,7 +823,6 @@ class PlaylistServiceImpl {
 
   /** Follow the picked source. Everything else stays loaded, so this is instant. */
   selectSource(): void {
-    this.buildPlaylistTabs();
     this.applyCustomization();
   }
 
@@ -977,17 +971,6 @@ class PlaylistServiceImpl {
       }))
       .sort((a, b) => a.rank - b.rank || a.index - b.index)
       .map((entry) => entry.name);
-  }
-
-  private buildPlaylistTabs(): void {
-    // One tab per configured playlist, in config order, keyed by its stable id —
-    // including a playlist that loaded zero channels (empty/unreachable feed), so
-    // it stays visible. Derived from the registry, not the cached channels, so a
-    // stale/desynced channel cache can never blank out the playlist tabs.
-    const source = this.activeSourceId;
-    const configured = StorageService.getPlaylists()
-      .filter(entry => isSourceEnabled(entry) && (this.allSources || entry.id === source));
-    this.playlistTabs = configured.map(pl => ({ id: pl.id, name: pl.name || pl.url }));
   }
 
   getByGroup(group: ChannelGroupId, playlist?: string): Channel[] {

@@ -50,7 +50,6 @@ export const EN_MESSAGES = {
   'search.all': 'Search channels, movies, and series…',
   'search.channels': 'Search channels…',
   'search.sidebarAll': 'Search all channels…',
-  'search.sidebarPlaylist': 'Search {name}…',
   'search.ariaChannels': 'Search channels',
   'search.programs': 'Programs',
   'search.empty': 'No results found.',

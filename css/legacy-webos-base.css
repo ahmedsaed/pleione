@@ -18,7 +18,6 @@
  * class in legacy-webos-overrides.css, which is linked last.
  */
 html.q-scroll-end-padding .playlist-tabs::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 3px; margin-right: -8px; }
-html.q-scroll-end-padding .player-sidebar .sidebar-tabs::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 3px; margin-right: -8px; }
 html.q-scroll-end-padding .theme-swatch-rail::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: -7px; margin-right: -12px; }
 html.q-scroll-end-padding .catalog-rail-track::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: -1px; margin-right: -20px; }
 html.q-scroll-end-padding .series-seasons::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 13px; margin-right: -24px; }
@@ -65,7 +64,6 @@ html.q-no-flex-gap .osd-next-episode-actions > * + * { margin-left: 16px; }
 html.q-no-flex-gap .player-sidebar .sidebar-group-width-probe > * + * { margin-left: 10px; }
 html.q-no-flex-gap .player-sidebar .sidebar-channel-title > * + * { margin-left: 12px; }
 html.q-no-flex-gap .player-sidebar .sidebar-group-item > * + * { margin-left: 10px; }
-html.q-no-flex-gap .player-sidebar .sidebar-tabs > * + * { margin-left: 4px; }
 html.q-no-flex-gap .player-sidebar .sidebar-ch-item > * + * { margin-left: 14px; }
 html.q-no-flex-gap .player-sidebar .sidebar-ch-item .ch-info > * + * { margin-top: 2px; }
 html.q-no-flex-gap .player-menu .menu-items > * + * { margin-top: 4px; }
@@ -140,7 +138,6 @@ html.q-no-flex-gap .parental-pin-actions > * + * { margin-left: 16px; }
 html.q-no-flex-gap .live-category-header > * + * { margin-left: 32px; }
 html.q-no-flex-gap .live-category-row > * + * { margin-left: 12px; }
 html.q-no-flex-gap .playlist-tabs::after { margin-left: 7px; }
-html.q-no-flex-gap .player-sidebar .sidebar-tabs::after { margin-left: 7px; }
 html.q-no-flex-gap .theme-swatch-rail::after { margin-left: 11px; }
 html.q-no-flex-gap .catalog-rail-track::after { margin-left: 19px; }
 html.q-no-flex-gap .series-seasons::after { margin-left: 23px; }

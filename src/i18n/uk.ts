@@ -46,7 +46,6 @@ export const UK_MESSAGES = {
   'search.all': 'Пошук каналів, фільмів і серіалів…',
   'search.channels': 'Пошук каналів…',
   'search.sidebarAll': 'Пошук у всіх каналах…',
-  'search.sidebarPlaylist': 'Пошук у {name}…',
   'search.ariaChannels': 'Пошук каналів',
   'search.programs': 'Програми',
   'search.empty': 'Нічого не знайдено.',

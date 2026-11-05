@@ -811,13 +811,16 @@ export const StorageService = {
   },
 
   // Whether this TV's <video> decodes raw MPEG-TS; measured once on the first
-  // TS stream (Tizen 9 does not, docs/tizen.md).
+  // TS stream (Tizen 9 does not, docs/tizen.md). The key moved when the check
+  // stopped timing a stream that was still buffering, which had marked TVs
+  // that play TS natively; their old verdict is dropped.
   getNativeTsPlayback(): 'ok' | 'broken' | null {
-    const value = get<unknown>('native_ts_playback', null);
+    remove('native_ts_playback');
+    const value = get<unknown>('native_ts_check', null);
     return value === 'ok' || value === 'broken' ? value : null;
   },
   setNativeTsPlayback(value: 'ok' | 'broken'): void {
-    set('native_ts_playback', value);
+    set('native_ts_check', value);
   },
 
   getLiveReconnectAttempts(): number {

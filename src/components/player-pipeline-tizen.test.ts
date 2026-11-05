@@ -221,6 +221,38 @@ describe('PlayerPipeline on Tizen: raw MPEG-TS', () => {
     }
   });
 
+  // Tizen 5.5 with a stream that takes seconds to start: the frame size
+  // arrives at readyState 2 well before the first frame.
+  it('waits out a TS stream still buffering before it plays', async () => {
+    vi.useFakeTimers();
+    try {
+      const { pipeline, video, playPlatform } = await setup();
+      pipeline.load('http://host/live/1.ts', null);
+      loadsWithoutFrames(video);
+      Object.defineProperty(video, 'readyState', { configurable: true, get: () => 2 });
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(playPlatform).not.toHaveBeenCalled();
+
+      Object.defineProperty(video, 'readyState', { configurable: true, get: () => 4 });
+      Object.defineProperty(video, 'currentTime', { configurable: true, get: () => 1 });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(playPlatform).not.toHaveBeenCalled();
+      expect(localStorage.getItem('iptv_native_ts_check')).toBe(JSON.stringify('ok'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('drops a verdict the earlier check stored, so the TV checks again', async () => {
+    const { pipeline, video, playPlatform } = await setup();
+    localStorage.setItem('iptv_native_ts_playback', JSON.stringify('broken'));
+    pipeline.load('http://host/live/1.ts', null);
+
+    expect(playPlatform).not.toHaveBeenCalled();
+    expect(video.querySelector('source')?.type).toBe('video/mp2t');
+    expect(localStorage.getItem('iptv_native_ts_playback')).toBeNull();
+  });
+
   it('reaches no verdict while the first TS stream is paused', async () => {
     vi.useFakeTimers();
     try {
@@ -231,14 +263,14 @@ describe('PlayerPipeline on Tizen: raw MPEG-TS', () => {
       await vi.advanceTimersByTimeAsync(10000);
 
       expect(playPlatform).not.toHaveBeenCalled();
-      expect(localStorage.getItem('iptv_native_ts_playback')).toBeNull();
+      expect(localStorage.getItem('iptv_native_ts_check')).toBeNull();
     } finally {
       vi.useRealTimers();
     }
   });
 
   it('releases the TV\'s player when the next stream loads', async () => {
-    localStorage.setItem('iptv_native_ts_playback', JSON.stringify('broken'));
+    localStorage.setItem('iptv_native_ts_check', JSON.stringify('broken'));
     const { tizen } = await import('../platform/tizen');
     const media = fakePlatformMedia();
     vi.spyOn(tizen.media, 'createPlatformMedia').mockReturnValue(media);

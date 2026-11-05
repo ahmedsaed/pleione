@@ -270,8 +270,9 @@ Tizen 8 and later (`platform.media.prefersPlatformMedia()`, from the
 user agent) play HLS, raw TS and single-file streams through AVPlay.
 DASH and EME DRM stay on Shaka. Tizen 5.5-7 stay native, where audio
 switching works and AVPlay's does not; there the first TS stream checks
-the element: if it loads (a frame size, `readyState` 2+) but decodes no
-frame for 4 s, the TV is marked (`iptv_native_ts_playback`,
+the element: if it has data to play (a frame size and `readyState` 3+;
+Tizen 5.5 holds a slow stream at 2 for seconds) but decodes no frame for
+4 s, the TV is marked (`iptv_native_ts_check`,
 `event=playback.native_ts.checked`) and TS moves to AVPlay
 (`event=playback.path.platform`).
 

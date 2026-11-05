@@ -215,13 +215,21 @@ jobs:
     needs: [build, e2e, engines]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v7
         with:
           name: webos-iptv-player
 
+      # The tag's section of CHANGELOG.md, or a failed job: a release
+      # with no notes is what this step exists to prevent.
+      - name: Release notes
+        run: node scripts/release-notes.mjs "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
+
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
+          body_path: ${{ runner.temp }}/notes.md
           files: |
             *.ipk
             *.wgt

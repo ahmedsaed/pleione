@@ -33,6 +33,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:engines": "node scripts/engines/run.mjs",
     "test:all": "npm run lint && vitest run && playwright test",
     "version": "node scripts/sync-version.mjs && git add appinfo.json",
     "benchmark:typecheck": "tsc -p benchmarks/tsconfig.json",

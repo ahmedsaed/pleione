@@ -47,6 +47,55 @@ jobs:
           path: test-output/
           retention-days: 7
 
+  # The engine smoke suite (docs/engine-suite.md): the app in archived
+  # Chromium builds, one job per engine. Pull requests and branch pushes run
+  # the oldest engines, where layout differs most; tags and manual runs run
+  # all eight.
+  engines:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: ${{ fromJSON((startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && '[53, 68, 69, 76, 79, 87, 94, 120]' || '[53, 68, 69]') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Chromium build
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pleione-engines
+          key: chromium-engine-${{ matrix.engine }}-${{ hashFiles('scripts/engines/engines.mjs') }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build engine image
+        uses: docker/build-push-action@v6
+        with:
+          context: scripts/engines
+          tags: pleione-engines:local
+          load: true
+          cache-from: type=gha,scope=pleione-engines
+          cache-to: type=gha,scope=pleione-engines,mode=max
+
+      - name: Engine smoke suite
+        run: npm run test:engines -- --engine ${{ matrix.engine }} --skip-image
+
+      - name: Upload engine report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: engines-chromium-${{ matrix.engine }}
+          path: test-output/engines/
+          retention-days: 7
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -163,7 +212,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, e2e]
+    needs: [build, e2e, engines]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v7

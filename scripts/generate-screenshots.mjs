@@ -6,15 +6,13 @@
 // fixtures and a frozen clock, then captures each view into screenshots/:
 //
 //   channel-list.png   channel list (the README hero)
-//   live-preview.png   Pastel Latte live preview with the Mute hint focused
+//   live-preview.png   Daylight live preview with the Mute hint focused
 //   recently-watched.png  mixed live and resumable catch-up history
 //   epg-guide.png      three-pane program guide, with catch-up resume markers
 //   epg-catchup-resume.png  the Resume / Start Over / Cancel resume prompt
 //   settings.png       settings incl. LAN setup QR and manual pairing
 //   themes.png         Settings Appearance section with the theme picker
 //   reminder-manager.png  date-grouped upcoming reminders with removal controls
-//   parental-controls.png  lock manager — Live groups on Xtream accounts, Suggested
-//                      adult groups, and a locked group with one channel set separately
 //   setup-page.png     authorized LAN setup page for a phone or laptop
 //   player.png         playback overlays: channel switcher + subtitle picker
 //   channel-info.png   channel info bar (the OSD) — live DVR (timeshift) view
@@ -154,11 +152,6 @@ const CHANNELS = buildChannels();
 const TOTAL = CHANNELS.length;
 const SPLIT = 78; // News+Sports+Movies in playlist 1, the rest in playlist 2
 const FAVORITE_IDS = ['ch1', 'ch3', 'ch6', 'ch20', 'ch45', 'ch70', 'ch110', 'ch140'];
-const HEALTH_FIXTURE = [
-  { index: 0, status: 'unavailable', consecutiveFailures: 2, error: 'timeout' },
-  { index: 1, status: 'suspect', consecutiveFailures: 1, error: 'network' },
-  { index: 2, status: 'healthy', consecutiveFailures: 0, latencyMs: 180 },
-];
 // The hero channel advertises catch-up (time-shift), so its already-aired
 // programs can carry resume markers in the guide (epg-catchup-resume shot).
 const CATCHUP_IDS = new Set(['ch0']);
@@ -179,13 +172,6 @@ const M3U_1 = m3u(CHANNELS.slice(0, SPLIT), true);
 const M3U_2 = m3u(CHANNELS.slice(SPLIT), false);
 // One flattened playlist for the Xtream get.php route (Live · Movies · Series shots).
 const M3U_ALL = m3u(CHANNELS, true);
-// Parental-controls shot only: two adult-named groups trigger its Suggested marker.
-const M3U_PARENTAL = m3u([
-  ...CHANNELS,
-  ...['Adult', '18+'].flatMap((group, g) => Array.from({ length: 6 }, (_, n) => ({
-    id: `ch${TOTAL + g * 6 + n}`, name: `After Dark ${g * 6 + n + 1}`, group,
-  }))),
-], true);
 
 // Fake HLS master with alternate audio + subtitle renditions, served for the played
 // channel so hls.js (the desktop preview path) exposes real tracks to the player
@@ -814,45 +800,6 @@ async function remote(page, keyCode) {
 const clearToasts = (page) =>
   page.evaluate(() => document.querySelectorAll('.toast').forEach((t) => t.remove()));
 
-async function seedChannelHealth(page) {
-  await page.evaluate(({ fixture, channels, now }) => new Promise((resolve, reject) => {
-    const channelKey = (url) => {
-      let h = 0x811c9dc5;
-      for (let i = 0; i < url.length; i++) {
-        h ^= url.charCodeAt(i);
-        h = Math.imul(h, 0x01000193);
-      }
-      return (h >>> 0).toString(16).padStart(8, '0');
-    };
-    // No version: open whatever schema the app already created.
-    const request = indexedDB.open('iptv');
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const db = request.result;
-      const transaction = db.transaction('channel-health-cache', 'readwrite');
-      const store = transaction.objectStore('channel-health-cache');
-      for (const item of fixture) {
-        const channel = channels[item.index];
-        const key = channelKey(`https://demo.local/stream/${channel.id}.m3u8`);
-        const data = {
-          status: item.status,
-          consecutiveFailures: item.consecutiveFailures,
-          lastCheckedAt: now,
-          ...(item.status === 'healthy' ? { lastHealthyAt: now } : {}),
-          ...(item.latencyMs === undefined ? {} : { latencyMs: item.latencyMs }),
-          ...(item.error === undefined ? {} : { error: item.error }),
-        };
-        store.put({ key, data, timestamp: now, expiresAt: null });
-      }
-      transaction.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      transaction.onerror = () => reject(transaction.error);
-    };
-  }), { fixture: HEALTH_FIXTURE, channels: CHANNELS, now: NOW });
-}
-
 // Enter a section the Magic Remote way: the Home button, then its card.
 async function enterTab(page, section) {
   // The first move only seeds the pointer; the second hands over to it.
@@ -904,18 +851,11 @@ async function openLive(page) {
   await page.locator('#view-channels').waitFor({ state: 'visible' });
 }
 
-async function gotoChannels(page, base, { health = false } = {}) {
+async function gotoChannels(page, base) {
   await page.goto(base + '/', { waitUntil: 'domcontentloaded' });
   await openLive(page);
   await page.locator('.channel-main .channel-now').first().waitFor({ state: 'visible', timeout: 20_000 });
   await page.locator('.group-icon .group-logo').first().waitFor({ state: 'visible' });
-  if (health) {
-    await seedChannelHealth(page);
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await openLive(page);
-    await page.locator('.channel-health-dot.unavailable').first()
-      .waitFor({ state: 'visible', timeout: 20_000 });
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -942,7 +882,7 @@ try {
   // 1) Channel list (the hero) — first channel playing + focused, no OSD.
   {
     const { context, page } = await newPage({ recently: true, customization: true });
-    await gotoChannels(page, base, { health: true });
+    await gotoChannels(page, base);
     await page.keyboard.press('Enter');     // play the focused (first) channel...
     await page.locator('#player-osd .osd-programme-title').waitFor({ state: 'visible' });
     await remote(page, 27);                 // ...then Back, so the list marks it playing (▶) — no OSD
@@ -954,11 +894,11 @@ try {
     await context.close();
   }
 
-  // 1b) Live Preview — Pastel Latte with the Mute control focused and its hint visible.
+  // 1b) Live Preview — Daylight with the Mute control focused and its hint visible.
   {
     const { context, page } = await newPage({ fakeStream: true });
     await page.addInitScript(() => {
-      localStorage.setItem('iptv_theme', JSON.stringify('pastel-latte'));
+      localStorage.setItem('iptv_theme', JSON.stringify('daylight'));
     });
     await gotoChannels(page, base);
     await page.keyboard.press('Enter');
@@ -983,12 +923,10 @@ try {
   // 1c) Recently Watched — resumable catch-up mixed with recently played live channels.
   {
     const { context, page } = await newPage({ recently: true });
-    await gotoChannels(page, base, { health: true });
+    await gotoChannels(page, base);
     await page.locator('[data-group="builtin:recently-watched"]').click();
     await page.locator('.channel-main .recent-catchup').waitFor({ state: 'visible' });
     await page.locator('.channel-main .recent-live').first().waitFor({ state: 'visible' });
-    await page.locator('.recent-live .channel-health-dot.suspect')
-      .waitFor({ state: 'visible' });
     await clearToasts(page);
     await page.waitForTimeout(400);
     await shoot(page, 'recently-watched.png');
@@ -1082,41 +1020,6 @@ try {
     await context.close();
   }
 
-  // 3c2) Parental controls — Live on two Xtream accounts (Live / Movies / Series
-  //      toggle, account avatar, playlist column). Two adult-named groups show
-  //      the Suggested marker and the "Lock suggested groups" row; Movies is
-  //      locked with one channel set separately.
-  {
-    const { context, page } = await newPage({ xtream: true });
-    await page.route('**/get.php**', fulfill(M3U_PARENTAL, 'application/x-mpegurl'));
-    await gotoChannels(page, base);
-    await remote(page, KEY.BLUE);
-    await page.locator('#view-settings').waitFor({ state: 'visible' });
-    await page.locator('#manage-parental-controls').click();
-    const pin = page.locator('.parental-pin-prompt .parental-pin-input');
-    await pin.waitFor({ state: 'visible' });
-    await pin.fill('1234');
-    await page.locator('.parental-pin-prompt h2', { hasText: 'Confirm' }).waitFor({ state: 'visible' });
-    await pin.fill('1234');
-    const view = page.locator('#view-parental-controls');
-    await view.waitFor({ state: 'visible' });
-    await view.locator('#parental-kind [data-value="live"].active').waitFor({ state: 'visible' });
-    await view.locator('[data-parental-suggest]').waitFor({ state: 'visible' });
-    const group = view.locator('[data-parental-group]').filter({ hasText: /^\s*Movies\b/ });
-    await group.click(); // select
-    await view.locator('.parental-column-item h3', { hasText: 'Movies' }).waitFor({ state: 'visible' });
-    await group.click(); // lock
-    await group.locator('.lock-badge.is-locked').waitFor({ state: 'visible' });
-    const items = view.locator('.parental-column-item [data-parental-item]');
-    await items.nth(1).click(); // unlock one channel separately
-    await items.nth(1).locator('.parental-exception').waitFor({ state: 'visible' });
-    await clearToasts(page);
-    await page.waitForTimeout(400);
-    await shoot(page, 'parental-controls.png');
-    console.log('  parental-controls.png');
-    await context.close();
-  }
-
   // 3d) LAN setup page — two views of the real authorized phone/laptop UI.
   // Side-by-side 480x540 CSS panels at 2x DPR produce one 1920x1080 image.
   {
@@ -1207,7 +1110,7 @@ try {
   // 4) Playback overlays — grouped channel switcher (left) + subtitle picker (right), no OSD.
   {
     const { context, page } = await newPage({ fakeStream: true, recently: true });
-    await gotoChannels(page, base, { health: true });
+    await gotoChannels(page, base);
     await page.keyboard.press('Enter');
     await page.locator('#player-osd .osd-programme-title').waitFor({ state: 'visible' });
     // The app shows these one at a time. Pick the intended subtitle in the

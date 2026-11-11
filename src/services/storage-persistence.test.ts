@@ -3,7 +3,6 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   CatchupProgressEntry,
-  ParentalControlConfig,
   ChannelCustomization,
   Reminder,
   ResumeEntry,
@@ -207,37 +206,6 @@ describe('StorageService IndexedDB migration', () => {
     ]);
   });
 
-  it('keeps a parental config saved while IndexedDB was unavailable', async () => {
-    const config = (enabled: boolean): ParentalControlConfig => ({
-      version: 1,
-      enabled,
-      pin: null,
-      concealMode: 'show-locked',
-      unlockDuration: 'once',
-      groupRules: { g1: true },
-      itemRules: {},
-    });
-    vi.resetModules();
-    const { StorageService: Stored } = await import('./storage-service');
-    await Stored.init();
-    Stored.setParentalControl(config(false));
-    await Stored.flush();
-
-    // Without a fallback record the stored config survives the next launch.
-    vi.resetModules();
-    const { StorageService: Relaunched } = await import('./storage-service');
-    await Relaunched.init();
-    expect(Relaunched.getParentalControl()).toEqual(config(false));
-
-    localStorage.setItem('iptv_parental_control', JSON.stringify(config(true)));
-    vi.resetModules();
-    const { StorageService: Recovered } = await import('./storage-service');
-    await Recovered.init();
-    expect(Recovered.getParentalControl()).toEqual(config(true));
-    expect(localStorage.getItem('iptv_parental_control')).toBeNull();
-    expect((await loadUserRecords<ParentalControlConfig>('parental-control'))[0]?.value)
-      .toEqual(config(true));
-  });
   it('persists Live category snapshots and prunes them with their accounts', async () => {
     const snapshot = (id: string) => ({
       knownIds: ['c1', id],

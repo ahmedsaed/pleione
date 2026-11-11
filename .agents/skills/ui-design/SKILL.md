@@ -182,8 +182,8 @@ broken.
   `--bg-secondary` → `--bg-tertiary` for elevation,
   `--text-primary/secondary/muted`, `--accent`/`--accent-dim`,
   `--danger`/`--success`/`--warning`, `--border`, `--focus-ring`.
-- Every theme in `css/themes.css` must look right — there are three light
-  ones (Daylight, Pastel Latte, Paper Light) besides the dark ones.
+- Every theme in `css/themes.css` must look right — there are two light
+  ones (Daylight, Paper Light) besides the dark ones.
 - **Scrims and gradients come from the theme** (`--catalog-hero-scrim-rgb`
   is light on light themes); never a fixed dark gradient. Text over video
   or artwork needs a scrim, not a text shadow alone. Aim for at least
@@ -194,7 +194,7 @@ broken.
 - For alpha, use `rgb(var(--accent-rgb) / 0.2)`; the build converts it for
   Chromium 53. A new `--*-rgb` token must be added to `:root` *and every
   theme*.
-- Status colors carry meaning (live = danger red, health dots); don't
+- Status colors carry meaning (live = danger red); don't
   reuse them decoratively.
 - **State must be conspicuous in every theme — measure it.** A state cue
   (lock, badge, dot, icon) needs at least 3:1 against every surface it can
@@ -205,15 +205,15 @@ broken.
 ## Overlays and glass styles
 
 Player overlays (OSD, sidebar, menu, subtitle panels, number entry, live
-preview message) follow the user's **Player overlay** style, Dark or
-Frosted, not the theme (`css/player.css`).
+preview message) are always dark glass over video, whatever the theme
+(`css/player.css`); only the accent follows the theme.
 
 - Text, icons, dividers, and chips inside an overlay take color only from
   the overlay-scoped tokens — `--text-*`, `--overlay-divider`,
-  `--overlay-chip` — which `[data-overlay="frosted"]` redefines. Never
-  hard-code white inside a panel: it vanishes on Frosted.
-- **A new overlay root joins both selector lists** in `css/player.css`
-  (the dark base and the `[data-overlay="frosted"]` block).
+  `--overlay-chip` — which the overlay roots redefine, so a light theme's
+  dark text never lands on the dark glass.
+- **A new overlay root joins the overlay selector list** in
+  `css/player.css` that sets those tokens.
 - Controls drawn directly on video, outside any panel, use fixed white
   icons with a shadow and no panel background; their focus is light glass
   (`rgba(255, 255, 255, .16)`) plus the shared ring, not a dark block.
@@ -292,8 +292,7 @@ font.
   Playwright script, or `scripts/generate-screenshots.mjs`); never
   hand-build mock DOM to screenshot.
 - **Cover the matrix that the change touches:** Midnight plus every light
-  theme while iterating, every theme before done; Dark and Frosted for any
-  overlay; each submenu and panel state; M3U-only and Xtream setups; dense,
+  theme while iterating, every theme before done; each submenu and panel state; M3U-only and Xtream setups; dense,
   realistic data (a long multi-day guide, long names). Prefix files with
   the theme name.
 - When a color or size is the point of the change, **assert the computed
@@ -330,7 +329,7 @@ Run this before calling a UI change done; fix or justify every miss.
       white text; scrims follow the theme.
 - [ ] State cues measure at least 3:1 (text 4.5:1) against their surfaces
       in every theme, not just the one in the screenshot.
-- [ ] Overlays use overlay tokens and look right in Dark and Frosted.
+- [ ] Overlays use overlay tokens and stay legible over bright and dark video.
 - [ ] Motion gates only costly animations by mode; close mirrors open.
 - [ ] Labels, errors, and empty states follow "Words on screen".
 - [ ] Untrusted names go through `html`, truncate, and never break layout.

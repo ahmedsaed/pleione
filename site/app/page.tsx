@@ -219,16 +219,12 @@ export default function Home() {
             </div>
             <div className="card">
               <h3>Themes</h3>
-              <p>Light and dark color themes with live previews, and a dark or frosted look over video.</p>
-            </div>
-            <div className="card">
-              <h3>Parental controls</h3>
-              <p>Lock groups, categories or single titles behind a PIN, listed with a lock or hidden.</p>
+              <p>Light and dark color themes with live previews.</p>
             </div>
           </div>
           <div className="gallery">
             <figure>
-              <Screen name="appearance" alt="Settings, Appearance: theme previews, overlay style, interface and text size" />
+              <Screen name="appearance" alt="Settings, Appearance: theme previews, interface and text size" />
               <figcaption>Appearance settings</figcaption>
             </figure>
             <figure>

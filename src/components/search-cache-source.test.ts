@@ -11,7 +11,6 @@ import {
   cachedNamesRequest,
   ProgrammeRuns,
   sampleDocuments,
-  selectCatalogItems,
 } from './search-cache-source';
 
 function channel(name: string, group: string, extra: Partial<Channel> = {}): Channel {
@@ -51,20 +50,6 @@ describe('search cache sources', () => {
       length: 4,
       selection: new Uint32Array([0, 1]),
     })).toBeNull();
-  });
-
-  it('skips concealment checks when nothing is concealed', () => {
-    const items = [{ name: 'Alpha' }, { name: 'Bravo' }, { name: 'Charlie' }];
-    const concealed = vi.fn((item: { name: string }) => item.name === 'Bravo');
-
-    const open = selectCatalogItems(items, false, concealed);
-    expect(open).toEqual({ items, selection: null });
-    expect(open.items).toBe(items);
-    expect(concealed).not.toHaveBeenCalled();
-
-    const visible = selectCatalogItems(items, true, concealed);
-    expect(visible.items.map(item => item.name)).toEqual(['Alpha', 'Charlie']);
-    expect(visible.selection).toEqual(new Uint32Array([0, 2]));
   });
 
   it('maps catalog names only for a remembered cache record', () => {

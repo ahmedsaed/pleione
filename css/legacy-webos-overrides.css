@@ -41,8 +41,6 @@ html.q-no-flex-gap .settings-field > .settings-item-hint { margin-top: 14px; }
  */
 html.q-no-flex-gap .live-category-account,
 html.q-no-flex-gap .live-category-row strong,
-html.q-no-flex-gap .parental-header .parental-account,
-html.q-no-flex-gap .parental-row strong,
 html.q-no-flex-gap .player-sidebar .sidebar-picker-arrow,
 html.q-no-flex-gap .player-menu .menu-item-value { margin-left: auto; }
 

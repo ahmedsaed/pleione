@@ -21,6 +21,5 @@ describe('backStep', () => {
 
   it('returns from the Settings sub-pages to Settings', () => {
     expect(backStep('reminders', 'home')).toBe('settings');
-    expect(backStep('parental-controls', 'home')).toBe('settings');
   });
 });

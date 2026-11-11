@@ -75,18 +75,6 @@ describe('Focus owner stack', () => {
     expect(Focus.owner()).toBe(bar);
   });
 
-  it('keeps a higher tier on top of a later push, such as the PIN over a timed prompt', () => {
-    const pin = Focus.register({ id: 'prompt.pin', root: prompt, restrict: 'self-only', tier: Tier.critical });
-    const reminder = Focus.register({ id: 'prompt.reminder', root: prompt, restrict: 'self-only' });
-    const menu = Focus.register({ id: 'menu', root: view });
-    Focus.push(pin);
-    Focus.push(reminder);
-    Focus.push(menu);
-    expect(Focus.owner()).toBe(pin);
-    Focus.pop(pin);
-    expect(Focus.owner()).toBe(reminder);
-  });
-
   it('ranks pushed scopes by tier before push order', () => {
     const history = Focus.register({ id: 'search.history', root: view, restrict: 'self-only', tier: Tier.overlay });
     const bar = Focus.register({ id: 'tabbar', root: view, tier: Tier.bar });

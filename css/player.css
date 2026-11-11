@@ -112,7 +112,7 @@
 }
 
 /* Player overlays use a fixed dark palette for video readability; accents still
-   follow the theme. The light variant is opt-in via "Player overlay". */
+   follow the theme. */
 .player-osd,
 .player-sidebar,
 .player-menu,
@@ -128,29 +128,6 @@
   --border: #2a2a3e;
   --overlay-divider: rgba(255, 255, 255, 0.25);
   --overlay-chip: rgba(255, 255, 255, 0.14);
-  color: var(--text-primary);
-}
-
-/* Frosted — opaque light glass. Cohesive with light themes; over dark video it
-   reads as a bright card. */
-[data-overlay="frosted"] .player-osd,
-[data-overlay="frosted"] .player-sidebar,
-[data-overlay="frosted"] .player-menu,
-[data-overlay="frosted"] .subs-overlay,
-[data-overlay="frosted"] .subs-offset-card,
-[data-overlay="frosted"] .number-entry,
-[data-overlay="frosted"] .live-preview-message {
-  background: rgba(244, 246, 249, 0.85);
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-  --text-primary: #1f2430;
-  --text-secondary: #4a5160;
-  --text-muted: #79808f;
-  --bg-secondary: #eceef2;
-  --bg-tertiary: #dfe4ea;
-  --border: #cfd5dd;
-  --overlay-divider: rgba(0, 0, 0, 0.18);
-  --overlay-chip: rgba(0, 0, 0, 0.08);
   color: var(--text-primary);
 }
 

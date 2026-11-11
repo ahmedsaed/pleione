@@ -3,7 +3,6 @@ import { SpatialNav, isFocusMove } from '../navigation/spatial-nav';
 import { Focus, type FocusScope } from '../navigation/focus-scope';
 import { html, raw, type Safe } from '../utils/dom';
 import { inlineStart, nameDir } from '../utils/direction';
-import { channelLockBadge, seriesLockBadge, vodLockBadge } from './parental-badge';
 import { morph } from '../utils/morph';
 import { PlaylistService } from '../services/playlist-service';
 import { EpgService } from '../services/epg-service';
@@ -41,13 +40,6 @@ import {
   retainAppWorker,
   runAppWorkerTask,
 } from '../workers/app-worker-client';
-import {
-  catalogParentalRequest,
-  isSeriesConcealed,
-  isVodConcealed,
-  liveParentalRequest,
-  ParentalControlService,
-} from '../services/parental-control';
 import type {
   SearchCachedNames,
   SearchIndexChunk,
@@ -63,7 +55,6 @@ import {
   channelDocument,
   ProgrammeRuns,
   sampleDocuments,
-  selectCatalogItems,
 } from './search-cache-source';
 import { uiPx } from '../utils/ui-scale';
 import { railKeyline, railViewport } from '../utils/rail-keyline';
@@ -554,19 +545,6 @@ export class Search {
     }
   }
 
-  refreshLocks(): void {
-    if (this.container.querySelector('.search-view')) this.render();
-  }
-
-  // Locked content was hidden or revealed: drop the rendered results at once,
-  // since their indexes point into the old channel list, then search again.
-  async refreshConcealment(): Promise<void> {
-    this.invalidateCatalog();
-    if (!this.active) return;
-    this.queryPending = !!this.query.trim();
-    await this.open(this.account, this.query);
-  }
-
   invalidateCatalog(): void {
     this.abortCatalogLoad();
     this.pendingIndex = null;
@@ -628,7 +606,7 @@ export class Search {
   }
 
   // Load the whole catalogs once per account (cached in IndexedDB). A reopen
-  // shares the load in flight; only an account switch or a concealment change
+  // shares the load in flight; only an account switch
   // aborts it, so a stale load can't clobber the current account's catalog.
   private loadCatalog(account: PlaylistEntry): Promise<CatalogSources> {
     if (this.loadedFor === account.id && Date.now() < this.catalogExpiresAt) {
@@ -655,11 +633,9 @@ export class Search {
     ]);
     if (signal.aborted || this.account?.id !== account.id
       || this.catalogController?.signal !== signal) return { movies: false, series: false };
-    const concealing = ParentalControlService.concealing;
     if (vod.ok) {
-      const visible = selectCatalogItems(vod.data, concealing, isVodConcealed);
-      const cache = cachedNamesRequest(vod.data, visible.items, visible.selection);
-      if (!sameCatalogSource(this.vodCache, cache)) this.allVod = visible.items;
+      const cache = cachedNamesRequest(vod.data, vod.data, null);
+      if (!sameCatalogSource(this.vodCache, cache)) this.allVod = vod.data;
       this.vodCache = cache;
     } else {
       log.error(
@@ -670,9 +646,8 @@ export class Search {
       );
     }
     if (series.ok) {
-      const visible = selectCatalogItems(series.data, concealing, isSeriesConcealed);
-      const cache = cachedNamesRequest(series.data, visible.items, visible.selection);
-      if (!sameCatalogSource(this.seriesCache, cache)) this.allSeries = visible.items;
+      const cache = cachedNamesRequest(series.data, series.data, null);
+      if (!sameCatalogSource(this.seriesCache, cache)) this.allSeries = series.data;
       this.seriesCache = cache;
     } else {
       log.error(
@@ -896,19 +871,19 @@ export class Search {
     if (el.dataset.channelIndex !== undefined) {
       const index = parseInt(el.dataset.channelIndex, 10);
       const channel = PlaylistService.channels[index];
-      if (channel) rememberQuery(query, liveParentalRequest(channel));
+      if (channel) StorageService.addSearchHistory(query);
       this.handlers.onPlayChannel(index);
     } else if (el.dataset.programIndex !== undefined) {
       void this.activateProgram(parseInt(el.dataset.programIndex, 10), query);
     } else if (this.account && el.dataset.streamId !== undefined) {
       const v = this.allVod.find((x) => x.streamId === el.dataset.streamId);
       if (!v) return;
-      rememberQuery(query, catalogParentalRequest('vod', { ...v, id: v.streamId }));
+      StorageService.addSearchHistory(query);
       this.handlers.onOpenMovie(this.account, v);
     } else if (this.account && el.dataset.seriesId !== undefined) {
       const s = this.allSeries.find((x) => x.seriesId === el.dataset.seriesId);
       if (!s) return;
-      rememberQuery(query, catalogParentalRequest('series', { ...s, id: s.seriesId }));
+      StorageService.addSearchHistory(query);
       this.handlers.onOpenSeries(this.account, s);
     }
   }
@@ -1022,8 +997,7 @@ export class Search {
         <div class="catalog-poster-wrap search-channel-logo">${ch.logo && !this.failedLogos.has(ch.logo)
           ? html`<img src="${ch.logo}" alt="" loading="lazy"><div
               class="catalog-poster catalog-poster-empty search-channel-letter">${ch.name.charAt(0)}</div>`
-          : html`<div class="catalog-poster catalog-poster-empty">${ch.name.charAt(0)}</div>`}${
-          raw(channelLockBadge(ch))}</div>
+          : html`<div class="catalog-poster catalog-poster-empty">${ch.name.charAt(0)}</div>`}</div>
         <div class="catalog-tile-name search-channel-name" dir="${nameDir()}">${this.highlighted(ch.name)}</div>
         ${now ? html`<div class="search-card-sub" dir="${nameDir()}">${now.title}</div>` : ''}
       </div>
@@ -1033,8 +1007,7 @@ export class Search {
   private movieTile(v: VodItem): Safe {
     return html`
       <div class="catalog-tile search-poster-tile" data-focusable data-key="v:${v.streamId}" data-stream-id="${v.streamId}">
-        <div class="catalog-poster-wrap">${this.posterCell(v.name, v.poster)}${
-          raw(vodLockBadge(v))}</div>
+        <div class="catalog-poster-wrap">${this.posterCell(v.name, v.poster)}</div>
         <div class="catalog-tile-name" dir="${nameDir()}">${this.highlighted(v.name)}</div>
       </div>
     `;
@@ -1043,8 +1016,7 @@ export class Search {
   private seriesTile(s: SeriesItem): Safe {
     return html`
       <div class="catalog-tile search-poster-tile" data-focusable data-key="s:${s.seriesId}" data-series-id="${s.seriesId}">
-        <div class="catalog-poster-wrap">${this.posterCell(s.name, s.poster)}${
-          raw(seriesLockBadge(s))}</div>
+        <div class="catalog-poster-wrap">${this.posterCell(s.name, s.poster)}</div>
         <div class="catalog-tile-name" dir="${nameDir()}">${this.highlighted(s.name)}</div>
       </div>
     `;
@@ -1789,7 +1761,7 @@ export class Search {
 
   private playProgram(result: ProgramResult, query: string, resumeSecs?: number): void {
     const { channel, channelIndex, programme } = result;
-    rememberQuery(query, liveParentalRequest(channel));
+    StorageService.addSearchHistory(query);
     let catchup: CatchupInfo | undefined;
     if (programme.stop.getTime() <= Date.now() &&
         XtreamArchiveService.isAvailable(channel, programme.start.getTime())) {
@@ -2030,10 +2002,4 @@ function indicesOf<T>(items: T[], selected: T[]): number[] {
   const byItem = new Map<T, number>();
   for (let index = 0; index < items.length; index++) byItem.set(items[index], index);
   return selected.map(item => byItem.get(item) ?? -1);
-}
-
-// A query that led to PIN-guarded content stays out of recent searches, which
-// anyone can see once the session is locked again (or the PIN was canceled).
-function rememberQuery(query: string, request: Parameters<typeof ParentalControlService.protects>[0]): void {
-  if (!ParentalControlService.protects(request)) StorageService.addSearchHistory(query);
 }

@@ -237,9 +237,6 @@ Native playback errors use the existing video-element error path. Shaka handles
 recoverable streaming errors internally; critical errors invoke the same
 channel fallback.
 
-Channel-health probing accepts MPD XML and rejects other XML responses. It does
-not probe template-derived media segments.
-
 ## ClearKey DRM through Shaka
 
 ClearKey (`org.w3.clearkey`) uses the same on-demand Shaka MSE/EME path.

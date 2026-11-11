@@ -6,7 +6,7 @@ const owner = (itemId: string) => ({ kind: 'series' as const, itemId });
 
 const item = (id: string, series = 's1'): VodQueueItem => ({
   url: `http://host/series/u/p/${id}.mkv`, title: `Series ${series} ${id}`, poster: `http://host/${id}.jpg`,
-  accountId: 'x1', itemId: id, kind: 'episode', categoryId: 'c1', parentalItemId: series,
+  accountId: 'x1', itemId: id, kind: 'episode', categoryId: 'c1',
   subtitles: [], watchlistOwner: owner(series),
 });
 

@@ -41,7 +41,7 @@ interface ChannelListEditorOptions {
   setLocation: (group: ChannelGroupId) => void;
   // A row's place in its list, whether or not it is rendered; -1 if absent.
   rowPosition: (key: string) => number;
-  // Edit mode behind the parental guard; never call enterEditMode directly.
+  // Edit mode goes through the list; never call enterEditMode directly.
   requestEditMode: (group: ChannelGroupId) => void;
 }
 
@@ -850,7 +850,7 @@ export class ChannelListEditor {
       const target = list[pos + delta];
       if (pos < 0 || !target) return;
       ChannelCustomizationService.moveChannel(
-        PlaylistService.getUnconcealedChannels().map(channelKey),
+        PlaylistService.getCustomizedChannels().map(channelKey),
         grabbed.key,
         channelKey(target),
         delta > 0,
@@ -934,7 +934,7 @@ export class ChannelListEditor {
 
     if (grabbed.kind === 'channel' && target.kind === 'channel') {
       ChannelCustomizationService.moveChannel(
-        PlaylistService.getUnconcealedChannels().map(channelKey),
+        PlaylistService.getCustomizedChannels().map(channelKey),
         grabbed.key,
         target.key,
         after,
@@ -1378,7 +1378,7 @@ export class ChannelListEditor {
 
   private editGroupKeys(): string[] {
     const keys = new Set<string>();
-    for (const channel of PlaylistService.getUnconcealedChannels()) {
+    for (const channel of PlaylistService.getCustomizedChannels()) {
       const key = groupKeyOf(channel);
       if (key) keys.add(key);
     }

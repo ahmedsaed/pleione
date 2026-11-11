@@ -12,7 +12,6 @@ export function backStep(view: string, playedFrom: PlayedFrom): BackStep {
     case 'player':
       return playedFrom;
     case 'reminders':
-    case 'parental-controls':
       return 'settings';
     default:
       return 'home';

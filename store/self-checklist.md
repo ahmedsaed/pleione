@@ -46,7 +46,7 @@ Summary: 37 Pass (8 of them verified on TV), 9 Pass pending a TV check, 7 N/A.
 | 12 | EXIT button (UI) | Pass | The app has no on-screen Exit button; Back on Home and the remote's EXIT key close it (rows 11, 38). |
 | 13 | Lockup or latchup | Pass | Verified on TV 2026-10-30. Long-session budget: `e2e/long-session.spec.ts`. |
 | 14 | Abnormal termination | Pass | Verified on TV 2026-10-30. Load and playback errors are caught and shown as messages (`e2e/provider-retry.spec.ts`, `e2e/live-preview.spec.ts` "a dead previewed channel…"). |
-| 15 | Keyboard text and number input | Pass | Verified on TV 2026-10-30 with the TV's on-screen keyboard (account fields, Search, PIN). The TV check found the caret wrapping around at a field's ends; fixed since (it now stops at the edge, and Left/Right leave the field), covered by `src/navigation/caret-edge.test.ts`. |
+| 15 | Keyboard text and number input | Pass | Verified on TV 2026-10-30 with the TV's on-screen keyboard (account fields, Search). The TV check found the caret wrapping around at a field's ends; fixed since (it now stops at the edge, and Left/Right leave the field), covered by `src/navigation/caret-edge.test.ts`. |
 | 16 | Keyboard special characters | Pass | Verified on TV 2026-10-30 (`:`, `/`, `.`, `@` in server addresses and passwords). |
 | 17 | Keyboard linkage to TV functions | Pass | Verified on TV 2026-10-30: the TV keyboard opens on OK in a text field and closes back to the app. `e2e/search.spec.ts` "OK in the box closes the keyboard…". |
 | 18 | Terms and conditions | N/A | No account or terms to accept in the app; terms are on the website. |
@@ -54,7 +54,7 @@ Summary: 37 Pass (8 of them verified on TV), 9 Pass pending a TV check, 7 N/A.
 | 20 | Sign-in | Pass | Adding an Xtream account and **Check** sign in to the user's provider; a failed sign-in shows a banner with **Try again** / **Edit account** (`e2e/home-nav.spec.ts`, `src/services/xtream-*.test.ts`). |
 | 21 | Sign-out | Pass | Removing an account in **Settings › Sources**, or **Reset App**, removes its credentials from the TV (`src/components/settings.test.ts`, `src/services/app-reset.test.ts`). |
 | 22 | Search | Pass | `e2e/search.spec.ts` (channels, programs, movies, series, recent searches). |
-| 23 | Adult content authentication | Pass | No adult content is included. Parental controls lock live groups and channels and movie and series categories behind a four-digit PIN, with retry lockout: `e2e/parental-controls.spec.ts`, `src/services/parental-control.test.ts`. Steps in `ux-scenario.md` section 7a. |
+| 23 | Adult content authentication | N/A | No adult content is included. Pleione ships no content; it plays only the sources the user adds, and restricting access is left to the TV's own app lock. |
 | 24 | In-app purchase | N/A | No purchases. |
 | 25 | Payment method, purchase history, playback | N/A | No purchases. |
 
@@ -66,7 +66,7 @@ Summary: 37 Pass (8 of them verified on TV), 9 Pass pending a TV check, 7 N/A.
 | 27 | Magic remote control support | Pass | Pointer mode via `cursorStateChange` / `CURSOR_SHOW` (`src/navigation/input-mode.ts`, `src/navigation/input-mode.test.ts`). |
 | 28 | Magic remote pointer movement | Pass | Hover lights the item under the pointer without moving the keys: `e2e/focus-owner.spec.ts`, `e2e/live-guide.spec.ts` "the pointer lights a cell…". |
 | 29 | Magic remote OK key on UI buttons | Pass | OK fires a normal `click`: `e2e/home-nav.spec.ts` "the first-run cards open the Add flows by D-pad and pointer", `e2e/player.spec.ts` "pause control pauses on a Magic-Remote pointer click". |
-| 30 | Magic remote wheel scrolling | Pass | `e2e/edge-scroll.spec.ts`, `e2e/catalog-browse.spec.ts`, `e2e/parental-controls.spec.ts` (wheel-scrolled rows). |
+| 30 | Magic remote wheel scrolling | Pass | `e2e/edge-scroll.spec.ts`, `e2e/catalog-browse.spec.ts` (wheel-scrolled rows). |
 | 31 | Navigation keys | Pass | `src/navigation/spatial-nav.test.ts`; `e2e/live-panes.spec.ts` "the D-pad crosses groups, rows, and the header…". |
 | 32 | Color (function) keys | Pass | Red opens the Guide, Green toggles a favorite, Yellow shows the player controls, shown in the on-screen legends: `e2e/live-guide.spec.ts`, `e2e/channel-list.spec.ts`, `e2e/player.spec.ts`. |
 | 33 | General remote OK key | Pass | OK selects everywhere and pauses in the player: `e2e/player.spec.ts`, `e2e/live-preview.spec.ts`. |
@@ -109,7 +109,7 @@ Summary: 37 Pass (8 of them verified on TV), 9 Pass pending a TV check, 7 N/A.
 
 | No. | Item | Result | Evidence |
 |---|---|---|---|
-| 53 | App works after factory reset | Pass | With empty storage the app opens on its first-run screen (`e2e/onboarding.spec.ts`); **Reset App** returns it there (`src/services/app-reset.test.ts`, `e2e/parental-controls.spec.ts` "Reset App clears a forgotten PIN"). |
+| 53 | App works after factory reset | Pass | With empty storage the app opens on its first-run screen (`e2e/onboarding.spec.ts`); **Reset App** returns it there (`src/services/app-reset.test.ts`). |
 
 ## Comments for the reviewer
 
@@ -117,8 +117,6 @@ Summary: 37 Pass (8 of them verified on TV), 9 Pass pending a TV check, 7 N/A.
   provider the user adds.
 - The test account (server URL, username and password) is given in Seller Lounge; it serves
   synthetic test media made for this review.
-- No adult content is included. Parental controls exist: **Settings › General › Parental
-  controls** locks groups, channels and catalog categories behind a PIN (`ux-scenario.md`
-  section 7a).
+- No adult content is included.
 - The **Adaptive 360p-1080p** channel in **Group HD** needs HLS: set the test account's **Live
   stream format** to **HLS (m3u8)** or **Auto** in **Settings › Sources**.

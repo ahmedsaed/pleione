@@ -43,7 +43,6 @@ import { Movies } from './movies';
 import { Focus, Tier } from '../navigation/focus-scope';
 import { FocusRing } from '../navigation/focus-ring';
 import { VirtualGrid } from '../utils/virtual-grid';
-import { ParentalControlService } from '../services/parental-control';
 import { CONFIG } from '../config';
 
 const account: PlaylistEntry = {
@@ -231,20 +230,6 @@ describe('Movies browse + grid', () => {
       pressKey(view, 'back');
       expect(container.querySelector('[data-rail-key="watchlist"]')).toBeNull();
       expect(container.querySelector('.catalog-layer-browse .focused')).not.toBeNull();
-    });
-
-    it('counts only visible titles, without revealing concealed ones', async () => {
-      savedTitles(22);
-      const concealed = vi.spyOn(ParentalControlService, 'isConcealed').mockImplementation(
-        request => request.target.kind === 'vod-item' && request.target.itemId === 'm0');
-      try {
-        await openWith();
-        const rail = container.querySelector('[data-rail-key="watchlist"]')!;
-        expect(rail.querySelector('.catalog-see-all-count')?.textContent).toBe('21 movies');
-        expect(rail.querySelector('[data-item-id="m0"]')).toBeNull();
-      } finally {
-        concealed.mockRestore();
-      }
     });
   });
 
@@ -960,6 +945,9 @@ describe('Movies browse + grid', () => {
     return { close: () => { open = false; Focus.flush(); } };
   }
 
+  const rerenderBrowse = (view: unknown): void =>
+    (view as { renderBrowse(animate: boolean): void }).renderBrowse(false);
+
   // Regression: a re-render under a surface that owns the keys put the first
   // title back in the hero while the pointer's lit tile stayed lit.
   it('keeps the hero on the tile the pointer lights through a re-render under another owner', async () => {
@@ -976,15 +964,15 @@ describe('Movies browse + grid', () => {
       expect(tile.classList.contains('focused')).toBe(true);
       expect(title()).toBe('Movie Two');
 
-      // Rails re-render (a lock change, new rail data, a scroll frame).
-      view.refreshLocks();
+      // Rails re-render (new rail data, a scroll frame).
+      rerenderBrowse(view);
       Focus.flush();
       expect(title()).toBe('Movie Two');
 
       // The pointer gone from the rails, nothing there is lit: the first title.
       tile.dispatchEvent(new CustomEvent('nav:unhover', { bubbles: true }));
       Focus.flush();
-      view.refreshLocks();
+      rerenderBrowse(view);
       expect(title()).toBe('Movie One');
       bar.close();
     } finally {
@@ -1235,18 +1223,6 @@ describe('Movies browse + grid', () => {
     expect(focusedKey()).toBe('all:4');
   });
 
-  it('shows a locked category as locked on its See all tile too', async () => {
-    const lockState = vi.spyOn(ParentalControlService, 'groupLockState').mockImplementation(
-      (targets) => (targets.some((target) => 'categoryId' in target && target.categoryId === '2') ? 'locked' : null));
-    try {
-      await eightFullCategories();
-      expect(container.querySelector('.catalog-see-all[data-category-id="2"] .lock-badge.is-locked')).not.toBeNull();
-      expect(container.querySelector('.catalog-see-all[data-category-id="1"] .lock-badge')).toBeNull();
-    } finally {
-      lockState.mockRestore();
-    }
-  });
-
   it('keeps focus in the Watchlist rail after the origin title is removed', async () => {
     catalogMock.loadVodInfo.mockResolvedValue(noInfo);
     storageMock.getResumeList.mockReturnValue([
@@ -1337,20 +1313,6 @@ describe('Movies browse + grid', () => {
       view.handleAction('back');
       expect(focusedKey()).toBe('all-categories');
       expect(container.querySelector('.catalog-layer-categories .catalog-cat')).toBeNull();
-    });
-
-    it('shows a locked category with its lock', async () => {
-      const lockState = vi.spyOn(ParentalControlService, 'groupLockState').mockImplementation(
-        (targets) => (targets.some((target) => 'categoryId' in target && target.categoryId === '12') ? 'locked' : null));
-      try {
-        const view = await manyCategories(14);
-        await selectAndSettle(view, container.querySelector<HTMLElement>('[data-action="all-categories"]')!);
-        expect(chip('12').querySelector('.lock-badge.is-locked')).not.toBeNull();
-        expect(chip('12').classList.contains('catalog-cat-locked')).toBe(true);
-        expect(chip('11').querySelector('.lock-badge')).toBeNull();
-      } finally {
-        lockState.mockRestore();
-      }
     });
 
     it('moves a row at a time, and returns from a category past the first window', async () => {

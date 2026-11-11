@@ -107,7 +107,6 @@ import {
   legacyChannelKey,
 } from '../utils/channel';
 import { ChannelCustomizationService } from './channel-customization';
-import { ParentalControlService } from './parental-control';
 import { CONFIG } from '../config';
 import { parseM3U } from '../parsers/m3u-parser';
 import { checkConnections } from './connection-check';
@@ -1367,28 +1366,6 @@ describe('PlaylistService customization', () => {
     }
   });
 
-  it('drops concealed channels from every list but keeps them in the EPG set', async () => {
-    useRecord(record({}));
-    await PlaylistService.refresh();
-    const concealing = vi.spyOn(ParentalControlService, 'concealing', 'get')
-      .mockReturnValue(true);
-    const concealed = vi.spyOn(ParentalControlService, 'isConcealed')
-      .mockImplementation(request => request.target.kind === 'live-channel'
-        && request.target.channelKey === KEY_B);
-    try {
-      PlaylistService.applyCustomization();
-      expect(PlaylistService.channels.map(c => c.name)).toEqual(['Alpha']);
-      expect(PlaylistService.indexOfKey(KEY_B)).toBe(-1);
-      expect(PlaylistService.getEpgEligibleChannels().map(c => c.name))
-        .toEqual(['Alpha', 'Bravo']);
-    } finally {
-      concealing.mockRestore();
-      concealed.mockRestore();
-      PlaylistService.applyCustomization();
-    }
-    expect(PlaylistService.channels.map(c => c.name)).toEqual(['Alpha', 'Bravo']);
-  });
-
   it('maps visible channels to their playlist-cache record', async () => {
     useRecord(record({ order: [KEY_B, KEY_A] }));
     await PlaylistService.refresh();
@@ -1397,25 +1374,14 @@ describe('PlaylistService customization', () => {
     const ref = { store: 'playlist-cache', key: 'k', timestamp: 1 };
     cacheMock.cacheRecordRef.mockImplementation(value =>
       value === PlaylistService.allChannels ? ref : null);
-    const concealing = vi.spyOn(ParentalControlService, 'concealing', 'get')
-      .mockReturnValue(true);
-    const concealed = vi.spyOn(ParentalControlService, 'isConcealed')
-      .mockImplementation(request => request.target.kind === 'live-channel'
-        && request.target.channelKey === KEY_A);
     try {
       PlaylistService.applyCustomization();
       expect(PlaylistService.getChannelCacheSource()).toEqual({
         record: ref,
         length: 2,
-        selection: new Uint32Array([1]),
+        selection: new Uint32Array([1, 0]),
       });
-      concealing.mockReturnValue(false);
-      PlaylistService.applyCustomization();
-      expect(PlaylistService.getChannelCacheSource()?.selection)
-        .toEqual(new Uint32Array([1, 0]));
     } finally {
-      concealing.mockRestore();
-      concealed.mockRestore();
       cacheMock.cacheRecordRef.mockReset();
       cacheMock.cacheRecordRef.mockReturnValue(null);
       PlaylistService.applyCustomization();
@@ -1484,7 +1450,7 @@ describe('PlaylistService picked source', () => {
 
   it('lists only the picked source and keeps the rest loaded', () => {
     expect(PlaylistService.channels.map(entry => entry.name)).toEqual(['Two', 'Both']);
-    expect(PlaylistService.getUnconcealedChannels()).toHaveLength(3);
+    expect(PlaylistService.getCustomizedChannels()).toHaveLength(3);
   });
 
   it('follows a new pick without loading anything', () => {
@@ -1522,7 +1488,7 @@ describe('PlaylistService picked source', () => {
     label.mockRestore();
   });
 
-  it('shows every source to the parental manager', () => {
+  it('shows every source when asked', () => {
     PlaylistService.setAllSources(true);
     expect(PlaylistService.channels).toHaveLength(3);
     PlaylistService.setAllSources(false);
@@ -1532,7 +1498,7 @@ describe('PlaylistService picked source', () => {
   it('picks the source of a channel another source hides', () => {
     const followed = vi.fn();
     PlaylistService.onSourceFollowed = followed;
-    PlaylistService.showSourceOf(PlaylistService.getUnconcealedChannels()[0]);
+    PlaylistService.showSourceOf(PlaylistService.getCustomizedChannels()[0]);
     PlaylistService.onSourceFollowed = null;
     expect(storageMock.setSelectedXtreamAccountId).toHaveBeenCalledWith('a');
     expect(followed).toHaveBeenCalled();

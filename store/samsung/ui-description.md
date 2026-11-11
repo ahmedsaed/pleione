@@ -32,8 +32,8 @@ Home ──┬── Live ──── channel list ─┬── full-screen pla
        ├── Movies ── detail page ────── player (movie)
        ├── Series ── detail page ────── player (episode)
        ├── Search ── results ─────────── detail page / player
-       └── Settings ─ General (language, time format, parental controls), Sources,
-                      Program Guide, Appearance, Playback, Online Subtitles,
+       └── Settings ─ General (language, time format), Sources,
+                      Program Guide, Appearance, Online Services,
                       Advanced, Data Management
 ```
 
@@ -78,7 +78,7 @@ keys. Every color-key action also has a path with the arrows and **OK** alone:
 | **Yellow**, edit the channel list | The **Edit Channel List** button in Live's header (**Up** from the list) |
 | **Yellow**, player controls | **OK** |
 | **Blue**, Settings | **Return** to Home, then **Settings** |
-| Colors in the channel editor, favorites, parental controls and Live categories | The buttons in each screen's footer, which take focus and **OK** |
+| Colors in the channel editor, favorites and Live categories | The buttons in each screen's footer, which take focus and **OK** |
 
 ## Language switching
 
@@ -90,7 +90,7 @@ Chinese. The choice applies at once; Arabic mirrors the interface right to left.
 
 Sections 0 to 7 and 10 of [`../ux-scenario.md`](../ux-scenario.md): the test account, first
 launch and adding the account, Home, Live TV and the Guide, the player controls, Movies and
-Series, Search, Settings with parental controls, and the resolution and network checks. Leave
+Series, Search, Settings, and the resolution and network checks. Leave
 out section 8 and the phone setup panel of section 1: the store package has no phone setup. One slide per section; each step names the keys and buttons it uses.
 
 ## Samsung differences

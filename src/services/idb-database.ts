@@ -14,14 +14,12 @@ const log = createLogger('PersistenceDB');
 export { CACHE_META_STORE, CATALOG_STORE, EPG_STORE, PLAYLIST_STORE, SEARCH_INDEX_STORE };
 export const SUBTITLE_STORE = 'subtitle-cache';
 export const STREAM_MIME_STORE = 'stream-mime-cache';
-export const CHANNEL_HEALTH_STORE = 'channel-health-cache';
 export const CACHE_STORES = [
   EPG_STORE,
   CATALOG_STORE,
   SUBTITLE_STORE,
   PLAYLIST_STORE,
   STREAM_MIME_STORE,
-  CHANNEL_HEALTH_STORE,
   SEARCH_INDEX_STORE,
 ] as const;
 export type CacheStore = typeof CACHE_STORES[number];
@@ -34,10 +32,17 @@ export const USER_DATA_STORES = [
   'playback-progress',
   'recently-watched',
   'online-sub-picks',
-  'parental-control',
 ] as const;
 export type UserDataStore = typeof USER_DATA_STORES[number];
 export const USER_META_STORE = 'user-meta';
+// Stores of removed features, deleted by any upgrade that still finds them.
+export const RETIRED_STORES: readonly string[] = [
+  'parental-control', // v8: parental controls were removed
+];
+
+// v8 dropped the channel health check; its cache store and accounting go.
+const REMOVED_CACHE_STORES = ['channel-health-cache'];
+const REMOVED_CACHE_CATEGORIES = ['health'];
 
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 
@@ -50,6 +55,21 @@ function ensureCacheIndexes(store: IDBObjectStore): void {
   if (!store.indexNames.contains('lastAccessedAt')) {
     store.createIndex('lastAccessedAt', 'lastAccessedAt');
   }
+}
+
+function dropRemovedCacheStores(db: IDBDatabase, tx: IDBTransaction): void {
+  let dropped = false;
+  for (const storeName of REMOVED_CACHE_STORES) {
+    if (!db.objectStoreNames.contains(storeName)) continue;
+    db.deleteObjectStore(storeName);
+    dropped = true;
+  }
+  if (!dropped) return;
+  const meta = tx.objectStore(CACHE_META_STORE);
+  for (const category of REMOVED_CACHE_CATEGORIES) meta.delete(category);
+  // Without a total the cache accounting rebuilds, dropping the removed
+  // stores' per-entry rows.
+  meta.delete('total');
 }
 
 export function openPersistenceDb(): Promise<IDBDatabase | null> {
@@ -89,6 +109,7 @@ export function openPersistenceDb(): Promise<IDBDatabase | null> {
       if (!db.objectStoreNames.contains(CACHE_META_STORE)) {
         db.createObjectStore(CACHE_META_STORE, { keyPath: 'category' });
       }
+      dropRemovedCacheStores(db, tx);
       for (const storeName of USER_DATA_STORES) {
         if (db.objectStoreNames.contains(storeName)) continue;
         const store = db.createObjectStore(storeName, { keyPath: 'key' });
@@ -101,6 +122,9 @@ export function openPersistenceDb(): Promise<IDBDatabase | null> {
       }
       if (!db.objectStoreNames.contains(USER_META_STORE)) {
         db.createObjectStore(USER_META_STORE, { keyPath: 'key' });
+      }
+      for (const storeName of RETIRED_STORES) {
+        if (db.objectStoreNames.contains(storeName)) db.deleteObjectStore(storeName);
       }
     };
     req.onsuccess = () => {

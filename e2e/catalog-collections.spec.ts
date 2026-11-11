@@ -154,45 +154,50 @@ test('leaves the Continue rail after completing its final episode from the serie
   await expect(page.locator('#view-series .catalog-layer-browse .focused')).toHaveCount(1);
 });
 
-test('refreshes concealed collection counts when the unlock session expires without moving Settings focus', async ({ page }) => {
+// Parental controls were removed: what an older version stored to lock and
+// hide content must neither hide anything nor outlive the first launch.
+test('shows content an old parental lock hid and drops the stored lock', async ({ page }) => {
   await seedCollections(page, 1);
+  await page.addInitScript(() => {
+    if (localStorage.getItem('parental_fixture')) return;
+    localStorage.setItem('parental_fixture', '1');
+    const config = {
+      version: 1, enabled: true, pin: { algorithm: 'sha256', salt: 's1', digest: 'd1' },
+      concealMode: 'hide-locked', unlockDuration: 'once',
+      groupRules: { 'vod-category|x1|1': 'protect', 'series-category|x1|2': 'protect' },
+      itemRules: {}, approvedSources: [],
+    };
+    localStorage.setItem('iptv_parental_control', JSON.stringify(config));
+    localStorage.setItem('iptv_parental_throttle', JSON.stringify({ failures: 5, lockouts: 1, blockedUntil: 1 }));
+    localStorage.setItem('iptv_fb_parental-control', JSON.stringify({
+      r: { config: { v: { key: 'config', value: config }, t: 1 } }, d: {},
+    }));
+  });
   await page.goto('/');
-  await enterTab(page, 'settings');
-  await page.locator('#manage-parental-controls').click();
-  const prompt = page.locator('.parental-pin-prompt');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(prompt.locator('h2')).toContainText('Confirm');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  const manager = page.locator('#view-parental-controls');
-  await expect(manager).toBeVisible();
-  await manager.locator('#parental-kind [data-value="vod"]').click();
-  const category = manager.locator('[data-parental-group]').filter({ hasText: 'Cat A' });
-  await category.click();
-  await expect(category).toContainText('Locked');
-  await manager.locator('[data-parental-tab="options"]').click();
-  await manager.locator('#parental-conceal [data-value="hide-locked"]').click();
-  await expect(manager.locator('#parental-duration .active')).toHaveAttribute('data-value', '5-minutes');
-  await page.clock.install();
-  await manager.locator('[data-parental-back]').click();
-  await expect(page.locator('#view-settings')).toBeVisible();
-  await page.locator('[data-settings-target="data"]').click();
-  const resumeHint = page.locator('#continue-watching-count-hint');
-  const watchlistHint = page.locator('#watchlist-count-hint');
-  await expect(resumeHint).toContainText('(2)');
-  await expect(watchlistHint).toContainText('(2)');
-  const clear = page.locator('#clear-continue-watching');
-  await clear.hover();
-  await expect(clear).toHaveClass(/focused/);
-  const button = await clear.elementHandle();
-
-  await page.clock.fastForward(5 * 60 * 1000 + 1);
+  await enterTab(page, 'movies');
+  const rail = page.locator('#view-movies [data-rail-key="continue"]');
+  await expect(rail.locator('.catalog-tile[data-item-id="vod0"]')).toBeVisible();
+  await expect(page.locator('#view-movies .lock-badge')).toHaveCount(0);
   await expect(page.locator('[data-lock-now]')).toHaveCount(0);
-  await expect(resumeHint).not.toContainText(/\(\d+\)/);
-  await expect(watchlistHint).not.toContainText(/\(\d+\)/);
-  await expect(clear).toHaveClass(/focused/);
-  expect(await button!.evaluate(element => element === document.querySelector('#clear-continue-watching'))).toBe(true);
-  await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#view-settings .focused')).toHaveCount(1);
+
+  expect(await page.evaluate(() => [
+    'iptv_parental_control', 'iptv_parental_throttle', 'iptv_fb_parental-control',
+  ].map(key => localStorage.getItem(key)))).toEqual([null, null, null]);
+  expect(await page.evaluate(() => new Promise<string[]>((resolve, reject) => {
+    const req = indexedDB.open('iptv');
+    req.onsuccess = () => {
+      const names = Array.from(req.result.objectStoreNames);
+      req.result.close();
+      resolve(names);
+    };
+    req.onerror = () => reject(req.error);
+  }))).not.toContain('parental-control');
+
+  await enterTab(page, 'settings');
+  await expect(page.locator('#manage-parental-controls')).toHaveCount(0);
+  await page.locator('[data-settings-target="data"]').click();
+  await expect(page.locator('#continue-watching-count-hint')).toContainText('(2)');
+  await expect(page.locator('#watchlist-count-hint')).toContainText('(2)');
 });
 
 test('keeps one ring through a virtualized collection grid and back to its rail', async ({ page }) => {

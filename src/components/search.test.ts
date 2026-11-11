@@ -118,7 +118,6 @@ vi.mock('../workers/app-worker-client', async () => {
 import { Search } from './search';
 import { CONFIG } from '../config';
 import { Focus } from '../navigation/focus-scope';
-import { ParentalControlService } from '../services/parental-control';
 
 const account: PlaylistEntry = {
   id: 'x1', name: 'X', url: 'http://host:8080', source: 'xtream', xtream: { username: 'u', password: 'p' },
@@ -2621,23 +2620,6 @@ describe('Search (M3U-only, no account)', () => {
     await view.setQuery('alpha');
     expect(box().querySelector('img')).toBeNull();
     expect(box().querySelector('.catalog-poster-empty')?.textContent).toBe('A');
-  });
-
-  it('puts a channel\'s lock badge in the logo\'s corner', async () => {
-    playlistMock.channels = [chan('Alpha News')];
-    playlistMock.indexOf.mockReturnValue(0);
-    const enabled = vi.spyOn(ParentalControlService, 'enabled', 'get').mockReturnValue(true);
-    const lockState = vi.spyOn(ParentalControlService, 'lockState').mockReturnValue('locked');
-    try {
-      const { view } = await openM3U();
-      await view.setQuery('news');
-      const card = container.querySelector<HTMLElement>('.search-channel-card')!;
-      expect(card.querySelector('.search-channel-logo .lock-badge')).not.toBeNull();
-      expect(card.querySelector('.search-channel-name .lock-badge')).toBeNull();
-    } finally {
-      enabled.mockRestore();
-      lockState.mockRestore();
-    }
   });
 
   it('plays a channel row on select', async () => {

@@ -4,7 +4,6 @@ import { CONFIG } from './config';
 import { KeyHandler } from './navigation/key-handler';
 import { PlaylistService } from './services/playlist-service';
 import { EpgService } from './services/epg-service';
-import { ChannelHealthService } from './services/channel-health';
 import { StorageService } from './services/storage-service';
 import {
   clearCachedCatalog,
@@ -40,16 +39,9 @@ import { firstRunLanding } from './components/first-run';import { resetAppData }
 import { ReminderPrompt } from './components/reminder-prompt';
 import { ConfirmationPrompt } from './components/confirmation-prompt';
 import { ReminderManager } from './components/reminder-manager';
-import { ParentalControls } from './components/parental-controls';
-import { ParentalPinPrompt } from './components/parental-pin-prompt';
-import {
-  liveParentalRequest,
-  ParentalControlService,
-  vodParentalRequest,
-} from './services/parental-control';
 import { setDisplayTz, setTimeFormat } from './utils/time';
 import {
-  initTheme, applyTheme, applyOverlayStyle, applyTextSize, applyInterfaceSize, applyDirection,
+  initTheme, applyTheme, applyTextSize, applyInterfaceSize, applyDirection,
 } from './services/theme-service';
 import { applyAnimationMode } from './services/motion-service';
 import { channelKey } from './utils/channel';
@@ -77,7 +69,7 @@ import { needsPrivacyConsent, withPrivacyConsent } from './components/privacy-no
 const log = createLogger('App');
 
 type ChannelLanding = 'launch' | 'live' | 'quiet';
-type ViewName = 'home' | 'channels' | 'player' | 'settings' | 'parental-controls' | 'reminders'
+type ViewName = 'home' | 'channels' | 'player' | 'settings' | 'reminders'
   | 'loading' | 'movies' | 'series' | 'search';
 
 class App {
@@ -105,19 +97,11 @@ class App {
         this.liveDwell.focus(index, this.livePreview.previewIndex);
         return;
       }
-      // Resting on a locked channel asks for nothing: OK does.
-      const channel = PlaylistService.getByIndex(index);
-      if (channel && !ParentalControlService.decision(liveParentalRequest(channel, 'preview')).allowed) {
-        this.livePreview.close();
-        return;
-      }
       this.livePreview.retune(index, {
         group: this.channelList.group,
       });
     });
   private settings!: Settings;
-  private parentalControls!: ParentalControls;
-  private parentalPinPrompt = new ParentalPinPrompt();
   private sidebar!: Sidebar;
   private reminderPrompt = new ReminderPrompt();
   private exitPrompt = new ConfirmationPrompt('prompt.exit');
@@ -171,11 +155,6 @@ class App {
     const done = log.time('init');
     log.info('Initializing app');
     await StorageService.init();
-    ParentalControlService.reload();
-    StorageService.setPlaylistsReplacedHandler((previous, next) =>
-      ParentalControlService.reviewChangedSources(previous, next));
-    ParentalControlService.setChallengeHandler(request =>
-      this.parentalPinPrompt.showChallenge(request));
     StorageService.setWriteFailureHandler(() => showToast(t('app.saveFailed')));
     this.searchPrewarm.watchSourceWrites();
     initLocale(StorageService.getLocalePreference());
@@ -184,6 +163,7 @@ class App {
     if (initialLoadingText) initialLoadingText.textContent = t('common.loading');
     const loadingTitle = $('#loading-title');
     if (loadingTitle) loadingTitle.textContent = CONFIG.APP_NAME;
+    StorageService.pruneRetiredSettings();
     initTheme();
     applyDirection(localeDirection());
     installBackdropArt();
@@ -192,7 +172,6 @@ class App {
       channels: $('#view-channels')!,
       player: $('#view-player')!,
       settings: $('#view-settings')!,
-      'parental-controls': $('#view-parental-controls')!,
       reminders: $('#view-reminders')!,
       movies: $('#view-movies')!,
       series: $('#view-series')!,
@@ -223,8 +202,6 @@ class App {
         onEpgOffsetChanged: () => {
           void this.search.refreshPrograms();
         },
-        authorizeEdit: proceed =>
-          this.authorizeLiveEditing(t('settings.editChannelList'), proceed),
         onEnterManagement: () => this.livePreview?.close(),
       },
     );
@@ -242,31 +219,22 @@ class App {
     },
     () => !this.sidebar.visible,
     () => {
-      this.sidebar.refresh();
-    }, () => {
       this.livePreview?.refresh();
     },
     () => this.livePreview?.canResumePlayback() ?? true,
-    (channel, action, preview, ask = true) => {
-      const request = liveParentalRequest(channel, preview ? 'preview' : 'play');
-      if (!ask && !ParentalControlService.decision(request).allowed) return false;
-      return ParentalControlService.authorize(request, () => {
-        if (!preview && !this.isCurrentView('player')) {
-          // Live playback returns to Home, Search, or Live, never a page
-          // left beneath it.
-          this.releaseSections(this.playerReturn);
-          this.showView('player');
-        }
-        action();
-      });
+    (action, preview) => {
+      if (!preview && !this.isCurrentView('player')) {
+        // Live playback returns to Home, Search, or Live, never a page
+        // left beneath it.
+        this.releaseSections(this.playerReturn);
+        this.showView('player');
+      }
+      action();
     },
-    (item, action) => ParentalControlService.authorize(
-      vodParentalRequest(item, item.resumeSecs > 0 ? 'resume' : 'play'),
-      () => {
-        if (!this.isCurrentView('player')) this.showView('player');
-        action();
-      },
-    ),
+    (action) => {
+      if (!this.isCurrentView('player')) this.showView('player');
+      action();
+    },
     {
       isFavorite: (channel) => StorageService.getFavorites().includes(channelKey(channel)),
       toggleFavorite: (channel) => this.toggleChannelFavorite(channel),
@@ -290,18 +258,9 @@ class App {
       (action) => this.onSettingsSaved(action),
       () => this.player.syncCurrentIndex(),
       () => this.openReminderManager(),
-      () => this.openParentalControls(),
-      (name, proceed) => this.authorizeLiveEditing(name, proceed),
-      (id, proceed, turnOff) => this.authorizeSourceRemoval(id, proceed, turnOff),
     );
     this.settings.setChannelsReady(() => this.channelsLoaded);
     PlaylistService.onSourceFollowed = () => this.sourceChanged();
-    this.parentalControls = new ParentalControls(
-      this.views['parental-controls'],
-      () => this.goUp('parental-controls'),
-      done => this.parentalPinPrompt.showChange(done),
-      done => this.parentalPinPrompt.showCreate(done),
-    );
 
     this.player.init($('#video-player') as HTMLVideoElement);
     this.livePreview = new LivePreview($('#live-preview')!, {
@@ -318,14 +277,8 @@ class App {
       onWatch: index => this.channelList.setWatching(index),
     });
     window.addEventListener('resize', () => this.livePreview.refreshLayout());
-    ParentalControlService.subscribe(concealmentChanged =>
-      this.onParentalLocksChanged(concealmentChanged));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        this.parentalPinPrompt.dismiss();
-        // Whoever comes back must not find the manager open without a PIN.
-        if (this.isCurrentView('parental-controls')) this.leaveParentalControls();
-        ParentalControlService.lock('backgrounded');
         this.livePreview.suspend();
       } else {
         this.livePreview.refresh();
@@ -421,7 +374,6 @@ class App {
         if (index >= 0 && index < PlaylistService.channels.length) this.playChannel(index);
       }),
       onSelectAccount: (id) => this.selectXtreamAccount(id),
-      onLockNow: () => ParentalControlService.lock('lock-now'),
       onBack: () => this.goUp('home'),
       onAddSource: (kind, via) => withPrivacyConsent(() =>
         this.openSettingsAt({ kind: kind === 'xtream' ? 'add-xtream' : 'add-playlist' }, via)),
@@ -968,7 +920,6 @@ class App {
       if (!StorageService.getPlaylists().some(isSourceEnabled)) return;
       await PlaylistService.refresh(undefined, { preserveOnFailure: true });
       this.player.syncCurrentIndex();
-      await ChannelHealthService.initialize();
 
       const epgSources = this.epgSources();
       if (epgSources.length) {
@@ -1095,7 +1046,6 @@ class App {
         throw new Error('Every playlist source failed to load');
       }
       this.player.syncCurrentIndex();
-      await ChannelHealthService.initialize();
       if (stale()) return;
       log.info('Channels loaded:', PlaylistService.channels.length,
         '| groups:', PlaylistService.groups.length,
@@ -1291,11 +1241,6 @@ class App {
     return this.viewStack[this.viewStack.length - 1] === name;
   }
 
-  private leaveParentalControls(): void {
-    this.settings.render();
-    this.showView('settings');
-  }
-
   // A channel row took focus in Live: the preview follows once it rests.
   private onLiveRowFocus(index: number | null): void {
     if (index === null || !this.isCurrentView('channels') || this.channelList.isEditing) {
@@ -1372,15 +1317,6 @@ class App {
   }
 
   private showView(name: ViewName, preserveChannelFocus = false, resumeChannelFocus = false): void {
-    // Every way out of the manager (Back, color keys, a reminder)
-    // ends management so concealment returns; the manager never stays stacked.
-    if (name !== 'parental-controls' && this.isCurrentView('parental-controls')) {
-      this.parentalControls.close();
-      this.player.syncCurrentIndex();
-      this.parentalPinPrompt.dismissManagement();
-      ParentalControlService.endManagement();
-      this.viewStack = ['settings'];
-    }
     this.livePreview?.beforeViewChange(name);
     // The player sits over the page it returns to; live playback releases
     // the rest as it starts.
@@ -1393,7 +1329,6 @@ class App {
     // Re-assert the persisted theme on every view transition. This reverts a
     // swatch previewed but not picked when Settings closes.
     applyTheme(StorageService.getTheme());
-    applyOverlayStyle(StorageService.getOverlayStyle());
     applyTextSize(StorageService.getTextSize());
     applyInterfaceSize(StorageService.getInterfaceSize());
     applyAnimationMode(StorageService.getAnimationMode());
@@ -1457,7 +1392,7 @@ class App {
     if (shown !== 'movies') this.movies.deactivate();
     if (shown !== 'series') this.series.deactivate();
     if (shown !== 'search' && !beneath) this.search.deactivate();
-    if (shown !== 'settings' && shown !== 'reminders' && shown !== 'parental-controls') {
+    if (shown !== 'settings' && shown !== 'reminders') {
       this.settings.release();
     }
   }
@@ -1520,7 +1455,7 @@ class App {
     const from = this.viewStack[this.viewStack.length - 1];
     this.loadChannelsBehind('settings');
     // The form under a sub-page or the player still holds its edits.
-    if (from === 'parental-controls' || !this.settings.formLive) this.settings.render();
+    if (!this.settings.formLive) this.settings.render();
     this.showView('settings');
     if (from === 'reminders') this.settings.focusReminderEntry();
   }
@@ -1620,45 +1555,6 @@ class App {
     this.reminderManager.open();
   }
 
-  private authorizeLiveEditing(name: string, proceed: () => void): void {
-    const guarded = ParentalControlService.guardsLiveEditing;
-    log.info('Parental settings guard', 'event=parental.guard', 'action=live-edit',
-      `guarded=${String(guarded)}`);
-    if (!guarded) {
-      proceed();
-      return;
-    }
-    this.parentalPinPrompt.showVerify(t('parental.enterFor', { name }), proceed);
-  }
-
-  private authorizeSourceRemoval(id: string, proceed: () => void, turnOff = false): void {
-    const guarded = ParentalControlService.guardsSourceRemoval(id);
-    log.info('Parental settings guard', 'event=parental.guard',
-      `action=${turnOff ? 'source-turn-off' : 'source-remove'}`, `source=${encodeURIComponent(id)}`,
-      `guarded=${String(guarded)}`);
-    if (!guarded) {
-      proceed();
-      return;
-    }
-    const name = StorageService.getPlaylists().find(entry => entry.id === id)?.name ?? '';
-    this.parentalPinPrompt.showVerify(
-      t(turnOff ? 'parental.enterToTurnOff' : 'parental.enterToRemove', { name }), proceed);
-  }
-
-  private openParentalControls(): void {
-    // Coming back redraws Settings from what is saved.
-    if (!this.settings.checkpoint()) return;
-    const open = () => {
-      this.showView('parental-controls');
-      this.parentalControls.open();
-      ParentalControlService.logState('manager-opened');
-    };
-    if (!ParentalControlService.configured) {
-      this.parentalPinPrompt.showCreate(open);
-      return;
-    }
-    this.parentalPinPrompt.showVerify(t('settings.parentalControls'), open);
-  }
 
   // The section shown now, or null on the player and the Settings sub-pages.
   private currentSection(): Section | null {
@@ -1694,12 +1590,8 @@ class App {
         this.showView('search');
         return;
       case 'settings':
-        if (view === 'reminders') {
-          this.showView('settings');
-          this.settings.focusReminderEntry();
-        } else {
-          this.leaveParentalControls();
-        }
+        this.showView('settings');
+        this.settings.focusReminderEntry();
         return;
     }
   }
@@ -1750,7 +1642,6 @@ class App {
   // section opens on it next time.
   private selectXtreamAccount(id: string): void {
     StorageService.setSelectedXtreamAccountId(id);
-    ParentalControlService.lock('account-switched');
     PlaylistService.selectSource();
     this.sourceChanged();
   }
@@ -1764,68 +1655,6 @@ class App {
     this.searchPrewarm.schedule('account');
     this.syncSources();
     if (this.isCurrentView('home')) this.home.render();
-  }
-
-  private reopenAccountSection(account: PlaylistEntry): void {
-    const current = this.viewStack[this.viewStack.length - 1];
-    if (current === 'movies') {
-      this.movies.open(account)
-        .catch((err) => log.error(
-          'Movies reopen failed',
-          'event=xtream.view.open.failed',
-          'operation=movies_reopen',
-          err,
-        ));
-    } else if (current === 'series') {
-      this.series.open(account)
-        .catch((err) => log.error(
-          'Series reopen failed',
-          'event=xtream.view.open.failed',
-          'operation=series_reopen',
-          err,
-        ));
-    }
-    if (current === 'search') {
-      this.search.open(account)
-        .then(() => this.search.setQuery(this.lastSearchQuery))
-        .catch((err) => log.error(
-          'Search reopen failed',
-          'event=xtream.view.open.failed',
-          'operation=search_reopen',
-          err,
-        ));
-    }
-  }
-
-  // Rebuild every surface that drops concealed content. Lists re-derive from the
-  // filtered channels and catalogs; stored favorites/history are never touched.
-  private onParentalLocksChanged(concealmentChanged: boolean): void {
-    if (concealmentChanged) {
-      PlaylistService.applyCustomization();
-      this.player.syncCurrentIndex();
-      this.search.invalidateCatalog();
-    }
-    const current = this.viewStack[this.viewStack.length - 1];
-    if (current === 'channels') {
-      this.channelList.render();
-      this.liveGuide.render();
-    }
-    else if (current === 'settings' && concealmentChanged) this.settings.refreshCollectionCounts();
-    if (current === 'search') {
-      if (concealmentChanged) void this.search.refreshConcealment();
-      else this.search.refreshLocks();
-    }
-    const account = this.activeXtreamAccount();
-    if (account && (current === 'movies' || current === 'series')) {
-      if (concealmentChanged) this.reopenAccountSection(account);
-      else (current === 'movies' ? this.movies : this.series).refreshLocks();
-    }
-    this.sidebar.refresh();
-    ReminderService.refreshParentalCopy();
-    const session = ParentalControlService.sessionActive;
-    this.home?.setParentalSession(session);
-    if (current === 'home') this.home.render();
-    if (concealmentChanged) this.livePreview?.refresh();
   }
 
   private playChannel(index: number, catchup?: CatchupInfo, scope: ChannelScope | null = null): void {
@@ -1860,26 +1689,7 @@ class App {
     if (idx >= 0) {
       log.info('Reminder launch — tuning channel index', idx);
       this.playChannel(idx, undefined, this.liveScopeFor(idx));
-      return;
     }
-    const concealed = ReminderService.resolveConcealedLaunchChannel(raw);
-    if (concealed) this.playConcealedReminder(concealed.key, concealed.channel);
-  }
-
-  // The PIN prompt keeps the hidden channel's name out, as the notification did.
-  private playConcealedReminder(key: string, channel: Channel): void {
-    log.info('Concealed reminder channel requested', 'event=parental.reminder.concealed',
-      `channel=${key}`);
-    ParentalControlService.authorize({ ...liveParentalRequest(channel, 'reminder'), label: '' }, () => {
-      // The unlock reveals the channel, but lists rebuild only after this runs.
-      PlaylistService.applyCustomization();
-      const index = ReminderService.tuneIndex(key);
-      if (index >= 0) this.playChannel(index, undefined, this.liveScopeFor(index));
-      else {
-        log.warn('Unlocked reminder channel is missing', 'event=parental.reminder.missing',
-          `channel=${key}`);
-      }
-    });
   }
 
   private scanReminders(): void {
@@ -1905,7 +1715,6 @@ class App {
     const due = ReminderService.dueNow();
     const r = due[0];
     if (!r) return;
-    const concealed = ReminderService.concealedChannel(r.channelKey);
     this.reminderPrompt.show(
       truncate(r.title, CONFIG.REMINDER.TITLE_MAX),
       truncate(r.channelName, CONFIG.REMINDER.CHANNEL_MAX),
@@ -1914,7 +1723,6 @@ class App {
         ReminderService.remove(r.channelKey, r.startMs);
         const idx = ReminderService.tuneIndex(r.channelKey);
         if (idx >= 0) this.playChannel(idx, undefined, this.liveScopeFor(idx));
-        else if (concealed) this.playConcealedReminder(r.channelKey, concealed);
         this.showNextReminder();
       },
       onCancel: () => {
@@ -1924,7 +1732,7 @@ class App {
         }
         this.showNextReminder();
       },
-    }, concealed !== null);
+    });
   }
 
   // The one answer to "who gets the next key": handleKey routes by the owner,
@@ -1941,7 +1749,6 @@ class App {
       home: this.home.focusScope,
       channels: this.channelList.focusScope,
       settings: this.settings.focusScope,
-      'parental-controls': this.parentalControls.focusScope,
       movies: this.movies.focusScope,
       series: this.series.focusScope,
       search: this.search.focusScope,
@@ -1986,11 +1793,6 @@ class App {
       return;
     }
 
-    // The manager owns its color keys (Lock all, Clear exceptions).
-    if (currentView === 'parental-controls') {
-      this.parentalControls.handleAction(action);
-      return;
-    }
 
     // Global shortcuts
     // While the channel list is in edit mode the color keys belong to the editor.

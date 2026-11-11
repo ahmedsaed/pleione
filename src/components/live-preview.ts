@@ -379,7 +379,7 @@ export class LivePreview {
     const message = state.status === 'loading' ? t('common.loading')
       : state.status === 'buffering' ? t('preview.connecting')
       // The preview stays on a dead channel rather than moving on.
-      : state.status === 'error' ? t('channel.healthUnavailable') : '';
+      : state.status === 'error' ? t('preview.unavailable') : '';
     morph(this.container, html`
       <div class="live-preview-heading" data-key="preview-heading">
         <span class="live-preview-channel" dir="${nameDir()}">${state.channel.name}</span>

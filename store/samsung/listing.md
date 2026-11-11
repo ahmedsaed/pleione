@@ -45,7 +45,6 @@ MAKE IT YOURS
 • 12 languages: English, Arabic, German, Spanish, French, Italian, Polish, Portuguese (Brazil), Russian, Turkish, Ukrainian and Simplified Chinese
 • Interface size from 90% to 130%, text size from 80% to 150%
 • Light and dark color themes
-• Parental controls with a PIN
 
 PRIVATE
 No account, no analytics, no ads. Your accounts and history stay on the TV, and Pleione talks only to your own providers and the optional services you turn on.
@@ -84,7 +83,7 @@ The files in this folder (`README.md` has their sizes and limits):
 | Field | Entered |
 |---|---|
 | Service category | **Videos** |
-| Rating | **ALL**: Pleione has no content of its own, and has parental controls |
+| Rating | **ALL**: Pleione has no content of its own |
 | Language | The 12 the app has: English, Arabic, Chinese (Simplified), French, German, Italian, Polish, Portuguese, Russian, Spanish, Turkish, Ukrainian. Testers may check each one |
 | Collect personal information | **Yes**: the app keeps provider logins and viewing history on the TV and sends the logins to the user's providers |
 | Privacy policy URL, English | https://pleione.merope.dev/privacy/ |

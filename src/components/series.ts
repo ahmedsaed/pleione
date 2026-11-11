@@ -45,7 +45,7 @@ function localizedQueue(items: VodQueueItem[]): VodQueueItem[] {
 export class Series extends CatalogView<SeriesCategory, SeriesItem> {
   protected get kicker(): string { return t('common.series'); }
   protected readonly resumeKind: ResumeKind = 'episode';
-  protected readonly parentalKind = 'series' as const;
+  protected readonly catalogKind = 'series' as const;
   protected scopeName(): string { return 'series'; }
   protected get emptyMessage(): string { return t('catalog.noSeries'); }
   protected get loadFailedMessage(): string { return t('catalog.loadSeriesFailed'); }
@@ -426,7 +426,6 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
       itemId: ep.id,
       kind: 'episode',
       categoryId: series.categoryId,
-      parentalItemId: series.seriesId,
       subtitles: ep.subtitles,
       searchMeta: { season: ep.season, episode: ep.episode },
       watchlistOwner: { kind: 'series', itemId: series.seriesId },
@@ -486,7 +485,6 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
       itemId: r.itemId,
       kind: 'episode',
       categoryId: r.categoryId,
-      parentalItemId: r.watchlistOwner?.itemId,
       resumeSecs: r.position,
       subtitles: [],
       episodeQueue: r.episodeQueue && localizedQueue(r.episodeQueue),
@@ -506,7 +504,6 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
       <div class="catalog-tile" data-focusable data-key="r:${r.itemId}" data-resume-episode="${r.itemId}"
            data-long-press>
         <div class="catalog-poster-wrap">${this.posterCell(this.resumeName(r), this.resumePoster(r))}${
-          this.itemLockBadge(r.categoryId ?? '', r.watchlistOwner?.itemId ?? r.itemId)}${
           this.progressBar(r.position, r.duration)}</div>
         <div class="catalog-tile-name" dir="${nameDir()}">${this.resumeName(r)}</div>
       </div>

@@ -268,18 +268,12 @@ test('Settings opens at once while the channels load; only what needs them waits
   await expect(page.locator('#view-home')).toBeHidden();
   await expect(page.locator('#view-loading')).toBeHidden();
   await expect(settings(page).locator('#app-language')).toBeVisible();
-  // The playlist's own guide source and the health check need the channels.
+  // The playlist's own guide source needs the channels.
   await settings(page).locator('[data-settings-target="guide"]').click();
   const editor = settings(page).locator('.epg-offset-editor');
   await expect(editor.locator('.settings-channels-loading')).toHaveText('Loading channels…');
-  await settings(page).locator('[data-settings-target="sources"]').click();
-  const health = settings(page).locator('.channel-health-panel');
-  await expect(health.locator('.settings-channels-loading')).toHaveText('Loading channels…');
-  await expect(health.locator('#check-channel-health')).toHaveCount(0);
 
   gate.release();
-  await expect(health.locator('#check-channel-health')).toBeVisible();
-  await settings(page).locator('[data-settings-target="guide"]').click();
   await expect(editor.locator('.settings-channels-loading')).toHaveCount(0);
   await expect(editor.locator('#epg-offset-source')).toBeVisible();
 });

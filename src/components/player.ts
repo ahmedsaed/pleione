@@ -21,7 +21,6 @@ import { screenSide } from '../utils/direction';
 import { channelKey } from '../utils/channel';
 import { dvrWindow, dvrState, type DvrWindow } from '../utils/dvr';
 import { PlaylistService } from '../services/playlist-service';
-import { ParentalControlService, liveParentalRequest } from '../services/parental-control';
 import { EpgService } from '../services/epg-service';
 import { StorageService } from '../services/storage-service';
 import { CONFIG } from '../config';
@@ -32,7 +31,6 @@ import { extFromUrl, diagnosticStreamUrl } from '../utils/url';
 import { platform } from '../platform';
 import { InputMode } from '../navigation/input-mode';
 import { probeMedia } from '../services/media-probe';
-import { ChannelHealthService } from '../services/channel-health';
 import { createLogger } from '../utils/logger';
 import { t } from '../i18n';
 import { probeHttpStatus } from '../utils/http-status-probe';
@@ -55,7 +53,6 @@ export class Player {
   private onBack: () => void;
   private onTvPlaybackChanged: (channelIndex: number, catchupStart: number | null) => void;
   private canAutoRevealOsd: () => boolean;
-  private onChannelHealthChanged: () => void;
   private videoEl: HTMLVideoElement | null = null;
   // What plays: the element, or the platform's own player drawing into it.
   private media: PlayerMedia | null = null;
@@ -74,7 +71,6 @@ export class Player {
   private vod: VodPlayback | null = null;
   private upNextSeconds = 0;
   private upNextTimer: ReturnType<typeof setInterval> | null = null;
-  private upNextAuthorized = false;
   private vodTracksLatePending = false;
   private pendingResumeSecs = 0;
   private pendingSeekTarget: number | null = null;
@@ -90,8 +86,6 @@ export class Player {
   private catchupSourceIndex = 0;
   private catchupVariantConfirmed = false;
   private playbackGeneration = 0;
-  private healthSuccessGeneration = -1;
-  private healthStartedAt = 0;
   private liveHistoryGeneration = -1;
   private liveHistoryTimer: ReturnType<typeof setTimeout> | null = null;
   private errorAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -128,25 +122,13 @@ export class Player {
     onBack: () => void,
     onTvPlaybackChanged: (channelIndex: number, catchupStart: number | null) => void = () => {},
     canAutoRevealOsd: () => boolean = () => true,
-    onChannelHealthChanged: () => void = () => {},
     private onPlaybackStateChanged: () => void = () => {},
     private canResumePlayback: () => boolean = () => true,
-    private authorizeLive: (
-      channel: Channel,
+    private startLive: (
       action: () => void,
       preview: boolean,
-      ask?: boolean,
-    ) => boolean = (_channel, action) => {
-      action();
-      return true;
-    },
-    private authorizeVod: (
-      item: VodPlayback,
-      action: () => void,
-    ) => boolean = (_item, action) => {
-      action();
-      return true;
-    },
+    ) => void = action => action(),
+    private startVod: (action: () => void) => void = action => action(),
     private liveControls: {
       isFavorite: (channel: Channel) => boolean;
       toggleFavorite: (channel: Channel) => void;
@@ -156,7 +138,6 @@ export class Player {
     this.onBack = onBack;
     this.onTvPlaybackChanged = onTvPlaybackChanged;
     this.canAutoRevealOsd = canAutoRevealOsd;
-    this.onChannelHealthChanged = onChannelHealthChanged;
     this.pipeline = new PlayerPipeline({
       playbackLabel: loadToken => this.playbackLabel(loadToken),
       mediaState: video => this.mediaState(video),
@@ -243,7 +224,6 @@ export class Player {
           `cause=${recovery.cause}`,
           `outcome=${preview ? 'preview-failed' : 'next-channel'}`,
           this.recoveryState(recovery));
-        this.markLiveUnavailable(recovery.cause === 'stall' ? 'stall_exhausted' : 'playback_error');
         if (this.failLivePreview()) return;
         this.osd.updateMessage(t('player.streamError'));
         this.channelUp();
@@ -420,7 +400,6 @@ export class Player {
       if (this.catchupInfo) this.catchupVariantConfirmed = true;
       this.startupWatchdog.stop();
       this.tracks.reapplyNativeSubtitleCompositor();
-      this.markTrackedLiveHealthy();
       this.confirmLiveHistory(el);
       if (this.osd.isVisible()) this.osd.resetTimer();
     });
@@ -551,36 +530,11 @@ export class Player {
     // state alone can't say that: a seek into an unbuffered region also drops
     // readyState below HAVE_CURRENT_DATA.
     if (this.startupPending && this.media.readyState < 2) this.startupWatchdog.start();
-    if (this.vod) {
-      this.reauthorizeVod(this.vod, this.media);
-      return;
-    }
-    if (!this.currentChannel) return;
+    if (this.vod || !this.currentChannel) return;
     if (this.wasPlayingBeforeHide) {
       this.wasPlayingBeforeHide = false;
-      const channel = this.currentChannel;
-      const index = this.currentIndex;
-      const catchup = this.catchupInfo || undefined;
-      const preview = this.livePreviewMode;
-      // Backgrounding relocks parental controls, so a locked channel asks again
-      // in full screen; a preview the user didn't start just stops.
-      if (!this.authorizeLive(channel, () => this.playResolved(channel, index, catchup), preview, !preview)) {
-        log.info('Resume waits for the parental PIN', 'event=parental.playback.relocked',
-          'kind=live', `preview=${String(preview)}`, `catchup=${String(!!catchup)}`);
-        this.stop();
-        if (!preview) this.onBack();
-      }
+      this.playResolved(this.currentChannel, this.currentIndex, this.catchupInfo || undefined);
     }
-  }
-
-  private reauthorizeVod(v: VodPlayback, el: PlayerMedia): void {
-    const resumeSecs = this.pendingSeekTarget ?? (el.currentTime || v.resumeSecs);
-    const resumed: VodPlayback = { ...v, resumeSecs };
-    if (this.authorizeVod(resumed, () => { if (this.vod !== v) this.playVodResolved(resumed); })) return;
-    log.info('Resume waits for the parental PIN', 'event=parental.playback.relocked',
-      `kind=${v.kind}`);
-    this.stop();
-    v.onBack();
   }
 
   // Resolve the playable URL for a channel, applying the catch-up template when
@@ -633,7 +587,6 @@ export class Player {
     this.cancelLiveHistoryTimer();
     this.cancelErrorAdvance();
     this.playbackGeneration++;
-    this.healthStartedAt = Date.now();
     this.liveHistoryGeneration = -1;
   }
 
@@ -679,11 +632,7 @@ export class Player {
       log.warn('play() ignored — no channel or video element', { channelIndex, hasChannel: !!channel });
       return;
     }
-    this.authorizeLive(
-      channel,
-      () => this.playResolved(channel, channelIndex, catchup, scope),
-      preview,
-    );
+    this.startLive(() => this.playResolved(channel, channelIndex, catchup, scope), preview);
   }
 
   private playResolved(
@@ -803,7 +752,7 @@ export class Player {
   }
 
   playVod(v: VodPlayback): void {
-    this.authorizeVod(v, () => this.playVodResolved(v));
+    this.startVod(() => this.playVodResolved(v));
   }
 
   private playVodResolved(v: VodPlayback): void {
@@ -1093,8 +1042,6 @@ export class Player {
     finished: VodPlayback,
   ): void {
     this.recreateVideoEl();
-    // The PIN unlocked the whole series, so its next episode continues.
-    this.upNextAuthorized = isEpisodeQueue && sameParentalItem(finished, next);
     this.vod = {
       ...next,
       resumeSecs: 0,
@@ -1116,7 +1063,6 @@ export class Player {
   }
 
   private clearUpNextTimer(): void {
-    this.upNextAuthorized = false;
     if (this.upNextTimer) clearInterval(this.upNextTimer);
     this.upNextTimer = null;
     this.upNextSeconds = 0;
@@ -1125,17 +1071,8 @@ export class Player {
   private playNextItem(): void {
     const next = this.vod;
     if (!next || !this.upNextTimer) return;
-    const authorized = this.upNextAuthorized;
-    log.debug('Up next starting', 'event=parental.upnext', `kind=${next.kind}`,
-      `sameItem=${String(authorized)}`);
     this.clearUpNextTimer();
-    if (authorized) {
-      this.playVodResolved(next);
-      return;
-    }
-    // A locked next item waits for the PIN off the player, as a live resume
-    // does, so cancelling the prompt can't strand a blank up-next screen.
-    if (!this.authorizeVod(next, () => this.playVodResolved(next))) this.cancelNextItem();
+    this.playVod(next);
   }
 
   private cancelNextItem(): void {
@@ -1195,14 +1132,9 @@ export class Player {
     const current = this.vod;
     if (!current) return;
     const next: VodPlayback = { ...target, resumeSecs: 0, ...lists, onBack: current.onBack };
-    log.info('Episode switch', 'event=vod.episode.switch', `sameItem=${String(sameParentalItem(current, target))}`);
     this.stop();
     this.recreateVideoEl();
-    if (sameParentalItem(current, target)) {
-      this.playVodResolved(next);
-      return;
-    }
-    if (!this.authorizeVod(next, () => this.playVodResolved(next))) current.onBack();
+    this.playVodResolved(next);
   }
 
   private loadStream(url: string, extras: Record<string, string> | null, opts?: { direct?: boolean }): void {
@@ -1335,7 +1267,6 @@ export class Player {
       return;
     }
     this.stallWatchdog.stop();
-    this.markLiveUnavailable('playback_error');
     if (this.failLivePreview()) return;
     this.osd.updateMessage(t('player.streamError'));
     this.errorAdvanceTimer = setTimeout(() => {
@@ -1429,33 +1360,6 @@ export class Player {
     this.livePlaybackStatus = 'error';
     this.onPlaybackStateChanged();
     return true;
-  }
-
-  private markLiveUnavailable(reason: string): void {
-    if (!this.currentChannel || this.catchupInfo || this.vod) return;
-    void ChannelHealthService.recordPlaybackFailure(this.currentChannel, reason)
-      .then(() => this.onChannelHealthChanged())
-      .catch(err => log.error(
-        'Channel health playback update failed',
-        'event=channel.health.playback.write.failed',
-        err,
-      ));
-  }
-
-  private markTrackedLiveHealthy(): void {
-    if (!this.currentChannel || this.catchupInfo || this.vod
-        || this.healthSuccessGeneration === this.playbackGeneration) return;
-    this.healthSuccessGeneration = this.playbackGeneration;
-    const latencyMs = Math.max(0, Date.now() - this.healthStartedAt);
-    void ChannelHealthService.recordPlaybackSuccess(this.currentChannel, latencyMs)
-      .then(changed => {
-        if (changed) this.onChannelHealthChanged();
-      })
-      .catch(err => log.error(
-        'Channel health playback update failed',
-        'event=channel.health.playback.write.failed',
-        err,
-      ));
   }
 
   showOSD(): void {
@@ -1824,51 +1728,29 @@ export class Player {
   }
 
   channelUp(): void {
-    if (this.shouldUseScope()) { this.scopedChannelStep(1); return; }
+    if (this.currentScope) { this.scopedChannelStep(1); return; }
     this.globalChannelStep(1);
   }
 
   channelDown(): void {
-    if (this.shouldUseScope()) { this.scopedChannelStep(-1); return; }
+    if (this.currentScope) { this.scopedChannelStep(-1); return; }
     this.globalChannelStep(-1);
   }
 
-  // The settings.channelCycleMode gate: scoping applies in 'active' (the
-  // default); 'global' keeps the full list even though currentScope is
-  // still tracked.
-  private shouldUseScope(): boolean {
-    return !!this.currentScope && StorageService.getChannelCycleMode() === 'active';
-  }
-
   private globalChannelStep(delta: 1 | -1): void {
-    const channels = PlaylistService.channels;
-    const len = channels.length;
+    const len = PlaylistService.channels.length;
     if (!len) return;
-    let next = this.currentIndex >= 0
+    const next = this.currentIndex >= 0
       ? ((this.currentIndex + delta) % len + len) % len
       : delta > 0
         ? Math.min(this.currentIndexAnchor, len - 1)
         : Math.max(0, Math.min(this.currentIndexAnchor - 1, len - 1));
-    next = this.firstUnlocked(channels, next, delta);
     this.play(next);
   }
 
-  // Surfing passes over parental-locked channels instead of stopping on a PIN
-  // prompt; they stay reachable from the list. If every other channel is locked,
-  // the next one prompts as usual.
-  private firstUnlocked(list: Channel[], start: number, delta: 1 | -1): number {
-    const len = list.length;
-    if (!ParentalControlService.enabled) return start;
-    for (let step = 0, i = start; step < len; step++, i = ((i + delta) % len + len) % len) {
-      if (list[i] === this.currentChannel) break;
-      if (ParentalControlService.decision(liveParentalRequest(list[i], 'play')).allowed) return i;
-    }
-    return start;
-  }
-
   // channel_up/channel_down while the current channel was launched from a
-  // specific view (Favorites, a group, a folder, All) and the user has
-  // opted into scoped cycling: step within that view's list — recomputed
+  // specific view (Favorites, a group, a folder, All): step within that
+  // view's list — recomputed
   // live on every call, so a customization change mid-playback (unfavoriting,
   // hiding, reordering) is reflected immediately — instead of the full,
   // unfiltered channel list.
@@ -1886,7 +1768,7 @@ export class Player {
       return;
     }
     const len = list.length;
-    const next = this.firstUnlocked(list, ((pos + delta) % len + len) % len, delta);
+    const next = ((pos + delta) % len + len) % len;
     const globalIndex = PlaylistService.indexOf(list[next]);
     if (globalIndex < 0) return;
     this.play(globalIndex);
@@ -1917,7 +1799,6 @@ export class Player {
     if (this.liveSessionActive && !this.catchupInfo
         && this.resolveStreamUrl(this.currentChannel, null)
           !== this.resolveStreamUrl(resolved.channel, null)) {
-      // Already authorized: a refreshed stream URL must not ask for the PIN.
       this.playResolved(resolved.channel, resolved.channelIndex);
       return;
     }
@@ -2055,15 +1936,9 @@ function queueItem(v: VodPlayback): VodQueueItem {
     itemId: v.itemId,
     kind: v.kind,
     categoryId: v.categoryId,
-    parentalItemId: v.parentalItemId,
     subtitles: v.subtitles,
     searchMeta: v.searchMeta,
     watchlistOwner: v.watchlistOwner,
     seriesEpisode: v.seriesEpisode,
   };
-}
-
-function sameParentalItem(a: VodQueueItem, b: VodQueueItem): boolean {
-  return a.accountId === b.accountId && a.kind === b.kind && !!a.parentalItemId
-    && a.parentalItemId === b.parentalItemId && a.categoryId === b.categoryId;
 }

@@ -6,7 +6,7 @@
 
 # Pleione — Privacy Policy
 
-**Effective November 3, 2026** · Pleione is made by Merope ([merope.dev](https://merope.dev)) ·
+**Effective November 11, 2026** · Pleione is made by Merope ([merope.dev](https://merope.dev)) ·
 [한국어](/privacy/ko/)
 
 ## The short version
@@ -26,9 +26,8 @@ never see them.
   addresses, usernames and passwords.
 - **Your keys** for the optional services below, if you enter any.
 - **Your library and history**: favorites, reminders, Watchlist, Continue Watching and playback
-  positions, recently watched channels, recent searches, subtitle and audio choices, channel
-  customization, and parental-control settings. The parental PIN is stored only as a salted
-  hash, never as the PIN itself.
+  positions, recently watched channels, recent searches, subtitle and audio choices, and channel
+  customization.
 - **Caches**: downloaded playlists, guides, catalogs and subtitles, kept so the app opens
   quickly. They can be deleted at any time.
 
@@ -47,9 +46,6 @@ player's would: your TV's IP address, and for an Xtream account, the username an
 the Xtream protocol sends in the address of every request. If you enter an address starting with
 `http://`, that traffic is not encrypted; whether `https://` is available is up to your
 provider. Each provider's own privacy policy governs what they do with it.
-
-**Check Channel Health**, a button in Settings, asks each channel's stream whether it responds.
-It runs only when you press it, and only against your own providers.
 
 ### Online subtitles (optional, on request)
 
@@ -98,8 +94,7 @@ Pleione from Samsung's app store does not include it.
 
 When you set a reminder for a program, Pleione schedules it with the TV's own scheduler, which
 keeps the program's title, channel and time so it can notify you even while the app is closed.
-For content locked by parental controls, the title and channel are left out. Removing a reminder,
-or resetting the app, cancels it with the TV's scheduler too.
+Removing a reminder, or resetting the app, cancels it with the TV's scheduler too.
 
 On Samsung TVs, reminders stay inside Pleione: nothing is handed to the TV's scheduler, and a
 reminder shows only while Pleione is open.

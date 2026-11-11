@@ -9,9 +9,6 @@
   --accent-dim: #0088aa;
   --accent-rgb: 0 212 255;
   --accent-glow: rgb(var(--accent-rgb) / 0.3);
-  --channel-health-healthy: #63d89b;
-  --channel-health-suspect: #f3c969;
-  --channel-health-unavailable: #ef7b7b;
   --danger: #ff4757;
   --danger-rgb: 255 71 87;
   --success: #2ed573;
@@ -44,30 +41,6 @@
   /* The screen itself; Interface size scales every other px length. */
   --canvas-width: 1920px;
   --canvas-height: 1080px;
-}
-
-.channel-health-status {
-  color: var(--text-muted);
-}
-
-.channel-health-status.healthy {
-  color: var(--channel-health-healthy);
-}
-
-.channel-health-status.suspect {
-  color: var(--channel-health-suspect);
-}
-
-.channel-health-status.unavailable {
-  color: var(--channel-health-unavailable);
-}
-
-.channel-health-dot {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  background: currentColor;
-  border-radius: 50%;
 }
 
 .live-badge {
@@ -114,7 +87,6 @@
 }
 
 html[data-animation="essential"] .epg-mapping-list,
-html[data-animation="essential"] .channel-health-progress-fill,
 html[data-animation="essential"] .osd-progress-bar {
   transition-duration: 0.001ms !important;
 }
@@ -143,7 +115,6 @@ html[data-animation="full"] .search-view,
 html[data-animation="full"] .search-virtual-scroll,
 html[data-animation="full"] .reminder-manager-view,
 html[data-animation="full"] .group-picker,
-html[data-animation="full"] .parental-options-pane,
 html[data-animation="full"] .menu-items,
 html[data-animation="full"] .subs-list {
   scroll-behavior: smooth;
@@ -376,20 +347,18 @@ h3 {
 
 /* Light themes: Home's pale backdrop, with dark text. */
 html[data-theme="daylight"] .loading-splash,
-html[data-theme="pastel-latte"] .loading-splash,
 html[data-theme="paper-light"] .loading-splash {
   color: var(--text-primary);
 }
 
 html[data-theme="daylight"] .loading-spinner,
-html[data-theme="pastel-latte"] .loading-spinner,
 html[data-theme="paper-light"] .loading-spinner {
   border-color: rgba(0, 0, 0, 0.1);
   border-top-color: var(--accent);
 }
 
 /* Buttons */
-button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggle):not(.parental-row):not(.live-category-row) {
+button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggle):not(.live-category-row) {
   transform-origin: center;
   transition:
     transform 160ms ease,
@@ -400,8 +369,8 @@ button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggl
     color var(--transition);
 }
 
-button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggle):not(.parental-row):not(.live-category-row):not(.search-icon):hover,
-button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggle):not(.parental-row):not(.live-category-row):not(.search-icon).focused {
+button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggle):not(.live-category-row):not(.search-icon):hover,
+button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggle):not(.live-category-row):not(.search-icon).focused {
   transform: scale(1.03);
 }
 
@@ -502,7 +471,7 @@ button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggl
   right: 64px;
   padding: 20px 26px 16px;
   /* Same surface as the player OSD (palette in player.css), which it shares the
-     screen with; `[data-overlay]` swaps both to frosted at once. */
+     screen with. */
   background: rgba(30, 30, 50, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(16px);
@@ -652,7 +621,6 @@ html.avplay-playing .view[data-backdrop]:not(.hidden) {
 .reminder-prompt,
 .catchup-resume-prompt,
 .confirmation-prompt,
-.parental-pin-prompt,
 .detail-text-prompt {
   position: fixed;
   top: 0;
@@ -668,7 +636,6 @@ html.avplay-playing .view[data-backdrop]:not(.hidden) {
 .reminder-prompt.hidden,
 .catchup-resume-prompt.hidden,
 .confirmation-prompt.hidden,
-.parental-pin-prompt.hidden,
 .detail-text-prompt.hidden {
   display: none;
 }
@@ -676,7 +643,6 @@ html.avplay-playing .view[data-backdrop]:not(.hidden) {
 .reminder-dialog,
 .catchup-resume-dialog,
 .confirmation-dialog,
-.parental-pin-dialog,
 .detail-text-dialog {
   background: var(--bg-secondary);
   border: 1px solid var(--border);

@@ -469,30 +469,6 @@ test('the account switcher on Home switches the account', async ({ page }) => {
   await expect(page.locator('.home-account .account-avatar')).toHaveText('Y');
 });
 
-test('Lock now stays reachable on Home during a PIN session', async ({ page }) => {
-  await seedHome(page);
-  await goHome(page);
-  await expect(page.locator('#view-home')).toBeVisible();
-  await expect(page.locator('[data-lock-now]')).toHaveCount(0);
-  // Leaving the manager keeps an unlock session open.
-  await enterTab(page, 'settings');
-  await page.locator('#manage-parental-controls').click();
-  const prompt = page.locator('.parental-pin-prompt');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(prompt.locator('h2')).toContainText('Confirm');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await page.locator('[data-parental-tab="options"]').click();
-  await page.locator('#parental-duration [data-value="until-backgrounded"]').click();
-  await page.locator('[data-parental-back]').click();
-  await expect(page.locator('#view-settings')).toBeVisible();
-
-  await enterTab(page, 'home');
-  const lock = page.locator('#view-home .home-lock');
-  await expect(lock).toHaveText('Lock now');
-  await lock.click();
-  await expect(page.locator('[data-lock-now]')).toHaveCount(0);
-});
-
 test('Interface size 130 at text size 150 keeps the bento centered, on the canvas, and under the header', async ({ page }) => {
   await seedHome(page);
   await page.addInitScript(() => {

@@ -153,7 +153,6 @@
 .catalog-pill-rail { padding-top: 12px; }
 .catalog-rail-track.catalog-pill-track { gap: 16px; }
 .catalog-pill { flex: 0 0 auto; max-width: 420px; cursor: pointer; }
-.catalog-pill .lock-badge { flex: none; }
 /* Browse rails are tighter than the grid's and a detail's, so the next
    rail's posters show below the focused one and invite scrolling. */
 .catalog-browse .catalog-rail { margin-bottom: 8px; }
@@ -264,16 +263,6 @@ html[data-animation="reduced"] .catalog-tile { transition: transform var(--trans
   margin-top: 2px;
   font-size: 20px; line-height: 1.3; color: var(--text-secondary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* A lock clears the name: the name's end padding makes room for it. */
-.catalog-cat-locked { padding-right: 56px; }
-.catalog-cat .lock-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 28px;
-  height: 28px;
-  margin: 0;
 }
 
 /* Movie and series detail: a hero over the artwork, and the rows below in a

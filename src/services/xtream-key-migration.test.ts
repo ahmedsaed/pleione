@@ -1,20 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Channel } from '../types';
 
-const { storageMock, parentalMock, fetchTextMock } = vi.hoisted(() => ({
+const { storageMock, fetchTextMock } = vi.hoisted(() => ({
   storageMock: {
     channelDataKeys: vi.fn((): Set<string> => new Set()),
     renameChannelKeys: vi.fn((aliases: Map<string, string>) => aliases.size),
-  },
-  parentalMock: {
-    liveChannelKeys: vi.fn((): string[] => []),
-    renameChannelKeys: vi.fn(() => 0),
   },
   fetchTextMock: vi.fn(),
 }));
 
 vi.mock('./storage-service', () => ({ StorageService: storageMock }));
-vi.mock('./parental-control', () => ({ ParentalControlService: parentalMock }));
 vi.mock('./channel-customization', () => ({ ChannelCustomizationService: { reload: vi.fn() } }));
 vi.mock('../utils/fetch-helper', async (importOriginal) => ({
   ...await importOriginal<typeof import('../utils/fetch-helper')>(),
@@ -44,7 +39,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   resetXtreamSignIns();
   storageMock.channelDataKeys.mockReturnValue(new Set());
-  parentalMock.liveChannelKeys.mockReturnValue([]);
 });
 
 describe('migrateXtreamChannelKeys', () => {
@@ -58,8 +52,7 @@ describe('migrateXtreamChannelKeys', () => {
     const info = vi.spyOn(console, 'log').mockImplementation(() => {});
     const tsKey = keyOf('http://host:8080/live/u1/p1/101.ts');
     const bareKey = keyOf('http://host:8080/u1/p1/102');
-    storageMock.channelDataKeys.mockReturnValue(new Set([tsKey, 'unrelated']));
-    parentalMock.liveChannelKeys.mockReturnValue([bareKey]);
+    storageMock.channelDataKeys.mockReturnValue(new Set([tsKey, bareKey, 'unrelated']));
 
     migrateXtreamChannelKeys([{ credentials, channels: [api101, api102] }], [api101, api102]);
 
@@ -68,7 +61,6 @@ describe('migrateXtreamChannelKeys', () => {
     expect(info).toHaveBeenCalledWith('[Playlist]', expect.any(String),
       'event=xtream.channel_keys.migrated', 'keys=2', 'records=2');
     info.mockRestore();
-    expect(parentalMock.renameChannelKeys).toHaveBeenCalledWith(aliases);
     expect(ChannelCustomizationService.reload).toHaveBeenCalled();
   });
 

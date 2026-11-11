@@ -16,7 +16,7 @@ const { data, customization, playlistMock, epgMock, storageMock, recentMock, toa
   const raw = channels.slice();
   const data = {
     channels, raw, favorites: [] as string[], includeHidden: false,
-    unconcealed: null as Channel[] | null,
+    customized: null as Channel[] | null,
   };
   const customization = { record: null as unknown };
 
@@ -33,7 +33,7 @@ const { data, customization, playlistMock, epgMock, storageMock, recentMock, toa
       indexOf: (ch: Channel) => channels.indexOf(ch),
       indexOfKey: (_key: string) => -1,
       getByIndex: (i: number) => channels[i] ?? null,
-      getUnconcealedChannels: () => data.unconcealed ?? channels,
+      getCustomizedChannels: () => data.customized ?? channels,
       applyCustomization: vi.fn(),
       setIncludeHidden: vi.fn(),
     },
@@ -82,9 +82,6 @@ vi.mock('../services/playlist-service', () => ({ PlaylistService: playlistMock }
 vi.mock('../services/epg-service', () => ({ EpgService: epgMock }));
 vi.mock('../services/storage-service', () => ({ StorageService: storageMock }));
 vi.mock('../services/recently-watched', () => ({ RecentlyWatchedService: recentMock }));
-vi.mock('../services/channel-health', () => ({
-  ChannelHealthService: { getRecord: () => null },
-}));
 vi.mock('./toast', () => ({ showToast: toastMock.showToast }));
 const { workerMock } = vi.hoisted(() => ({ workerMock: { failIndexes: false } }));
 vi.mock('../workers/app-worker-client', async () => {
@@ -290,23 +287,6 @@ describe('ChannelList edit mode', () => {
       );
     });
 
-    it('asks the edit guard before the header edit button opens editing from favorites management', () => {
-      const authorizeEdit = vi.fn();
-      list = new ChannelList(container, {
-        onChannelSelect: onSelect,
-        onChannelsChanged: vi.fn(),
-        onEpgMappingChanged,
-        onEpgOffsetChanged,
-        authorizeEdit,
-      });
-      manageFavorites();
-      // The Live header's edit button calls enterEditMode.
-      list.enterEditMode();
-
-      expect(authorizeEdit).toHaveBeenCalledTimes(1);
-      expect(container.querySelector('.channel-view.editing')).toBeNull();
-    });
-
     it('uses a multi-select mode when editing favorites', () => {
       manageFavorites();
       expect(list.isEditing).toBe(true);
@@ -478,9 +458,9 @@ describe('ChannelList edit mode', () => {
     expect(container.querySelector('.grabbed')).toBeNull();
   });
 
-  it('keeps channels concealed by parental controls in the saved order', () => {
-    const concealed = { ...data.channels[0], id: 'd', name: 'Delta', url: 'http://host/d' };
-    data.unconcealed = [data.channels[0], concealed, data.channels[1], data.channels[2]];
+  it('keeps channels of other sources in the saved order', () => {
+    const elsewhere = { ...data.channels[0], id: 'd', name: 'Delta', url: 'http://host/d' };
+    data.customized = [data.channels[0], elsewhere, data.channels[1], data.channels[2]];
     try {
       enterEdit();
       hover(channelItems()[2]);
@@ -488,10 +468,10 @@ describe('ChannelList edit mode', () => {
       list.handleAction('up');
 
       const record = customization.record as { order: string[] };
-      const byKey = new Map(data.unconcealed.map(ch => [channelKey(ch), ch.name]));
+      const byKey = new Map(data.customized.map(ch => [channelKey(ch), ch.name]));
       expect(record.order.map(key => byKey.get(key))).toEqual(['Alpha', 'Delta', 'Charlie', 'Bravo']);
     } finally {
-      data.unconcealed = null;
+      data.customized = null;
     }
   });
 

@@ -103,7 +103,7 @@ test('the launch splash sits on Home\'s backdrop, and later loads drop it', asyn
   await expect(page.locator('#view-loading')).not.toHaveAttribute('data-backdrop', /./);
 });
 
-test('Settings, every Settings page, Reminders, and Parental controls sit on the shared backdrop', async ({ page }) => {
+test('Settings, every Settings page, and Reminders sit on the shared backdrop', async ({ page }) => {
   await seedXtream(page);
   await page.goto('/');
   await enterTab(page, 'settings');
@@ -119,15 +119,6 @@ test('Settings, every Settings page, Reminders, and Parental controls sit on the
   await page.locator('[data-settings-target="guide"]').click();
   await page.locator('#manage-reminders').click();
   await expectBackdrop(page, '#view-reminders', 'settings', ['.reminder-manager-view']);
-  await page.locator('.reminder-manager-back').click();
-
-  await page.locator('[data-settings-target="general"]').click();
-  await page.locator('#manage-parental-controls').click();
-  const prompt = page.locator('.parental-pin-prompt');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(prompt.locator('h2')).toContainText('Confirm');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expectBackdrop(page, '#view-parental-controls', 'settings', ['.parental-view']);
 });
 
 test('Movies grids, Continue Watching, and the space around artwork sit on the shared backdrop', async ({ page }) => {

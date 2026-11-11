@@ -1,4 +1,4 @@
-import { DEFAULT_THEME, DEFAULT_OVERLAY, DEFAULT_TEXT_SIZE, DEFAULT_INTERFACE_SIZE, isValidTheme, isValidOverlayStyle, isValidTextSize, isValidInterfaceSize } from '../config/themes';
+import { DEFAULT_THEME, DEFAULT_TEXT_SIZE, DEFAULT_INTERFACE_SIZE, isValidTheme, isValidTextSize, isValidInterfaceSize } from '../config/themes';
 import { StorageService } from './storage-service';
 import { swapInterfaceStylesheets } from '../utils/ui-scale';
 import { scheduleBackdropArt } from '../utils/backdrop-art';
@@ -21,12 +21,6 @@ export function applyTheme(id: string): void {
  *  D-pad moves across swatches. */
 export function previewTheme(id: string): void {
   setThemeAttr(id);
-}
-
-/** Player overlay glass style → `data-overlay` on the document root; the light
- *  variants live in css/player.css. */
-export function applyOverlayStyle(style: string): void {
-  document.documentElement.dataset.overlay = isValidOverlayStyle(style) ? style : DEFAULT_OVERLAY;
 }
 
 /** App-wide text size → `data-text-size` on the document root; the
@@ -56,11 +50,10 @@ export function applyDirection(direction: 'ltr' | 'rtl'): void {
   if (StorageService.getDirection() !== direction) StorageService.setDirection(direction);
 }
 
-/** Re-assert the stored theme + overlay style on boot (belt-and-suspenders
+/** Re-assert the stored theme and sizes on boot (belt-and-suspenders
  *  alongside the inline <head> script that beats the first paint). */
 export function initTheme(): void {
   applyTheme(StorageService.getTheme());
-  applyOverlayStyle(StorageService.getOverlayStyle());
   applyTextSize(StorageService.getTextSize());
   applyInterfaceSize(StorageService.getInterfaceSize());
 }

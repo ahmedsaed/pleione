@@ -10,12 +10,6 @@ export const CONFIG = {
   // Versioned channel customization record (order, display, grouping, and EPG overrides).
   // Bump when its shape changes so an older payload is ignored, not misapplied.
   CHANNEL_CUSTOMIZATION_VERSION: 1,
-  PARENTAL_CONTROL_VERSION: 1,
-  PARENTAL_PIN_LENGTH: 4,
-  PARENTAL_ITEMS_DELAY_MS: 250,
-  PARENTAL_PIN_MAX_FAILURES: 5,
-  PARENTAL_PIN_RETRY_DELAY_MS: 30 * 1000,
-  PARENTAL_PIN_MAX_RETRY_DELAY_MS: 15 * 60 * 1000,
 
   // Bundled webOS JS service (see bundled-service/src/lan) for phone setup and uploads.
   SERVICE_ID: __SERVICE_ID__,
@@ -195,14 +189,6 @@ export const CONFIG = {
     EXPANSION_FACTOR: 5,        // grow retained results near a virtual window boundary
     RESULT_CAP: 50_000,         // final per-group cap after progressive expansion
     HISTORY_MAX_ENTRIES: 10,    // recent searches kept
-  },
-
-  CHANNEL_HEALTH: {
-    CONCURRENCY: 4,
-    TIMEOUT_MS: 8000,
-    MAX_PROBE_BYTES: 128 * 1024,
-    MAX_MANIFEST_DEPTH: 2,
-    FAILURES_UNTIL_UNAVAILABLE: 2,
   },
 
   // Max characters shown for a reminder's programme title and channel name

@@ -8,7 +8,6 @@ import { t } from '../i18n';
 import { createLogger } from '../utils/logger';
 import { isSourceEnabled } from '../utils/playlist';
 import { isLunaAvailable, lunaRequest } from './luna';
-import { ParentalControlService, liveParentalRequest } from './parental-control';
 
 const log = createLogger('Reminder');
 
@@ -59,7 +58,6 @@ function indexOfChannelKey(channels: Channel[], chKey: string): number {
 
 class ReminderServiceImpl {
   private _devMode = false;
-  private scheduledConcealed = new Map<string, boolean>();
 
   setDevMode(v: boolean): void { this._devMode = v; }
 
@@ -136,12 +134,10 @@ class ReminderServiceImpl {
   }
 
   private onOtherSource(chKey: string): Channel | null {
-    const channels = PlaylistService.getUnconcealedChannels();
+    const channels = PlaylistService.getCustomizedChannels();
     const channel = channels[indexOfChannelKey(channels, chKey)];
     const source = PlaylistService.activeSourceId;
-    if (!channel || !source || channel.playlistIds.includes(source)) return null;
-    // A concealed channel stays concealed, whichever source holds it.
-    return ParentalControlService.isConcealed(liveParentalRequest(channel)) ? null : channel;
+    return !channel || !source || channel.playlistIds.includes(source) ? null : channel;
   }
 
   // A reminder is for its channel whichever source is picked.
@@ -151,29 +147,8 @@ class ReminderServiceImpl {
     return this.resolveChannelIndex(chKey);
   }
 
-  // Parental concealment hides a channel without removing it, so its
-  // reminders and alarms must survive.
-  private concealedByParental(chKey: string): boolean {
-    const channels = PlaylistService.getUnconcealedChannels();
-    const channel = channels[indexOfChannelKey(channels, chKey)];
-    return !!channel && ParentalControlService.concealedWhenLocked(liveParentalRequest(channel));
-  }
-
-  // Reschedules reminders whose system notification must switch between the
-  // real names and the generic locked text after locks or hide mode change.
-  refreshParentalCopy(now = Date.now()): void {
-    for (const reminder of this.list()) {
-      if (reminder.answered || reminder.startMs <= now || reminder.stopMs <= now) continue;
-      const name = activityName(reminder.channelKey, reminder.startMs);
-      if (!this.channelExists(reminder.channelKey)) continue;
-      if (this.scheduledConcealed.get(name) !== this.concealedByParental(reminder.channelKey)) {
-        this.schedule(reminder);
-      }
-    }
-  }
-
   private channelExists(chKey: string): boolean {
-    return indexOfChannelKey(PlaylistService.getUnconcealedChannels(), chKey) >= 0;
+    return indexOfChannelKey(PlaylistService.getCustomizedChannels(), chKey) >= 0;
   }
 
   private matchesChannel(reminder: Reminder, chKey: string): boolean {
@@ -201,7 +176,7 @@ class ReminderServiceImpl {
     let changed = false;
     for (const reminder of reminders) {
       if (reminder.playlistIds?.length) continue;
-      const channels = PlaylistService.getUnconcealedChannels();
+      const channels = PlaylistService.getCustomizedChannels();
       const index = indexOfChannelKey(channels, reminder.channelKey);
       if (index < 0) continue;
       reminder.playlistIds = channels[index].playlistIds.slice();
@@ -268,21 +243,6 @@ class ReminderServiceImpl {
     return key ? this.tuneIndex(key) : -1;
   }
 
-  // A hidden locked channel isn't in the visible list; a reminder for it
-  // still needs it to ask for the PIN.
-  concealedChannel(chKey: string): Channel | null {
-    if (this.resolveChannelIndex(chKey) >= 0) return null;
-    if (this.onOtherSource(chKey)) return null;
-    const channels = PlaylistService.getUnconcealedChannels();
-    return channels[indexOfChannelKey(channels, chKey)] ?? null;
-  }
-
-  resolveConcealedLaunchChannel(rawLaunchParams: unknown): { key: string; channel: Channel } | null {
-    const key = parseReminderChannelKey(rawLaunchParams);
-    const channel = key ? this.concealedChannel(key) : null;
-    return key && channel ? { key, channel } : null;
-  }
-
   isReminderLaunch(rawLaunchParams: unknown): boolean {
     return parseReminderChannelKey(rawLaunchParams) !== null;
   }
@@ -292,7 +252,6 @@ class ReminderServiceImpl {
     return this.list().some(r => !r.answered && r.startMs <= now && now < r.stopMs);
   }
 
-  // Includes reminders for channels hide mode conceals; they prompt without names.
   dueNow(now = Date.now()): Reminder[] {
     return this.list().filter(r =>
       !r.answered && r.startMs <= now && now < r.stopMs && this.channelExists(r.channelKey));
@@ -337,11 +296,9 @@ class ReminderServiceImpl {
       return;
     }
     const name = activityName(reminder.channelKey, reminder.startMs);
-    const concealed = this.concealedByParental(reminder.channelKey);
-    this.scheduledConcealed.set(name, concealed);
     // Cap title/channel so a long name can't overflow the toast/alert.
-    const title = concealed ? '' : truncate(reminder.title, CONFIG.REMINDER.TITLE_MAX);
-    const channel = concealed ? '' : truncate(reminder.channelName, CONFIG.REMINDER.CHANNEL_MAX);
+    const title = truncate(reminder.title, CONFIG.REMINDER.TITLE_MAX);
+    const channel = truncate(reminder.channelName, CONFIG.REMINDER.CHANNEL_MAX);
     // Dev mode: fire an interactive system alert (app open or closed) via the
     // bundled service. Retail: a passive toast (the actionable prompt is in-app).
     const callback = this._devMode
@@ -354,9 +311,7 @@ class ReminderServiceImpl {
             channelKey: reminder.channelKey,
             appId: CONFIG.APP_ID,
             alertTitle: t('reminder.title'),
-            alertMessage: concealed
-              ? t('reminder.lockedMessage')
-              : t('reminder.message', { channel, title }),
+            alertMessage: t('reminder.message', { channel, title }),
             watchLabel: t('reminder.watchNow'),
             cancelLabel: t('common.cancel'),
           },
@@ -365,9 +320,7 @@ class ReminderServiceImpl {
           method: 'luna://com.webos.notification/createToast',
           params: {
             sourceId: CONFIG.APP_ID,
-            message: concealed
-              ? t('reminder.lockedToast')
-              : t('reminder.toast', { channel, title }),
+            message: t('reminder.toast', { channel, title }),
           },
         };
     try {

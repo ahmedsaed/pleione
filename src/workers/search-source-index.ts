@@ -13,7 +13,7 @@ export const SEARCH_INDEX_FORMAT = 2;
 
 /**
  * The folded search text of one source cache record, in record order and
- * independent of customization or parental selection. Every value lives in
+ * independent of customization or source selection. Every value lives in
  * one string; `ends[item * fields + field]` is where that value ends.
  */
 export interface SourceIndex {

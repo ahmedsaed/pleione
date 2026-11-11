@@ -32,7 +32,7 @@ beforeEach(() => {
   state.channels = 0;
   handlers = {
     onOpenSection: vi.fn(), onPlayNumber: vi.fn(), onSelectAccount: vi.fn(),
-    onLockNow: vi.fn(), onBack: vi.fn(),
+    onBack: vi.fn(),
     onAddSource: vi.fn(), onRetryConnection: vi.fn(), onEditAccount: vi.fn(),
     loadSetupInfo: vi.fn(() => Promise.resolve(null)),
   };
@@ -156,36 +156,6 @@ describe('Home', () => {
     expect(handlers.onBack).toHaveBeenCalledTimes(1);
     home.handleAction('number', { number: 12, digits: '12' } as never);
     expect(handlers.onPlayNumber).toHaveBeenCalledWith(12);
-  });
-
-  it('shows Lock now beside the avatar during a PIN session, reached by Up', () => {
-    home.setSources(true, [account], account);
-    home.setParentalSession(true);
-    home.render();
-    const lock = container.querySelector<HTMLElement>('[data-lock-now]')!;
-    expect(lock.textContent).toContain('Lock now');
-    home.focusEntry();
-    key('up');
-    expect(focused()).toBe('account');
-    key('left');
-    expect(focused()).toBe('lock-now');
-    home.handleAction('select');
-    expect(handlers.onLockNow).toHaveBeenCalledTimes(1);
-  });
-
-  it('sends Down from the header to Live when the last card left the bento', () => {
-    home.setSources(true, [account], account);
-    home.setParentalSession(true);
-    home.render();
-    home.focusEntry('movies');
-    key('up', 'left');
-    expect(focused()).toBe('lock-now');
-    // The Xtream account goes, and Movies with it.
-    home.setSources(false, [], null);
-    home.render();
-    expect(focused()).toBe('lock-now');
-    key('down');
-    expect(focused()).toBe('section:live');
   });
 
   it('tints the glow toward the focused card', () => {

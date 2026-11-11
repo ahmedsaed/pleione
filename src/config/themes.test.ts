@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { THEMES, DEFAULT_THEME, TEXT_SIZES, DEFAULT_TEXT_SIZE, INTERFACE_SIZES, DEFAULT_INTERFACE_SIZE, isValidTheme, isValidTextSize, isValidInterfaceSize } from './themes';
+import { THEMES, DEFAULT_THEME, TEXT_SIZES, DEFAULT_TEXT_SIZE, INTERFACE_SIZES, DEFAULT_INTERFACE_SIZE, isValidTheme, isValidTextSize, isValidInterfaceSize, migrateThemeId, RETIRED_THEMES } from './themes';
 
 // Parse the shipped stylesheet directly so a theme that's registered but missing
 // a `[data-theme]` block (or a variable) fails the build instead of the TV.
@@ -51,6 +51,28 @@ describe('theme registry', () => {
   });
 });
 
+describe('theme lineup', () => {
+  it('offers exactly the six kept themes, Midnight first', () => {
+    expect(THEMES.map(t => t.id)).toEqual(['midnight', 'ember', 'emerald', 'burgundy', 'daylight', 'paper-light']);
+    expect(THEMES.filter(t => t.isLight).map(t => t.id)).toEqual(['daylight', 'paper-light']);
+  });
+
+  it('maps every retired theme to a kept one and leaves the rest alone', () => {
+    const retired = ['amethyst', 'plum-night', 'pastel-mocha', 'neon-night', 'cobalt-slate',
+      'arctic', 'ocean-dark', 'vintage-amber', 'pastel-latte'];
+    for (const id of retired) {
+      expect(isValidTheme(id), id).toBe(false);
+      expect(isValidTheme(migrateThemeId(id)), id).toBe(true);
+    }
+    expect(migrateThemeId('vintage-amber')).toBe('ember');
+    expect(migrateThemeId('pastel-latte')).toBe('daylight');
+    expect(migrateThemeId('arctic')).toBe('midnight');
+    for (const t of THEMES) expect(migrateThemeId(t.id)).toBe(t.id);
+    expect(migrateThemeId('unknown')).toBe('unknown');
+    expect(migrateThemeId('constructor')).toBe('constructor');
+  });
+});
+
 describe('text size registry', () => {
   it('has a valid default and rejects unknown ids', () => {
     expect(isValidTextSize(DEFAULT_TEXT_SIZE)).toBe(true);
@@ -92,5 +114,14 @@ describe('interface sizes', () => {
   it('defines the fixed canvas tokens as literal screen sizes', () => {
     expect(/:root\s*\{[^}]*--canvas-width:\s*1920px;/.test(mainCss)).toBe(true);
     expect(/:root\s*\{[^}]*--canvas-height:\s*1080px;/.test(mainCss)).toBe(true);
+  });
+});
+
+describe('first-paint theme script', () => {
+  it('paints a retired theme as its replacement, matching RETIRED_THEMES', () => {
+    const page = readFileSync(join(process.cwd(), 'index.html'), 'utf8');
+    const map = /var retiredThemes = (\{[^}]*\});/.exec(page);
+    expect(map).not.toBeNull();
+    expect(JSON.parse(map![1])).toEqual(RETIRED_THEMES);
   });
 });

@@ -65,7 +65,6 @@ for having the right to watch it.
   Türkçe, Українська, and 简体中文
 - Interface size from 90% to 130% and text size from 80% to 150%
 - Light and dark color themes
-- Parental controls with a PIN for groups, categories, or single titles
 - Full D-pad and Magic Remote support
 
 **Set up from your phone**

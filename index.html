@@ -7,7 +7,9 @@
   <script>
     // Anti-FOUC (Flash of Unstyled Content): apply the saved theme before first paint.
     // StorageService JSON-encodes values, so the stored id is a quoted string.
-    try { var t = JSON.parse(localStorage.getItem('iptv_theme')); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+    // A retired theme paints as its replacement (RETIRED_THEMES in src/config/themes.ts).
+    var retiredThemes = {"amethyst":"midnight","plum-night":"midnight","pastel-mocha":"midnight","neon-night":"midnight","cobalt-slate":"midnight","arctic":"midnight","ocean-dark":"midnight","vintage-amber":"ember","pastel-latte":"daylight"};
+    try { var t = JSON.parse(localStorage.getItem('iptv_theme')); if (t) document.documentElement.dataset.theme = Object.prototype.hasOwnProperty.call(retiredThemes, t) ? retiredThemes[t] : t; } catch (e) {}
     try { var s = JSON.parse(localStorage.getItem('iptv_text_size')); if (s) document.documentElement.dataset.textSize = s; } catch (e) {}
     try { var a = JSON.parse(localStorage.getItem('iptv_animation_mode')); if (a) document.documentElement.dataset.animation = a; } catch (e) {}
   </script>
@@ -27,7 +29,6 @@
   <link rel="stylesheet" href="css/search.css">
   <link rel="stylesheet" href="css/catalog-view.css">
   <link rel="stylesheet" href="css/account-switcher.css">
-  <link rel="stylesheet" href="css/parental-controls.css">
   <link rel="stylesheet" href="css/live-category-picker.css">
   <link rel="stylesheet" href="css/legacy-webos-overrides.css">
   <script>
@@ -81,7 +82,6 @@
   </div>
 
   <div id="view-settings" class="view hidden" data-backdrop="settings"></div>
-  <div id="view-parental-controls" class="view hidden" data-backdrop="settings"></div>
   <div id="view-reminders" class="view hidden" data-backdrop="settings"></div>
 
   <div id="view-movies" class="view hidden" data-backdrop="movies"></div>

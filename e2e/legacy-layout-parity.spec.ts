@@ -191,23 +191,6 @@ async function openSettingsPane(p: Page, pane: string): Promise<void> {
     .toBeVisible();
 }
 
-// Turning parental controls on persists across reloads, so these screens run
-// after every screen that would otherwise meet a PIN prompt.
-const PIN = '1234';
-
-async function enterPin(p: Page): Promise<void> {
-  await p.locator('.parental-pin-prompt .parental-pin-input').fill(PIN);
-}
-
-/** Leave the manager with an unlock duration of "Once", so locks apply. */
-async function leaveParentalLocked(p: Page): Promise<void> {
-  await p.locator('[data-parental-tab="options"]').click();
-  await p.locator('#parental-duration [data-value="once"]').click();
-  await expect(p.locator('#parental-duration .active')).toHaveAttribute('data-value', 'once');
-  await p.locator('[data-parental-back]').click();
-  await expect(p.locator('#view-parental-controls')).toBeHidden();
-}
-
 const M3U_SCREENS: Screen[] = [
   {
     // The landing view, once the preview has followed the focused row: its
@@ -228,7 +211,7 @@ const M3U_SCREENS: Screen[] = [
       await expect(p.locator('#channel-browser .group-item.focused')).toHaveCount(1);
     },
   },
-  ...(['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']
+  ...(['general', 'sources', 'guide', 'appearance', 'subtitles', 'advanced', 'data']
     .map((pane) => ({
       name: `settings-${pane}`,
       // The data pane prints a storage quota, and `navigator.storage` is
@@ -460,69 +443,13 @@ const M3U_SCREENS: Screen[] = [
     },
   },
   {
-    name: 'parental-pin-create',
-    budget: 0,
-    go: async (p) => {
-      await p.keyboard.press('Escape');
-      await expect(p.locator('.reminder-prompt:not(.hidden)')).toHaveCount(0);
-      await openSettingsPane(p, 'general');
-      await p.locator('#manage-parental-controls').click();
-      await expect(p.locator('.parental-pin-prompt .parental-pin-dialog')).toBeVisible();
-    },
-  },
-  {
-    name: 'parental-controls',
-    budget: 0,
-    go: async (p) => {
-      await enterPin(p);
-      await expect(p.locator('.parental-pin-prompt h2')).toContainText('Confirm');
-      await enterPin(p);
-      await expect(p.locator('#view-parental-controls')).toBeVisible();
-      const news = p.locator('[data-parental-group]').filter({ hasText: 'News' });
-      await news.click();
-      await expect(news.locator('.lock-badge.is-locked')).toBeVisible();
-    },
-  },
-  {
-    name: 'parental-options',
-    budget: 0,
-    go: async (p) => {
-      await p.locator('[data-parental-tab="options"]').click();
-      await expect(p.locator('#parental-duration')).toBeVisible();
-    },
-  },
-  {
-    name: 'settings-parental-on',
-    budget: 0,
-    go: async (p) => {
-      await leaveParentalLocked(p);
-      await openSettingsPane(p, 'general');
-      await expect(p.locator('.parental-entry-status.is-on')).toBeVisible();
-    },
-  },
-  {
-    name: 'live-locked',
-    budget: 0,
-    go: async (p) => {
-      await enterTab(p, 'live');
-      await expect(p.locator('#view-channels .group-item .lock-badge.is-locked').first()).toBeVisible();
-      await expect(p.locator('#view-channels .channel-item .lock-badge.is-locked').first()).toBeVisible();
-    },
-  },
-  {
-    name: 'parental-pin-challenge',
-    budget: 0,
-    go: async (p) => {
-      await p.locator('#view-channels .channel-main .channel-item').filter({ hasText: 'Channel One' }).click();
-      await expect(p.locator('.parental-pin-prompt .parental-pin-dialog')).toBeVisible();
-    },
-  },
-  {
     // Last two: both reload with the playlist state rewritten.
     // Live loads its channels when it opens from Home.
     name: 'live-loading',
     budget: 0,
     go: async (p) => {
+      await p.keyboard.press('Escape');
+      await expect(p.locator('.reminder-prompt:not(.hidden)')).toHaveCount(0);
       await p.route('**/playlist.m3u', (r) => new Promise(() => { void r; }));
       await p.reload();
       await expect(p.locator('#view-home [data-key="section:live"]')).toHaveClass(/\bfocused\b/);
@@ -708,39 +635,11 @@ const XTREAM_SCREENS: Screen[] = [
     },
   },
   {
-    // The Movies kind drops the playlist column and docks the account slot.
-    name: 'parental-controls-movies',
-    budget: 0,
-    go: async (p) => {
-      // The Xtream setup has no LAN stub, and the entry sits at the top of
-      // the first pane anyway.
-      await enterTab(p, 'settings');
-      await p.locator('#manage-parental-controls').click();
-      await enterPin(p);
-      await expect(p.locator('.parental-pin-prompt h2')).toContainText('Confirm');
-      await enterPin(p);
-      const view = p.locator('#view-parental-controls');
-      await view.locator('#parental-kind [data-value="vod"]').click();
-      const category = view.locator('[data-parental-group]').filter({ hasText: 'Cat A' });
-      await category.click();
-      await expect(category.locator('.lock-badge.is-locked')).toBeVisible();
-      await expect(view.locator('[data-parental-item]').filter({ hasText: 'Movie One' })).toBeVisible();
-    },
-  },
-  {
-    name: 'movies-locked',
-    budget: 0,
-    go: async (p) => {
-      await leaveParentalLocked(p);
-      await enterTab(p, 'movies');
-      await expect(p.locator('#view-movies .catalog-tile .lock-badge.is-locked').first()).toBeVisible();
-      await heroAtRest(p);
-    },
-  },
-  {
     name: 'movies-sort-directions',
     budget: 0,
     go: async (p) => {
+      await enterTab(p, 'movies');
+      await heroAtRest(p);
       // Sorting lives on the category page.
       await p.locator('#view-movies .catalog-layer-browse .catalog-see-all[data-category-id="1"]').click();
       const row = p.locator('#view-movies .catalog-layer-grid .catalog-sort');

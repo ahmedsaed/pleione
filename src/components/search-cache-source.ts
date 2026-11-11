@@ -58,26 +58,6 @@ export function cachedChannelsRequest(
   };
 }
 
-/**
- * Selects the visible catalog items in one pass. Without concealment every
- * item stays, in order, and the worker needs no selection at all.
- */
-export function selectCatalogItems<T>(
-  items: T[],
-  concealing: boolean,
-  concealed: (item: T) => boolean,
-): { items: T[]; selection: Uint32Array | null } {
-  if (!concealing) return { items, selection: null };
-  const visible: T[] = [];
-  const selection = new Uint32Array(items.length);
-  for (let i = 0; i < items.length; i++) {
-    if (concealed(items[i])) continue;
-    selection[visible.length] = i;
-    visible.push(items[i]);
-  }
-  return { items: visible, selection: selection.slice(0, visible.length) };
-}
-
 export function cachedNamesRequest(
   source: unknown[],
   items: Array<{ name: string }>,

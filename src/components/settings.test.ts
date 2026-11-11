@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { platform } from '../platform';
-import type { ChannelCycleMode, ManualEpgSource, PlaylistEntry, TzMode, XtreamLiveCategorySnapshot } from '../types';
+import type { ManualEpgSource, PlaylistEntry, TzMode, XtreamLiveCategorySnapshot } from '../types';
 import type { AnimationMode } from '../services/motion-service';
 import type { XtreamAccountInfo, XtreamLiveCategory } from '../services/xtream-client';
 
@@ -14,7 +14,6 @@ const {
   setupMock,
   uploadMock,
   xtreamMock,
-  healthMock,
   motionMock,
 } = vi.hoisted(() => {
   const state = {
@@ -34,11 +33,9 @@ const {
     manualEpgSources: [] as ManualEpgSource[],
     animationMode: 'reduced' as AnimationMode,
     theme: 'midnight' as string,
-    overlayStyle: 'dark' as string,
     textSize: '100' as string,
     interfaceSize: '100' as string,
     tzMode: 'device' as TzMode,
-    channelCycleMode: 'active' as ChannelCycleMode,
     liveReconnectAttempts: 3,
     numberEntryOsdTimeoutMs: 1200,
     playerOsdTimeoutMs: 5000,
@@ -68,7 +65,6 @@ const {
           epg: { bytes: 92 * 1024 * 1024, entries: 2 },
           catalog: { bytes: 286 * 1024 * 1024, entries: 7 },
           subtitle: { bytes: 41 * 1024 * 1024, entries: 2 },
-          health: { bytes: 0, entries: 0 },
           search: { bytes: 3 * 1024 * 1024, entries: 2 },
         },
         budgetBytes: 1024 * 1024 * 1024,
@@ -88,13 +84,11 @@ const {
       }))),
       getAnimationMode: vi.fn(() => state.animationMode),
       getTheme: vi.fn(() => state.theme),
-      getOverlayStyle: vi.fn(() => state.overlayStyle),
       getTextSize: vi.fn(() => state.textSize),
       getInterfaceSize: vi.fn(() => state.interfaceSize),
       getTzMode: vi.fn(() => state.tzMode),
       getTimeFormat: vi.fn(() => '12h'),
       setTimeFormat: vi.fn(),
-      getChannelCycleMode: vi.fn(() => state.channelCycleMode),
       getLiveReconnectAttempts: vi.fn(() => state.liveReconnectAttempts),
       getNumberEntryOsdTimeoutMs: vi.fn(() => state.numberEntryOsdTimeoutMs),
       getPlayerOsdTimeoutMs: vi.fn(() => state.playerOsdTimeoutMs),
@@ -125,11 +119,9 @@ const {
       }),
       setAnimationMode: vi.fn((value: AnimationMode) => { state.animationMode = value; }),
       setTheme: vi.fn((id: string) => { state.theme = id; }),
-      setOverlayStyle: vi.fn((s: string) => { state.overlayStyle = s; }),
       setTextSize: vi.fn((s: string) => { state.textSize = s; }),
       setInterfaceSize: vi.fn((s: string) => { state.interfaceSize = s; }),
       setTzMode: vi.fn(),
-      setChannelCycleMode: vi.fn((m: ChannelCycleMode) => { state.channelCycleMode = m; }),
       setLiveReconnectAttempts: vi.fn((attempts: number) => {
         state.liveReconnectAttempts = attempts;
       }),
@@ -180,23 +172,6 @@ const {
       getAccountInfo: vi.fn(async (): Promise<XtreamAccountInfo | null> => null),
       getLiveCategories: vi.fn(async (): Promise<XtreamLiveCategory[]> => []),
     },
-    healthMock: {
-      getSummary: vi.fn((channels: unknown[]) => ({
-        total: channels.length,
-        unknown: channels.length,
-        healthy: 0,
-        suspect: 0,
-        unavailable: 0,
-      })),
-      checkAll: vi.fn(async () => ({
-        total: 0,
-        unknown: 0,
-        healthy: 0,
-        suspect: 0,
-        unavailable: 0,
-      })),
-      reset: vi.fn(),
-    },
   };
 });
 
@@ -236,7 +211,6 @@ vi.mock('../services/reminder-service', () => ({
   },
 }));
 vi.mock('../services/setup-client', () => ({ SetupClient: setupMock }));
-vi.mock('../services/channel-health', () => ({ ChannelHealthService: healthMock }));
 
 import { Settings, liveCategoriesButtonContent } from './settings';
 import { setLocale } from '../i18n';
@@ -246,7 +220,6 @@ import { channelKey, legacyChannelKey } from '../utils/channel';
 import { morph } from '../utils/morph';
 import { Focus } from '../navigation/focus-scope';
 import { CONFIG } from '../config';
-import { ParentalControlService } from '../services/parental-control';
 
 let container: HTMLElement;
 let onSave: ReturnType<typeof vi.fn>;
@@ -257,10 +230,8 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   state.playlists = [];
   state.manualEpgSources = [];
-  state.channelCycleMode = 'active';
   state.animationMode = 'reduced';
   state.theme = 'midnight';
-  state.overlayStyle = 'dark';
   state.textSize = '100';
   state.interfaceSize = '100';
   state.liveReconnectAttempts = 3;
@@ -307,11 +278,13 @@ describe('Settings.render', () => {
       'Sources',
       'Program Guide',
       'Appearance',
-      'Playback',
-      'Online Subtitles',
+      'Online Services',
       'Advanced',
       'Data Management',
     ]);
+    // The page keeps its section headings.
+    expect(container.querySelector('#settings-subtitles .settings-section-title')?.textContent)
+      .toBe('Online Subtitles');
     const navOrder = Array.from(container.querySelectorAll<HTMLElement>('.settings-nav-item'))
       .map(item => item.dataset.settingsTarget);
     const contentOrder = Array.from(
@@ -322,98 +295,15 @@ describe('Settings.render', () => {
       .toBe('general');
   });
 
-  it('starts a manual channel health check from the Channels section', async () => {
-    PlaylistService.allChannels = [{
-      id: 'ch1',
-      name: 'Alpha',
-      logo: '',
-      group: '',
-      url: 'http://host/a',
-      extras: null,
-      playlistIds: [],
-      catchup: '',
-      catchupSource: '',
-      catchupDays: 0,
-    }];
-    PlaylistService.channels = PlaylistService.allChannels;
+  it('groups language and time format under General, and time zone under Guide', () => {
     settings.render();
-
-    expect(container.querySelector('.channel-health-summary')?.textContent)
-      .toContain('Not checked: 1');
-    click('#check-channel-health');
-
-    await vi.waitFor(() => {
-      expect(healthMock.checkAll).toHaveBeenCalledWith(
-        PlaylistService.allChannels,
-        expect.objectContaining({
-          signal: expect.any(AbortSignal),
-          onProgress: expect.any(Function),
-        }),
-      );
-      expect(toastMock.showToast).toHaveBeenCalledWith('Channel health check complete');
-    });
-  });
-
-  it('pauses, resumes, and cancels a channel health check', async () => {
-    PlaylistService.allChannels = [{
-      id: 'ch1',
-      name: 'Alpha',
-      logo: '',
-      group: '',
-      url: 'http://host/a',
-      extras: null,
-      playlistIds: [],
-      catchup: '',
-      catchupSource: '',
-      catchupDays: 0,
-    }];
-    PlaylistService.channels = PlaylistService.allChannels;
-    let options: {
-      signal?: AbortSignal;
-      waitWhilePaused?: () => Promise<void>;
-    } = {};
-    let finish: (() => void) | null = null;
-    healthMock.checkAll.mockImplementationOnce(async (_channels, value) => {
-      options = value;
-      await new Promise<void>(resolve => { finish = resolve; });
-      return {
-        total: 1,
-        unknown: 1,
-        healthy: 0,
-        suspect: 0,
-        unavailable: 0,
-      };
-    });
-    settings.render();
-    click('#check-channel-health');
-    await vi.waitFor(() => expect(container.querySelector('#pause-channel-health')).not.toBeNull());
-
-    click('#pause-channel-health');
-    expect(container.querySelector('#pause-channel-health')?.textContent?.trim()).toBe('Continue');
-    const resumed = options.waitWhilePaused?.();
-    click('#pause-channel-health');
-    await resumed;
-    expect(container.querySelector('#pause-channel-health')?.textContent?.trim()).toBe('Pause');
-
-    click('#pause-channel-health');
-    const cancelled = options.waitWhilePaused?.();
-    click('#cancel-channel-health');
-    await cancelled;
-    expect(options.signal?.aborted).toBe(true);
-    finish?.();
-    await vi.waitFor(() => expect(container.querySelector('#check-channel-health')).not.toBeNull());
-  });
-
-  it('groups language and time zone under General, with Channel Up/Down under Playback', () => {
-    settings.render();
-    expect(container.querySelectorAll('.settings-section > .settings-section-title'))
-      .toHaveLength(container.querySelectorAll('.settings-section').length);
+    for (const section of Array.from(container.querySelectorAll('.settings-section'))) {
+      expect(section.firstElementChild?.classList.contains('settings-section-title')).toBe(true);
+    }
     expect(container.querySelector('#app-language')?.closest('[data-settings-category]')
       ?.getAttribute('data-settings-category')).toBe('general');
     expect(container.querySelector('#tz-mode')?.closest('[data-settings-category]')
       ?.getAttribute('data-settings-category')).toBe('guide');
-    expect(container.querySelector('#channel-cycle-mode')?.closest('[data-settings-category]')
-      ?.getAttribute('data-settings-category')).toBe('playback');
     expect(container.querySelector('#clear-recently-watched')?.closest('[data-settings-category]')
       ?.getAttribute('data-settings-category')).toBe('data');
     expect(container.querySelector('#settings-general')?.textContent).not.toContain('Display');
@@ -499,29 +389,6 @@ describe('Settings.render', () => {
       { id: 'p1', name: 'P1', url: 'http://a', source: 'url', enabled: false },
     ]);
     expect(onSave).toHaveBeenCalledWith('reload');
-  });
-
-  it('asks the parental guard before turning a source off, not on', () => {
-    const authorize = vi.fn();
-    container.remove();
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    settings.focusScope.dispose();
-    settings = new Settings(
-      container, onSave, onChannelsChanged, undefined, undefined, undefined, authorize);
-    state.playlists = [{ id: 'p1', name: 'P1', url: 'http://a', source: 'url' }];
-    settings.render();
-    const entry = () => container.querySelector('#playlist-entries [data-source-entry]')!;
-
-    click('#playlist-entries .source-toggle');
-    expect(authorize).toHaveBeenCalledWith('p1', expect.any(Function), true);
-    expect(entry().classList.contains('source-disabled')).toBe(false);
-
-    authorize.mock.calls[0][1]();
-    expect(entry().classList.contains('source-disabled')).toBe(true);
-    click('#playlist-entries .source-toggle');
-    expect(authorize).toHaveBeenCalledTimes(1);
-    expect(entry().classList.contains('source-disabled')).toBe(false);
   });
 
   it('renders animation, reconnect, and refresh controls under Advanced', () => {
@@ -849,7 +716,7 @@ describe('Settings.render', () => {
       url: 'http://host/live?id=2',
       playlistIds: ['p2'],
     };
-    const channels = vi.spyOn(PlaylistService, 'getUnconcealedChannels').mockReturnValue([first, second]);
+    const channels = vi.spyOn(PlaylistService, 'getCustomizedChannels').mockReturnValue([first, second]);
     const sourceUrl = vi.spyOn(EpgService, 'getSourceUrl')
       .mockImplementation(channel =>
         channel === first ? 'http://host/a.xml' : 'http://host/b.xml');
@@ -938,11 +805,10 @@ describe('Settings.render', () => {
       ?.getAttribute('transform')).toBe('rotate(-90 60 60)');
     const breakdown = container.querySelector('.cache-usage-breakdown')!;
     expect(breakdown.previousElementSibling?.classList.contains('cache-usage-total')).toBe(true);
-    expect(breakdown.children).toHaveLength(6);
+    expect(breakdown.children).toHaveLength(5);
     expect(breakdown.lastElementChild?.textContent).toBe('Search Index 3.00 MiB');
     expect(breakdown.textContent).toContain('286 MiB');
     expect(breakdown.textContent).toContain('92.0 MiB');
-    expect(breakdown.textContent).toContain('Channel Health');
   });
 });
 
@@ -950,41 +816,41 @@ describe('Settings theme picker', () => {
   beforeEach(() => settings.render());
 
   it('renders a swatch per registered theme with the saved theme active', () => {
-    expect(container.querySelectorAll('.theme-swatch')).toHaveLength(15);
+    expect(container.querySelectorAll('.theme-swatch')).toHaveLength(6);
     expect(container.querySelector('.theme-swatch.active')!.getAttribute('data-theme-id')).toBe('midnight');
   });
 
   it('marks the saved theme active on open', () => {
-    state.theme = 'plum-night';
+    state.theme = 'ember';
     settings.render();
     const active = container.querySelectorAll('.theme-swatch.active');
     expect(active).toHaveLength(1);
-    expect(active[0].getAttribute('data-theme-id')).toBe('plum-night');
+    expect(active[0].getAttribute('data-theme-id')).toBe('ember');
   });
 
   it('selecting a swatch previews it and moves the active marker', () => {
-    click('.theme-swatch[data-theme-id="arctic"]');
-    expect(themeMock.previewTheme).toHaveBeenCalledWith('arctic');
+    click('.theme-swatch[data-theme-id="emerald"]');
+    expect(themeMock.previewTheme).toHaveBeenCalledWith('emerald');
     const active = container.querySelectorAll('.theme-swatch.active');
     expect(active).toHaveLength(1);
-    expect(active[0].getAttribute('data-theme-id')).toBe('arctic');
+    expect(active[0].getAttribute('data-theme-id')).toBe('emerald');
   });
 
   it('previews on pointer hover and restores the selected theme when the pointer leaves', async () => {
     // Select Arctic (pending), then hover a different swatch and move the pointer off.
-    click('.theme-swatch[data-theme-id="arctic"]');
-    const amber = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="vintage-amber"]')!;
+    click('.theme-swatch[data-theme-id="emerald"]');
+    const amber = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="burgundy"]')!;
     amber.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-    expect(themeMock.previewTheme).toHaveBeenLastCalledWith('vintage-amber');
+    expect(themeMock.previewTheme).toHaveBeenLastCalledWith('burgundy');
     // Leaving to a non-swatch restores the selected (Arctic), not the saved (midnight).
     amber.dispatchEvent(new CustomEvent('nav:unhover', { bubbles: true }));
     await Promise.resolve();
-    expect(themeMock.previewTheme).toHaveBeenLastCalledWith('arctic');
+    expect(themeMock.previewTheme).toHaveBeenLastCalledWith('emerald');
   });
 
   it('keeps previewing when the pointer moves between swatches', async () => {
-    const arctic = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="arctic"]')!;
-    const amber = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="vintage-amber"]')!;
+    const arctic = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="emerald"]')!;
+    const amber = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="burgundy"]')!;
     arctic.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     themeMock.previewTheme.mockClear();
     arctic.dispatchEvent(new CustomEvent('nav:unhover', { bubbles: true }));
@@ -992,18 +858,18 @@ describe('Settings theme picker', () => {
     await Promise.resolve();
     // Each theme change restyles the whole document, so swatch→swatch must
     // not restore the selected theme in between.
-    expect(themeMock.previewTheme.mock.calls).toEqual([['vintage-amber']]);
+    expect(themeMock.previewTheme.mock.calls).toEqual([['burgundy']]);
   });
 
   it('saves the picked theme at once', () => {
-    click('.theme-swatch[data-theme-id="vintage-amber"]');
-    expect(storageMock.setTheme).toHaveBeenCalledWith('vintage-amber');
+    click('.theme-swatch[data-theme-id="burgundy"]');
+    expect(storageMock.setTheme).toHaveBeenCalledWith('burgundy');
   });
 
-  it('reflects the saved overlay style on the toggle', () => {
-    state.overlayStyle = 'frosted';
+  it('has no player overlay style setting', () => {
     settings.render();
-    expect(container.querySelector('#overlay-style .toggle-option.active')!.getAttribute('data-value')).toBe('frosted');
+    expect(container.querySelector('#overlay-style')).toBeNull();
+    expect(container.querySelector('#settings-appearance')?.textContent).not.toContain('overlay');
   });
 
   it('labels the theme swatches as a child setting', () => {
@@ -1018,12 +884,6 @@ describe('Settings theme picker', () => {
     expect(item?.querySelector('.settings-item-title')?.textContent)
       .toBe('Preferred subtitle language');
     expect(item?.closest('.settings-row')).toBeNull();
-  });
-
-  it('persists the overlay style on Save & Apply', () => {
-    click('#overlay-style .toggle-option[data-value="frosted"]');
-    settings.leave();
-    expect(storageMock.setOverlayStyle).toHaveBeenCalledWith('frosted');
   });
 
   it('reflects the saved text size on the dropdown', () => {
@@ -1187,17 +1047,17 @@ describe('Settings editing', () => {
   });
 
   it('selecting an option activates it in its toggle group', () => {
-    const activeVal = () => container.querySelector('#channel-cycle-mode .toggle-option.active')!.getAttribute('data-value');
-    expect(activeVal()).toBe('active');
-    click('#channel-cycle-mode [data-value="global"]');
-    expect(activeVal()).toBe('global');
+    const activeVal = () => container.querySelector('#time-format .toggle-option.active')!.getAttribute('data-value');
+    expect(activeVal()).toBe('12h');
+    click('#time-format [data-value="24h"]');
+    expect(activeVal()).toBe('24h');
   });
 
   it('explains the cache scope and requires confirmation before clearing', async () => {
     click('#clear-cache');
     expect(document.querySelector('.confirmation-title')?.textContent).toBe('Clear cache?');
     expect(document.querySelector('.confirmation-message')?.textContent)
-      .toContain('channel health results');
+      .toContain('media metadata, and subtitles will be removed');
     expect(document.querySelector('.confirmation-message')?.textContent)
       .toContain('Accounts, settings, favorites, and viewing history are kept.');
     expect(cacheMock.clearAllCachedData).not.toHaveBeenCalled();
@@ -1207,50 +1067,8 @@ describe('Settings editing', () => {
 
     await vi.waitFor(() => {
       expect(cacheMock.clearAllCachedData).toHaveBeenCalled();
-      expect(healthMock.reset).toHaveBeenCalled();
-      expect(onChannelsChanged).toHaveBeenCalled();
       expect(toastMock.showToast).toHaveBeenCalledWith('Cache cleared');
     });
-  });
-
-  it('waits for an active health check to stop before clearing cache', async () => {
-    PlaylistService.allChannels = [{
-      id: 'ch1',
-      name: 'Alpha',
-      logo: '',
-      group: '',
-      url: 'http://host/a',
-      extras: null,
-      playlistIds: [],
-      catchup: '',
-      catchupSource: '',
-      catchupDays: 0,
-    }];
-    let signal: AbortSignal | undefined;
-    let finish: (() => void) | null = null;
-    healthMock.checkAll.mockImplementationOnce(async (_channels, options) => {
-      signal = options.signal;
-      await new Promise<void>(resolve => { finish = resolve; });
-      return {
-        total: 1,
-        unknown: 1,
-        healthy: 0,
-        suspect: 0,
-        unavailable: 0,
-      };
-    });
-    settings.render();
-    click('#check-channel-health');
-    await vi.waitFor(() => expect(signal).toBeDefined());
-
-    click('#clear-cache');
-    settings.handleAction('left');
-    settings.handleAction('select');
-
-    await vi.waitFor(() => expect(signal?.aborted).toBe(true));
-    expect(cacheMock.clearAllCachedData).not.toHaveBeenCalled();
-    finish?.();
-    await vi.waitFor(() => expect(cacheMock.clearAllCachedData).toHaveBeenCalled());
   });
 
   it('requires confirmation before requesting a full app reset', () => {
@@ -1294,15 +1112,15 @@ describe('Settings saving', () => {
     state.playlists = [playlist];
     settings.render();
     container.querySelector<HTMLInputElement>('.playlist-url')!.value = 'http://half-typed';
-    click('#overlay-style .toggle-option[data-value="frosted"]');
-    expect(storageMock.setOverlayStyle).toHaveBeenCalledWith('frosted');
+    click('#tz-mode [data-value="feed"]');
+    expect(storageMock.setTzMode).toHaveBeenCalledWith('feed');
     expect(storageMock.setPlaylists).not.toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
   });
 
   it('Back applies changed settings without reloading the channels', () => {
     settings.render();
-    click('#overlay-style .toggle-option[data-value="frosted"]');
+    click('#tz-mode [data-value="feed"]');
     settings.leave();
     expect(onSave).toHaveBeenLastCalledWith('apply');
   });
@@ -1580,49 +1398,6 @@ describe('Settings Recently Watched clearing', () => {
       expect(storageMock.getWatchlist).toHaveBeenCalledWith('x2', 'series');
     });
 
-    it('omits only concealed collection counts and retains account-wide clearing', () => {
-      const concealed = vi.spyOn(ParentalControlService, 'isConcealed')
-        .mockImplementation(request => request.target.kind === 'vod-item'
-          && request.target.itemId === 'hidden1');
-      const hiddenResume = {
-        accountId: 'x2', kind: 'vod', itemId: 'hidden1', name: 'Title 1', poster: '',
-        ext: 'mp4', position: 100, duration: 600, updatedAt: 1,
-      };
-      const hiddenWatchlist = {
-        accountId: 'x2', kind: 'vod', itemId: 'hidden1', name: 'Title 1', poster: '',
-        categoryId: '1', addedAt: 1,
-      };
-      try {
-        storageMock.getResumeList.mockReturnValue([hiddenResume]);
-        storageMock.getWatchlist.mockImplementation((_accountId, kind) => kind === 'vod' ? [hiddenWatchlist] : []);
-        settings.render();
-        const resumeHint = () => container.querySelector('#continue-watching-count-hint')?.textContent;
-        const watchlistHint = () => container.querySelector('#watchlist-count-hint')?.textContent;
-        expect(resumeHint()).toContain('Account Bravo');
-        expect(resumeHint()).toContain('Clear saved playback progress for movies and series in "Account Bravo".');
-        expect(watchlistHint()).toContain('Account Bravo');
-        expect(resumeHint()).not.toMatch(/\(\d+\)/);
-        expect(watchlistHint()).not.toMatch(/\(\d+\)/);
-
-        storageMock.getResumeList.mockReturnValue([]);
-        click('#clear-continue-watching');
-        settings.handleAction('left');
-        settings.handleAction('select');
-        expect(storageMock.clearResumeList).toHaveBeenCalledExactlyOnceWith('x2');
-        expect(resumeHint()).toContain('(0)');
-        expect(watchlistHint()).not.toMatch(/\(\d+\)/);
-
-        click('#clear-watchlist');
-        settings.handleAction('left');
-        settings.handleAction('select');
-        expect(storageMock.clearWatchlist).toHaveBeenCalledExactlyOnceWith('x2');
-      } finally {
-        concealed.mockRestore();
-        storageMock.getResumeList.mockReturnValue([]);
-        storageMock.getWatchlist.mockReturnValue([]);
-      }
-    });
-
     it('confirms clearing movie and episode progress for only the selected account', () => {
       click('#clear-continue-watching');
       expect(document.querySelector('.confirmation-title')?.textContent).toBe('Clear Continue Watching?');
@@ -1828,13 +1603,10 @@ describe('Settings.save', () => {
     expect(storageMock.setTzMode).toHaveBeenCalledWith('feed');
   });
 
-  it('selecting Global persists the channel cycle mode, defaulting to Active', () => {
-    const activeMode = () => container.querySelector('#channel-cycle-mode .toggle-option.active')!.getAttribute('data-value');
-    expect(activeMode()).toBe('active'); // default: the current group
-    click('#channel-cycle-mode [data-value="global"]');
-    expect(activeMode()).toBe('global');
-    settings.leave();
-    expect(storageMock.setChannelCycleMode).toHaveBeenCalledWith('global');
+  it('has no Playback page or Channel Up/Down setting', () => {
+    expect(container.querySelector('[data-settings-target="playback"]')).toBeNull();
+    expect(container.querySelector('#settings-playback')).toBeNull();
+    expect(container.querySelector('#channel-cycle-mode')).toBeNull();
   });
 
   it('saves online subtitle credentials', () => {
@@ -1981,7 +1753,7 @@ describe('Settings.handleAction', () => {
   it('does not preview the hovered swatch when Settings gives the keys away from a field', () => {
     settings.render();
     const field = container.querySelector<HTMLInputElement>('#subdl-key')!;
-    const swatch = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="arctic"]')!;
+    const swatch = container.querySelector<HTMLElement>('.theme-swatch[data-theme-id="emerald"]')!;
     hover(field);
     settings.handleAction('select');
     const before = settings.focusScope.focusKey;
@@ -1991,7 +1763,7 @@ describe('Settings.handleAction', () => {
     Focus.push(elsewhere);
     Focus.flush();
     expect(document.activeElement).not.toBe(field);
-    expect(themeMock.previewTheme).not.toHaveBeenCalledWith('arctic');
+    expect(themeMock.previewTheme).not.toHaveBeenCalledWith('emerald');
     expect(settings.focusScope.focusKey).toBe(before);
     Focus.pop(elsewhere);
   });
@@ -2175,23 +1947,22 @@ describe('Settings.handleAction', () => {
     expect(container.querySelector('.settings-nav-item.active')?.getAttribute('data-settings-target'))
       .toBe('subtitles');
     // Every page stays rendered, so its controls keep their state.
-    expect(container.querySelectorAll('.settings-category')).toHaveLength(8);
+    expect(container.querySelectorAll('.settings-category')).toHaveLength(7);
   });
 
   it('keeps unsaved edits across category pages and saves them all', () => {
-    state.channelCycleMode = 'global';
     settings.render();
-    click('[data-settings-target="playback"]');
-    click('#channel-cycle-mode [data-value="active"]');
+    click('[data-settings-target="guide"]');
+    click('#tz-mode [data-value="feed"]');
     click('[data-settings-target="appearance"]');
-    click('.theme-swatch[data-theme-id="arctic"]');
-    click('[data-settings-target="playback"]');
+    click('.theme-swatch[data-theme-id="emerald"]');
+    click('[data-settings-target="guide"]');
 
-    expect(container.querySelector('#channel-cycle-mode .toggle-option.active')?.getAttribute('data-value'))
-      .toBe('active');
+    expect(container.querySelector('#tz-mode .toggle-option.active')?.getAttribute('data-value'))
+      .toBe('feed');
     settings.leave();
-    expect(storageMock.setChannelCycleMode).toHaveBeenCalledWith('active');
-    expect(storageMock.setTheme).toHaveBeenCalledWith('arctic');
+    expect(storageMock.setTzMode).toHaveBeenCalledWith('feed');
+    expect(storageMock.setTheme).toHaveBeenCalledWith('emerald');
   });
 
   it('keeps the shown page when Settings renders again', () => {
@@ -2212,7 +1983,7 @@ describe('Settings.handleAction', () => {
   });
 
   it('enters the theme rail at the selected theme', () => {
-    state.theme = 'arctic';
+    state.theme = 'emerald';
     settings.render();
     container.querySelector<HTMLElement>('[data-settings-target="appearance"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
@@ -2226,7 +1997,7 @@ describe('Settings.handleAction', () => {
       Element.prototype.getBoundingClientRect = original;
     }
     expect(Array.from(container.querySelectorAll<HTMLElement>('.theme-swatch.focused'))
-      .map(el => el.dataset.themeId)).toEqual(['arctic']);
+      .map(el => el.dataset.themeId)).toEqual(['emerald']);
   });
 
   it('shows the page of a category the keys highlight, keeping focus in the sidebar', () => {
@@ -2255,11 +2026,11 @@ describe('Settings.handleAction', () => {
   it('keeps the active category while Magic Remote hover moves elsewhere', () => {
     settings.render();
     click('[data-settings-target="appearance"]');
-    container.querySelector<HTMLElement>('[data-settings-target="playback"]')!
+    container.querySelector<HTMLElement>('[data-settings-target="subtitles"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     expect(container.querySelector('.settings-nav-item.active')?.getAttribute('data-settings-target'))
       .toBe('appearance');
-    expect(container.querySelector('[data-settings-target="playback"]')?.classList.contains('focused'))
+    expect(container.querySelector('[data-settings-target="subtitles"]')?.classList.contains('focused'))
       .toBe(true);
   });
 });
@@ -2606,10 +2377,12 @@ describe('Settings Xtream section', () => {
     settings.render();
     const heads = Array.from(container.querySelectorAll('.settings-section-title'))
       .map((h) => h.textContent);
-    expect(heads[0]).toBe('Language');
-    expect(heads[1]).toBe('Set up with your phone or computer');
+    expect(heads.slice(0, 3)).toEqual(['Language', 'Time format', 'Set up with your phone or computer']);
     expect(container.querySelector('#app-language')?.closest('.settings-general-row'))
       .toBe(container.querySelector('#setup-info')?.closest('.settings-general-row'));
+    // Time format shares the Language card.
+    expect(container.querySelector('#time-format')?.closest('.settings-section'))
+      .toBe(container.querySelector('#app-language')?.closest('.settings-section'));
     expect(heads.indexOf('Language')).toBeLessThan(heads.indexOf('Xtream Accounts'));
     expect(heads.indexOf('Xtream Accounts')).toBeLessThan(heads.indexOf('Playlists'));
   });

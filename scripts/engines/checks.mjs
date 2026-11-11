@@ -335,7 +335,7 @@ export function walk({ id, title, profile = 'default', go, key = 'down', steps =
 
 const PROFILES_DATA = { 'text-size': PROFILES.large.text_size, 'interface-size': PROFILES.large.interface_size };
 
-const SETTINGS_PAGES = ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data'];
+const SETTINGS_PAGES = ['general', 'sources', 'guide', 'appearance', 'subtitles', 'advanced', 'data'];
 
 const LIVE = { view: '#view-channels', scroller: '.channel-main', header: '.live-header' };
 const SETTINGS = { view: '#view-settings', scroller: '.settings-scroll', header: '.settings-header' };

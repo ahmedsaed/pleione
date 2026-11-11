@@ -52,35 +52,6 @@ async function reminderComesDue(page: Page): Promise<void> {
   await expect(page.locator('.reminder-prompt:not(.hidden)')).toBeVisible();
 }
 
-test('the parental PIN keeps the keys over a reminder that comes due under it', async ({ page }) => {
-  await setup(page);
-  await enterTab(page, 'settings');
-  await page.locator('#manage-parental-controls').click();
-  await expect(page.locator('.parental-pin-prompt')).toBeVisible();
-  await expect(owner(page)).toHaveAttribute('data-focus-scope', 'prompt.parental_pin');
-
-  await reminderComesDue(page);
-  await expect(owner(page)).toHaveAttribute('data-focus-scope', 'prompt.parental_pin');
-
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.parental-pin-prompt')).toBeHidden();
-  await expect(owner(page)).toHaveAttribute('data-focus-scope', 'prompt.reminder');
-});
-
-test('the parental PIN paints above a reminder that comes due under it', async ({ page }) => {
-  await setup(page);
-  await enterTab(page, 'settings');
-  await page.locator('#manage-parental-controls').click();
-  await expect(page.locator('.parental-pin-prompt')).toBeVisible();
-  await reminderComesDue(page);
-
-  const onTop = await page.evaluate(() => {
-    const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-    return !!hit?.closest('.parental-pin-prompt');
-  });
-  expect(onTop).toBe(true);
-});
-
 test('watching a reminder that comes due over the Clear all confirmation closes it', async ({ page }) => {
   await setup(page);
   await enterTab(page, 'settings');
@@ -107,28 +78,6 @@ async function hoverCenter(page: Page, selector: string): Promise<void> {
   await page.mouse.move(1, 1);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 }
-
-test('a hover reaching a reminder covered by the parental PIN leaves it dark and keeps its focus', async ({ page }) => {
-  await setup(page);
-  await enterTab(page, 'settings');
-  await page.locator('#manage-parental-controls').click();
-  await expect(page.locator('.parental-pin-prompt')).toBeVisible();
-  await reminderComesDue(page);
-
-  // The PIN's backdrop covers the reminder, so no pointer reaches it; send
-  // the hover to the covered button as KeyHandler would.
-  await page.locator('.reminder-btn[data-key="cancel"]').evaluate((el) => {
-    el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-  });
-  await expect(page.locator('.reminder-btn.focused')).toHaveCount(0);
-  await expect(page.locator('[data-ring-hover]')).toHaveCount(0);
-  await expect(owner(page)).toHaveAttribute('data-focus-scope', 'prompt.parental_pin');
-
-  await page.keyboard.press('Escape');
-  await expect(owner(page)).toHaveAttribute('data-focus-scope', 'prompt.reminder');
-  await expect(rings(page)).toHaveCount(1);
-  await expect(page.locator('.reminder-btn.focused')).toHaveAttribute('data-key', 'ok');
-});
 
 test('the reminder ring follows the pointer and the D-pad', async ({ page }) => {
   await setup(page);

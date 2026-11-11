@@ -135,6 +135,10 @@ export const IT_MESSAGES = {
     one: '{count} episodio',
     other: '{count} episodi',
   },
+  'catalog.categoryCount': {
+    one: '{number} categoria',
+    other: '{number} categorie',
+  },
   'catalog.noMovies': 'Nessun film disponibile per questo account.',
   'catalog.noMoviesCategory': 'Nessun film in questa categoria.',
   'catalog.noSeries': 'Nessuna serie disponibile per questo account.',

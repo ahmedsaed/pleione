@@ -15,7 +15,7 @@ Needs Node.js and `ffmpeg` with `libx264` and the native `aac` encoder on
 
 ```bash
 npm run xtream:demo                  # small catalog on port 8090
-npm run xtream:demo -- --size large  # ~2000 channels / 1500 movies / 300 series
+npm run xtream:demo -- --size large  # ~2000 channels / 3000 movies / 1200 series
 npm run xtream:demo -- --prepare     # encode all media now, then exit
 npm run xtream:demo -- --help
 ```
@@ -113,8 +113,18 @@ Everything is deterministic and synthetic.
 | Live channels | 150 in `Group 1`-`Group 8`, plus 3 in `Group HD` | 2000 in 40 groups, plus 3 in `Group HD` |
 | Catch-up | every third channel (and `Alpha`), 3 days | 1 day |
 | Guide | 3 past days + 2 days ahead | 1 + 1 day |
-| Movies | 240 in 6 groups, plus 3 in `Group HD` | 1500 in 25 groups, plus 3 in `Group HD` |
-| Series | 120 in 4 groups, 1-3 seasons | 300 in 12 groups |
+| Movies | 360 in 24 named groups, plus 3 in `Group HD` | 3000 in 260 named groups, plus 3 in `Group HD` |
+| Series | 180 in 24 named groups, 1-3 seasons | 1200 in 240 named groups |
+
+Both lists also end in an empty `Coming Soon` group, so the small catalog
+has 26 movie and 25 series categories, more than the Movies and Series
+pill rows show. Movie and series groups have genre names, short (`War`,
+`Kids`) and long (`Award-Winning International Dramas from Around the
+World`), and uneven sizes: every eighth holds one or two titles, the
+first (`New Releases`, `Popular Now`) and every eighth from the fourth
+hold more than 20, and the rest hold a few to about 20. The large catalog
+adds names like `Comedy from the 1980s` to reach its hundreds of groups.
+Live channels keep the numbered `Group N` groups.
 
 Channels are `Alpha`, `Bravo`, `Charlie`, then `Channel 4`, `Channel 5`,
 and so on; programmes are `Program N`; movies are `Movie A`, `Movie B`, …;
@@ -122,7 +132,7 @@ series are `Series A`, …. Logos, posters, covers and episode stills are
 SVGs the server draws. Movies carry ratings, years, durations and spread
 `added` dates, so every sort order has something to sort.
 
-`Group HD` (category `100`, between the numbered groups and the empty
+`Group HD` (category `100`, between the generated groups and the empty
 one) is for checking playback at each resolution:
 
 | Stream ID | Name | Video |
@@ -141,7 +151,8 @@ Edge cases:
 
 - `Channel 4` has a very long name.
 - `Channel 6` has no `epg_channel_id` and no guide data.
-- The last live, movie and series group is empty.
+- The last live, movie and series group is empty, and no generated
+  group uses category `100`.
 - `Movie A` has two audio tracks (`Track 1`, `Track 2`), an embedded
   subtitle track (`Track 3`), and two sidecar subtitles in
   `info.subtitles` (`Sidecar SRT`, `l1`; `Sidecar WebVTT`, `l2`). The

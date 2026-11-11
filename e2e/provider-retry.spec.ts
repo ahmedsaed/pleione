@@ -44,9 +44,8 @@ test('does not retry a missing catalog list', async ({ page }) => {
   await expect(page.locator('#view-channels')).toBeVisible();
   await enterTab(page, 'movies');
 
-  // The rail fails at once, leaving only the category index to open.
-  const allCategories = page.locator('#view-movies .catalog-rail-title')
-    .filter({ hasText: 'All Categories' });
+  // The rail fails at once, leaving only its category pill to open.
+  const allCategories = page.locator('#view-movies .catalog-pill[data-category-id="1"]');
   await expect(allCategories).toBeVisible({ timeout: 2000 });
   await expect(page.locator('#view-movies .catalog-tile[data-item-id="10"]')).toHaveCount(0);
   const requests = streams.count();

@@ -15,8 +15,8 @@ export const SAMPLE_LIVE_STREAMS = [
 
 const MOVIE_ONE = { stream_id: 10, name: 'Movie One', stream_icon: '', container_extension: 'mp4', category_id: '1' };
 
-// Eight movie categories of 50, so rails end in See all and All Categories
-// appears. Movie One stays first in Cat A.
+// Eight movie categories of 50, so rails end in See all and category pills
+// appear. Movie One stays first in Cat A.
 const LARGE_CATEGORIES = 'ABCDEFGH'.split('').map((letter, i) => (
   { category_id: String(i + 1), category_name: `Cat ${letter}` }));
 const largeStreams = (categoryId: string) => Array.from({ length: 50 }, (_, i) => (

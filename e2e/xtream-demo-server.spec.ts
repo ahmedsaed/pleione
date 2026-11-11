@@ -103,7 +103,7 @@ test('lists the Movies and Series catalogs', async ({ page }) => {
   await expect(page.locator('#view-channels')).toBeVisible();
 
   await enterTab(page, 'movies');
-  await expect(page.locator('#view-movies .catalog-rail-title').first()).toContainText('Group 1');
+  await expect(page.locator('#view-movies [data-rail-key^="cat:"] .catalog-rail-title').first()).toContainText('New Releases');
   await expect(page.locator('#view-movies .catalog-tile[data-item-id="10001"]')).toContainText('Movie A');
 
   await enterTab(page, 'series');

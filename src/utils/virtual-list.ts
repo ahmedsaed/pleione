@@ -2,6 +2,9 @@ export interface VirtualListOptions {
   // A function is re-read on every layout, for sizes that follow the
   // Interface size.
   itemSize?: number | (() => number);
+  // The space after each fixed-size item, included in its size: the last
+  // item has none after it, and an item kept in view lines up its own end.
+  gap?: () => number;
   overscan: number;
   fallbackViewportSize: number;
 }
@@ -15,6 +18,7 @@ export class VirtualList {
   private offset = 0;
   private leading = 0;
   private readonly fixedSize: number | (() => number) | null;
+  private readonly gapSize: (() => number) | null;
   private sizes = new Float64Array(0);
   private offsets = new Float64Array(1);
   private readonly overscan: number;
@@ -29,6 +33,7 @@ export class VirtualList {
       throw new RangeError('fallbackViewportSize must be greater than zero');
     }
     this.fixedSize = options.itemSize ?? null;
+    this.gapSize = options.gap ?? null;
     this.overscan = options.overscan;
     this.fallbackViewportSize = options.fallbackViewportSize;
   }
@@ -36,6 +41,10 @@ export class VirtualList {
   private get itemSize(): number | null {
     const size = this.fixedSize;
     return typeof size === 'function' ? size() : size;
+  }
+
+  private get gap(): number {
+    return this.gapSize && this.itemSize !== null ? this.gapSize() : 0;
   }
 
   get scrollOffset(): number {
@@ -91,7 +100,9 @@ export class VirtualList {
   }
 
   getTotalSize(itemCount: number): number {
-    if (this.itemSize !== null) return Math.max(0, itemCount) * this.itemSize;
+    if (this.itemSize !== null) {
+      return itemCount > 0 ? itemCount * this.itemSize - this.gap : 0;
+    }
     return this.offsets[Math.min(Math.max(0, itemCount), this.offsets.length - 1)];
   }
 
@@ -117,7 +128,7 @@ export class VirtualList {
     if (index < 0) return false;
     const itemStart = this.getItemOffset(index);
     const itemEnd = this.itemSize !== null
-      ? itemStart + this.itemSize
+      ? itemStart + this.itemSize - this.gap
       : this.getItemOffset(index + 1);
     if (itemEnd <= itemStart) return false;
     // Compare in container coordinates so the leading content counts against

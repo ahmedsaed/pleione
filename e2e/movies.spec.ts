@@ -158,12 +158,12 @@ test('Back to See all jumps straight to it under full animation', async ({ page 
   expect(placement).toEqual({ focused: true, inTrack: true, onScreen: true });
 });
 
-test('Left and Right stop at the ends of All categories', async ({ page }) => {
+test('Left and Right stop at the ends of the category pills', async ({ page }) => {
   await seedXtream(page, { catalog: 'large' });
   await page.goto('/');
   await expect(page.locator('#view-channels')).toBeVisible();
   await enterTab(page, 'movies');
-  const cats = page.locator('#view-movies .catalog-category-rail .catalog-cat');
+  const cats = page.locator('#view-movies .catalog-pill-track .catalog-pill');
   await expect(cats).toHaveCount(8);
   const focusedKey = () => page.locator('#view-movies .focused').getAttribute('data-key');
   await cats.first().evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
@@ -171,10 +171,10 @@ test('Left and Right stop at the ends of All categories', async ({ page }) => {
   // SpatialNav would otherwise carry focus off the rail to another rail's tile.
   await page.keyboard.press('ArrowLeft');
   await expect.poll(focusedKey).toBe('c:1');
-  // The rail bleeds under the left margin; a cell revealed on the right
-  // must still end inside the rail, ring included.
-  const clearOfRightEdge = () => page.locator('#view-movies .catalog-category-rail .focused').evaluate((el) => {
-    const rail = el.closest<HTMLElement>('.catalog-category-rail')!;
+  // The row bleeds under the left margin; a pill revealed on the right
+  // must still end inside it, ring included.
+  const clearOfRightEdge = () => page.locator('#view-movies .catalog-pill-track .focused').evaluate((el) => {
+    const rail = el.closest<HTMLElement>('.catalog-pill-track')!;
     const right = rail.getBoundingClientRect().left + rail.clientLeft + rail.clientWidth;
     return Math.round(right - el.getBoundingClientRect().right);
   });
@@ -202,7 +202,7 @@ test('gives a scroll-end spacer only to flex containers', async ({ page }) => {
     })
     .map((el) => el.className));
   await enterTab(page, 'movies');
-  await expect(page.locator('#view-movies .catalog-category-rail')).toBeVisible();
+  await expect(page.locator('#view-movies .catalog-pill-track')).toBeVisible();
   expect(await misplaced()).toEqual([]);
   await openGuide(page);
   expect(await misplaced()).toEqual([]);
@@ -220,7 +220,7 @@ test('browse Movies, open a detail, and start playback', async ({ page }) => {
   await enterTab(page, 'movies');
   await expect(page.locator('#view-movies')).toBeVisible();
 
-  await expect(page.locator('#view-movies .catalog-rail-title')).toContainText('Cat A');
+  await expect(page.locator('#view-movies [data-rail-key^="cat:"] .catalog-rail-title')).toContainText('Cat A');
   await expect(page.locator('.catalog-tile[data-item-id="10"]')).toContainText('Movie One');
 
   // Focus the poster and open its detail. Dispatch an explicit bubbling
@@ -284,7 +284,7 @@ test('Back from a detail finds browse scrolled and focused as it was left', asyn
   for (let i = 0; i < 9; i++) await page.keyboard.press('ArrowRight');
   const tile = page.locator('#view-movies .catalog-tile[data-item-id="109"]');
   await expect(tile).toHaveClass(/focused/);
-  const track = page.locator('#view-movies .catalog-browse .catalog-rail-track').first();
+  const track = page.locator('#view-movies .catalog-browse [data-rail-key^="cat:"] .catalog-rail-track').first();
   // Let the smooth scroll settle before recording where browse was left.
   let left = -1;
   await expect.poll(async () => {

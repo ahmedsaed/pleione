@@ -86,10 +86,10 @@ describe('player_api.php through the app client', () => {
     const client = createXtreamClient(creds(), 'x1');
     expect(await client.getVodCategories()).toHaveLength(catalog.vodCategories.length);
     const all = await client.getVodStreams();
-    expect(all).toHaveLength(243);
+    expect(all).toHaveLength(363);
     expect(all[0]).toMatchObject({ name: 'Movie A', containerExtension: 'mp4', accountId: 'x1' });
     expect(all.every(movie => movie.addedAt > 0 && movie.year > 1900)).toBe(true);
-    expect(await client.getVodStreams('2')).toHaveLength(40);
+    expect(await client.getVodStreams('2')).toHaveLength(6);
     expect(await client.getVodStreams(catalog.vodCategories.at(-1).id)).toEqual([]);
     const info = await client.getVodInfo(all[0].streamId);
     expect(info.durationSecs).toBeGreaterThan(0);
@@ -122,7 +122,7 @@ describe('player_api.php through the app client', () => {
     const client = createXtreamClient(creds(), 'x1');
     expect(await client.getSeriesCategories()).toHaveLength(catalog.seriesCategories.length);
     const list = await client.getSeries();
-    expect(list).toHaveLength(120);
+    expect(list).toHaveLength(180);
     expect(list.every(item => item.addedAt > 0)).toBe(true);
     const info = await client.getSeriesInfo(list[0].seriesId);
     expect(info.seasons).toEqual(catalog.series[0].seasons.map(season => season.number));

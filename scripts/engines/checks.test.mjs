@@ -71,6 +71,16 @@ describe('judgeScreen', () => {
     expect(judgeScreen(audit({ htmlData: { 'text-size': '100' } }), { ...SPEC, htmlData: { 'text-size': '150' } }))
       .toEqual(['<html data-text-size> is "100", not "150"']);
   });
+
+  it('wants a truncated name to keep its start in view', () => {
+    const spec = { ...SPEC, names: ['.channel-name'] };
+    const name = (overflows, startInside) => ({ element: 'div.channel-name', overflows, startInside });
+    expect(judgeScreen(audit({ names: [name(true, true), name(false, true)] }), spec)).toEqual([]);
+    expect(judgeScreen(audit({ names: [name(true, false)] }), spec))
+      .toEqual(['div.channel-name clips the start of its name']);
+    expect(judgeScreen(audit({ names: [name(false, true)] }), spec))
+      .toEqual(['no truncated name in .channel-name to check']);
+  });
 });
 
 describe('judgeWalk', () => {

@@ -5,9 +5,12 @@
 export const SIZES = {
   small: {
     liveCategories: 8, channels: 150,
-    // Over 20 titles per group, so every rail ends in its See all tile.
-    vodCategories: 6, movies: 240,
-    seriesCategories: 4, series: 120,
+    // Named groups of uneven size: a few past the 20-title rail (so they end
+    // in See all), a few with one or two titles, and more than the pill row's
+    // ten, so All categories has something to open.
+    vodCategories: 24, movies: 360,
+    seriesCategories: 24, series: 180,
+    namedGroups: true,
     epgPastDays: 3, epgFutureDays: 2, archiveDays: 3,
     programmeMinutes: [15, 30, 30, 45, 60, 60, 90],
   },
@@ -22,8 +25,9 @@ export const SIZES = {
   },
   large: {
     liveCategories: 40, channels: 2000,
-    vodCategories: 25, movies: 1500,
-    seriesCategories: 12, series: 300,
+    vodCategories: 260, movies: 3000,
+    seriesCategories: 240, series: 1200,
+    namedGroups: true,
     // Two guide days keep the full XMLTV under the app's retained-programme cap.
     epgPastDays: 1, epgFutureDays: 1, archiveDays: 1,
     programmeMinutes: [30, 45, 60, 60, 90, 120],
@@ -95,12 +99,93 @@ function spread(count, buckets) {
   return (index) => Math.floor(index / per);
 }
 
+// Short and long names, so pills and grid cells both fit and truncate. The
+// tiny and large slots of `groupSizes` line up with names that suit them.
+const VOD_GROUP_NAMES = [
+  'New Releases', 'Action', 'Comedy', 'Drama', 'Documentaries and Nature Specials', 'Sci-Fi',
+  'Kids & Family', 'War', 'Award-Winning International Dramas from Around the World', 'Horror',
+  'Romance', 'Animation', 'Thriller', 'Westerns', 'Musicals and Concert Films', 'Short Films',
+  'Mystery', 'Classic Black and White Cinema', 'Crime', 'Adventure', 'Independent and Festival Favorites',
+  'Sports', 'History', 'Silent Era',
+];
+const SERIES_GROUP_NAMES = [
+  'Popular Now', 'Comedy', 'Reality', 'Drama Series', 'Crime and Investigation Series', 'Kids',
+  'Anime', 'Stand-Up', 'Limited Series and Miniseries from Every Decade', 'Talk Shows', 'Sitcoms',
+  'Documentary Series', 'Mystery', 'Cooking and Home Improvement', 'Travel', 'Soaps', 'Medical Dramas',
+  'Legal Dramas', 'Teen', 'Sci-Fi & Fantasy', 'Period Pieces and Costume Dramas', 'Game Shows',
+  'Nature', 'Puppet Shows',
+];
+// Past the base names (the large catalog): every genre with every qualifier.
+const GROUP_GENRES = [
+  'Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Thriller', 'Mystery', 'Crime', 'Fantasy',
+  'Animation', 'Documentary', 'Family', 'Adventure', 'Western', 'Musical', 'War', 'History',
+  'Sports', 'Sci-Fi', 'Biography', 'Teen', 'Noir',
+];
+const GROUP_QUALIFIERS = [
+  'Classics', 'Hidden Gems', 'from the 1970s', 'from the 1980s', 'from the 1990s', 'Award Winners',
+  "Director's Cuts and Extended Editions", 'for Late Night Viewing', 'Box Sets', 'Fan Favorites',
+  'Remastered in High Definition', 'Double Features',
+];
+
+function groupNames(base, count) {
+  const names = base.slice(0, count);
+  for (let q = 0; names.length < count && q < GROUP_QUALIFIERS.length; q++) {
+    for (let g = 0; names.length < count && g < GROUP_GENRES.length; g++) {
+      names.push(`${GROUP_GENRES[g]} ${GROUP_QUALIFIERS[q]}`);
+    }
+  }
+  if (names.length < count) throw new Error(`Only ${names.length} group names for ${count} groups`);
+  return names;
+}
+
+// Titles per group, summing to `total`: one or two in every eighth group,
+// many in the first and in every eighth from the fourth, a hashed few elsewhere.
+export function groupSizes(total, count, salt) {
+  const sizes = new Array(count).fill(0);
+  const weights = [];
+  let left = total;
+  for (let k = 0; k < count; k++) {
+    if (k % 8 === 7) {
+      sizes[k] = 1 + ((k >> 3) % 2);
+      left -= sizes[k];
+      weights.push(0);
+    } else {
+      weights.push(k === 0 ? 10 : k % 8 === 3 ? 8 : 1 + (hash(k, salt) % 3));
+    }
+  }
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const shares = weights.map(weight => (left * weight) / weightSum);
+  shares.forEach((share, k) => { sizes[k] += Math.floor(share); });
+  // Largest remainders take the titles flooring left over.
+  const order = shares.map((share, k) => [share - Math.floor(share), k])
+    .sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  let spare = left - shares.reduce((sum, share) => sum + Math.floor(share), 0);
+  for (let r = 0; spare > 0; r++, spare--) sizes[order[r][1]]++;
+  return sizes;
+}
+
+// Item index -> group index for consecutive runs of the given sizes.
+function runs(sizes) {
+  const bucket = [];
+  sizes.forEach((size, k) => { for (let i = 0; i < size; i++) bucket.push(k); });
+  return index => bucket[index];
+}
+
 // Generated groups, then the HD group if asked, then one empty group last.
-function categories(count, withHd) {
+// Generated ids skip the HD group's id in every list.
+function categories(count, withHd, names) {
   const list = [];
-  for (let i = 1; i <= count; i++) list.push({ id: String(i), name: `Group ${i}`, empty: false });
+  let id = 0;
+  const nextId = () => {
+    id++;
+    if (String(id) === HD_CATEGORY.id) id++;
+    return String(id);
+  };
+  for (let i = 1; i <= count; i++) {
+    list.push({ id: nextId(), name: names ? names[i - 1] : `Group ${i}`, empty: false });
+  }
   if (withHd) list.push({ ...HD_CATEGORY, empty: false });
-  list.push({ id: String(count + 1), name: `Group ${count + 1}`, empty: true });
+  list.push({ id: nextId(), name: names ? 'Coming Soon' : `Group ${count + 1}`, empty: true });
   return list;
 }
 
@@ -145,8 +230,11 @@ export function createCatalog(size = 'small') {
     });
   });
 
-  const vodCategories = categories(spec.vodCategories, true);
-  const vodBucket = spread(spec.movies, spec.vodCategories);
+  const vodCategories = categories(spec.vodCategories, true,
+    spec.namedGroups ? groupNames(VOD_GROUP_NAMES, spec.vodCategories) : null);
+  const vodBucket = spec.namedGroups
+    ? runs(groupSizes(spec.movies, spec.vodCategories, 31))
+    : spread(spec.movies, spec.vodCategories);
   const movies = [];
   for (let i = 0; i < spec.movies; i++) {
     const seed = hash(i, 11);
@@ -184,8 +272,11 @@ export function createCatalog(size = 'small') {
     });
   });
 
-  const seriesCategories = categories(spec.seriesCategories, false);
-  const seriesBucket = spread(spec.series, spec.seriesCategories);
+  const seriesCategories = categories(spec.seriesCategories, false,
+    spec.namedGroups ? groupNames(SERIES_GROUP_NAMES, spec.seriesCategories) : null);
+  const seriesBucket = spec.namedGroups
+    ? runs(groupSizes(spec.series, spec.seriesCategories, 37))
+    : spread(spec.series, spec.seriesCategories);
   const series = [];
   let episodeId = 200001;
   for (let i = 0; i < spec.series; i++) {

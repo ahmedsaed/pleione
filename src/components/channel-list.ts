@@ -39,6 +39,7 @@ import { ChannelListEditor } from './channel-list-editor';
 import { VirtualList } from '../utils/virtual-list';
 import { VirtualScrollGuard } from '../utils/virtual-scroll';
 import { uiTextPx } from '../utils/ui-scale';
+import { nameDir } from '../utils/direction';
 
 // Row strides mirror css/live-panes.css: .channel-item is 116px plus a 6px
 // gap, and .group-item 76px plus 6px; both grow with the text size.
@@ -770,7 +771,7 @@ export class ChannelList {
         <span class="group-icon">${raw(groupLineIcon(g.builtin))}</span>
         ${renaming
           ? html`<input class="edit-text-input" type="text" value="${this.editor.renameValue(g.label)}">`
-          : html`<span class="group-name">${
+          : html`<span class="group-name" dir="${nameDir()}">${
               raw(liveGroupLockBadge(g.id, ''))}${g.label}</span>`}
         <span class="group-count">${count}</span>
       </div>
@@ -955,7 +956,7 @@ export class ChannelList {
           <div class="live-row-top">
             ${row.renaming
               ? html`<input class="edit-text-input" type="text" value="${this.editor.renameValue(ch.name)}">`
-              : html`<div class="channel-name">${raw(channelLockBadge(ch))}${ch.name}</div>`}
+              : html`<div class="channel-name" dir="${nameDir()}">${raw(channelLockBadge(ch))}${ch.name}</div>`}
             <span class="live-row-badges">
               ${watching ? html`<span class="live-badge-icon live-badge-watching"
                   title="${t('player.now')}">${raw(NOW_PLAYING_ICON)}</span>` : ''}
@@ -966,13 +967,13 @@ export class ChannelList {
             </span>
           </div>
           ${editingSource
-            ? html`<div class="channel-now channel-source-name">${ch.sourceName}</div>`
+            ? html`<div class="channel-now channel-source-name" dir="${nameDir()}">${ch.sourceName}</div>`
             : schedule.now ? html`
-              <div class="channel-now">${schedule.now.title}</div>
+              <div class="channel-now" dir="${nameDir()}">${schedule.now.title}</div>
               <div class="live-row-progress"><div style="width:${Math.round(schedule.now.progress * 100)}%"></div></div>`
             : ''}
           ${!editingSource && schedule.next ? html`
-            <div class="live-row-next"><time>${formatTime(schedule.next.start)}</time><span>${schedule.next.title}</span></div>` : ''}
+            <div class="live-row-next"><time>${formatTime(schedule.next.start)}</time><span dir="${nameDir()}">${schedule.next.title}</span></div>` : ''}
         </div>
         ${this.editor.renderChannelEditStatus(ch)}
         ${this.renderHealth(ch)}
@@ -1036,10 +1037,10 @@ export class ChannelList {
           <div class="channel-number">${item.channelIndex + 1}</div>
           ${this.renderLogo(item.channel)}
           <div class="channel-info">
-            <div class="channel-name">${raw(channelLockBadge(item.channel))}${
+            <div class="channel-name" dir="${nameDir()}">${raw(channelLockBadge(item.channel))}${
               isFav ? raw(favoriteIcon(true)) : ''
             }${item.channel.name}</div>
-            ${nowPlaying ? html`<div class="channel-now">${nowPlaying.title}</div>` : ''}
+            ${nowPlaying ? html`<div class="channel-now" dir="${nameDir()}">${nowPlaying.title}</div>` : ''}
           </div>
           ${this.renderHealth(item.channel)}
           <div class="recent-kind-badge live">${t('common.live')}</div>
@@ -1062,7 +1063,7 @@ export class ChannelList {
         <div class="channel-number">${item.channelIndex + 1}</div>
         ${this.renderLogo(item.channel)}
         <div class="channel-info">
-          <div class="channel-name">${raw(channelLockBadge(item.channel))}${
+          <div class="channel-name" dir="${nameDir()}">${raw(channelLockBadge(item.channel))}${
             isFav ? raw(favoriteIcon(true)) : ''
           }${item.progress.title ?? ''}</div>
           <div class="channel-now">${t('channel.resumeAt', {

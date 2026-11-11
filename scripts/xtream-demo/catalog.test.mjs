@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createCatalog, guideRange, hasArchive, HD_CATEGORY, letterCode, LONG_NAME_CHANNEL, NO_EPG_CHANNEL,
+  createCatalog, groupSizes, guideRange, hasArchive, HD_CATEGORY, letterCode, LONG_NAME_CHANNEL, NO_EPG_CHANNEL,
   programmesBetween, programmesForDay, SEASONLESS_SERIES_INDEX, SUBTITLED_MOVIE_INDEX,
 } from './catalog.mjs';
 import { RENDITIONS, VOD_CLIPS } from './media.mjs';
@@ -13,8 +13,8 @@ describe('createCatalog', () => {
   it('builds the small catalog', () => {
     const catalog = createCatalog('small');
     expect(catalog.channels).toHaveLength(153);
-    expect(catalog.movies).toHaveLength(243);
-    expect(catalog.series).toHaveLength(120);
+    expect(catalog.movies).toHaveLength(363);
+    expect(catalog.series).toHaveLength(180);
     expect(catalog.channels.slice(0, 3).map(channel => channel.name))
       .toEqual(['Alpha', 'Bravo', 'Charlie']);
   });
@@ -22,8 +22,8 @@ describe('createCatalog', () => {
   it('builds the large catalog for performance testing', () => {
     const catalog = createCatalog('large');
     expect(catalog.channels).toHaveLength(2003);
-    expect(catalog.movies).toHaveLength(1503);
-    expect(catalog.series).toHaveLength(300);
+    expect(catalog.movies).toHaveLength(3003);
+    expect(catalog.series).toHaveLength(1200);
   });
 
   it('is deterministic', () => {
@@ -148,13 +148,57 @@ describe('EPG schedule', () => {
   });
 });
 
-describe('small catalog rails', () => {
-  it('fills every generated group past the 20-title rail, so each ends in See all', () => {
+describe('movie and series groups', () => {
+  const groupsOf = catalog => [
+    [catalog.movies, catalog.vodCategories], [catalog.series, catalog.seriesCategories],
+  ];
+  const generatedCounts = (items, groups) => groups
+    .filter(group => !group.empty && group.id !== HD_CATEGORY.id)
+    .map(group => items.filter(item => item.categoryId === group.id).length);
+
+  it('overflows the ten-pill row in the small catalog with uneven, named groups', () => {
     const catalog = createCatalog('small');
-    for (const [items, groups] of [[catalog.movies, catalog.vodCategories], [catalog.series, catalog.seriesCategories]]) {
-      for (const group of groups.filter(g => !g.empty && g.id !== HD_CATEGORY.id)) {
-        expect(items.filter(item => item.categoryId === group.id).length).toBeGreaterThan(20);
-      }
+    for (const [items, groups] of groupsOf(catalog)) {
+      const counts = generatedCounts(items, groups);
+      expect(counts).toHaveLength(24);
+      expect(counts.every(count => count >= 1)).toBe(true);
+      expect(counts.filter(count => count <= 2).length).toBeGreaterThanOrEqual(3);
+      // The large groups pass the 20-title rail, so they end in See all.
+      expect(counts.filter(count => count > 20).length).toBeGreaterThanOrEqual(4);
+      expect(groups.some(group => group.name.length > 30)).toBe(true);
+      expect(groups.some(group => group.name.length <= 6)).toBe(true);
+      expect(new Set(groups.map(group => group.name)).size).toBe(groups.length);
+    }
+    expect(catalog.vodCategories[0].name).toBe('New Releases');
+    expect(catalog.movies[0].categoryId).toBe('1');
+  });
+
+  it('gives the large catalog hundreds of groups, every one with titles', () => {
+    const catalog = createCatalog('large');
+    for (const [items, groups] of groupsOf(catalog)) {
+      const counts = generatedCounts(items, groups);
+      expect(counts.length).toBeGreaterThanOrEqual(200);
+      expect(counts.every(count => count >= 1)).toBe(true);
+      expect(new Set(groups.map(group => group.id)).size).toBe(groups.length);
+      expect(new Set(groups.map(group => group.name)).size).toBe(groups.length);
+    }
+    // Generated ids step over the HD group's, which keeps only its own movies.
+    expect(catalog.vodCategories.filter(group => group.id === HD_CATEGORY.id)).toHaveLength(1);
+    expect(catalog.movies.filter(movie => movie.categoryId === HD_CATEGORY.id)).toHaveLength(3);
+  });
+
+  it('keeps the smoke catalog in evenly filled numbered groups', () => {
+    const catalog = createCatalog('smoke');
+    expect(catalog.vodCategories.map(group => group.name))
+      .toEqual(['Group 1', 'Group 2', 'Group 3', 'Group HD', 'Group 4']);
+    expect(generatedCounts(catalog.movies, catalog.vodCategories)).toEqual([22, 22, 22]);
+  });
+
+  it('sizes groups to the exact total', () => {
+    for (const [total, count] of [[360, 24], [180, 24], [3000, 260], [1200, 240]]) {
+      const sizes = groupSizes(total, count, 31);
+      expect(sizes.reduce((a, b) => a + b, 0)).toBe(total);
+      expect(Math.min(...sizes)).toBeGreaterThanOrEqual(1);
     }
   });
 });

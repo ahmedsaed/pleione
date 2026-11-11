@@ -2,7 +2,7 @@ import type { Action, AudioTrackOption, SubtitleTrackOption } from '../types';
 import { CONFIG } from '../config';
 import { $, html, inShownView, onceTransitionEnd, type Safe, withInstantScroll } from '../utils/dom';
 import { morph } from '../utils/morph';
-import { isRtl } from '../utils/direction';
+import { isRtl, nameDir } from '../utils/direction';
 import { uiPx } from '../utils/ui-scale';
 import { t } from '../i18n';
 import { Focus, type FocusScope, type Via } from '../navigation/focus-scope';
@@ -291,7 +291,7 @@ export class PlayerMenu {
       <div class="menu-item ${track.available === false ? 'unavailable' : ''}" data-key="audio:${track.index}"
            data-focusable data-menu-action="${PICK_AUDIO}" data-track-index="${track.index}">
         <span class="menu-check">${track.active ? '✓' : ''}</span>
-        <span class="menu-track-label">${track.label}</span>
+        <span class="menu-track-label" dir="${nameDir()}">${track.label}</span>
       </div>
     `);
   }
@@ -312,7 +312,7 @@ export class PlayerMenu {
         <div class="menu-item ${track.available === false ? 'unavailable' : ''}" data-key="sub:${track.index}"
              data-focusable data-menu-action="${PICK_SUB}" data-track-index="${track.index}">
           <span class="menu-check">${track.active ? '✓' : ''}</span>
-          <span class="menu-track-label">${track.label}</span>
+          <span class="menu-track-label" dir="${nameDir()}">${track.label}</span>
         </div>
       `),
       this.options.subtitleSearchAvailable() ? html`

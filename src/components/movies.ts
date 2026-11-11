@@ -12,6 +12,7 @@ import { loadTmdbCredits, matchTmdbPeople, type TmdbPerson } from '../services/t
 import { showToast } from './toast';
 import { t, tp } from '../i18n';
 import { CONFIG } from '../config';
+import { nameDir } from '../utils/direction';
 
 // The Movies section: browse (Continue rail + per-category rails + an "all
 // categories" drill-in) → per-category poster grid → a detail screen with
@@ -138,7 +139,7 @@ export class Movies extends CatalogView<VodCategory, VodItem> {
            data-watchlist-item="${vod.streamId}">
         <div class="catalog-poster-wrap">${this.posterCell(vod.name, vod.poster)}${
           this.itemLockBadge(vod.categoryId, vod.streamId)}</div>
-        <div class="catalog-tile-name">${vod.name}</div>
+        <div class="catalog-tile-name" dir="${nameDir()}">${vod.name}</div>
       </div>
     `;
   }

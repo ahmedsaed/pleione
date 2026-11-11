@@ -542,3 +542,63 @@ export async function seekBarGeometry(page: Page): Promise<SeekBarGeometry> {
     };
   });
 }
+
+export interface RailEnd {
+  // The least room the focused item left before the screen's end edge on
+  // the way, at rest (without its focus lift).
+  closest: number;
+  // The room after the last item once it has focus.
+  last: number;
+  // Whether the rail then sits at its scroll end, so nothing scrolls past it.
+  atEnd: boolean;
+  steps: number;
+}
+
+// Presses toward a rail's end (Right, or Left in right to left) until focus
+// stops moving inside `rail`, measuring how close the focused item comes to
+// the screen's end edge. Rails start on the 80px keyline and end on it too.
+export async function walkRailToEnd(page: Page, rail: string, rtl = false): Promise<RailEnd> {
+  const read = () => page.locator(rail).evaluate((el, isRtl) => {
+    const focused = el.querySelector<HTMLElement>('.focused');
+    if (!focused) return JSON.stringify(null);
+    const r = focused.getBoundingClientRect();
+    // The lift scales the item about its center; measure it at rest.
+    const center = r.left + r.width / 2;
+    const half = focused.offsetWidth / 2;
+    // The pre-85 right-to-left model counts scrollLeft from the left edge,
+    // where the row ends; the current one counts down from 0 at the right.
+    const leftModel = isRtl && document.documentElement.classList.contains('q-rtl-scroll-default');
+    const toEnd = leftModel ? el.scrollLeft : el.scrollWidth - el.clientWidth - Math.abs(el.scrollLeft);
+    return JSON.stringify({
+      key: focused.getAttribute('data-key') ?? '',
+      room: Math.round((isRtl ? center - half : window.innerWidth - (center + half)) * 10) / 10,
+      atEnd: Math.abs(toEnd) < 1,
+    });
+  }, rtl).then((json) => JSON.parse(json) as { key: string; room: number; atEnd: boolean } | null);
+  // A smooth scroll may still be running: read until two reads agree.
+  const settled = async () => {
+    let last = await read();
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(50);
+      const next = await read();
+      if (JSON.stringify(next) === JSON.stringify(last)) return next;
+      last = next;
+    }
+    return last;
+  };
+  let state = await settled();
+  if (!state) throw new Error(`no focused item in ${rail}`);
+  let closest = state.room;
+  let steps = 0;
+  for (;;) {
+    const before = state.key;
+    await page.keyboard.press(rtl ? 'ArrowLeft' : 'ArrowRight');
+    const next = await settled();
+    // At the end, focus stays put or leaves the rail.
+    if (!next || next.key === before) break;
+    state = next;
+    steps++;
+    closest = Math.min(closest, state.room);
+  }
+  return { closest, last: state.room, atEnd: state.atEnd, steps };
+}

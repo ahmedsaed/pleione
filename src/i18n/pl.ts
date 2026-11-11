@@ -145,6 +145,12 @@ export const PL_MESSAGES = {
     many: '{count} odcinków',
     other: '{count} odcinka',
   },
+  'catalog.categoryCount': {
+    one: '{number} kategoria',
+    few: '{number} kategorie',
+    many: '{number} kategorii',
+    other: '{number} kategorii',
+  },
   'catalog.noMovies': 'Brak filmów na tym koncie.',
   'catalog.noMoviesCategory': 'Brak filmów w tej kategorii.',
   'catalog.noSeries': 'Brak seriali na tym koncie.',

@@ -133,6 +133,9 @@ export const ZH_CN_MESSAGES = {
   'catalog.episodeCount': {
     other: '共 {count} 集',
   },
+  'catalog.categoryCount': {
+    other: '共 {number} 类',
+  },
   'catalog.noMovies': '此账号没有可用的电影。',
   'catalog.noMoviesCategory': '此分类暂无电影。',
   'catalog.noSeries': '此账号没有可用的剧集。',

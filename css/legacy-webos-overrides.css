@@ -33,8 +33,6 @@
  * replaces the gap instead of adding to it. Restate the sums.
  */
 html.q-no-flex-gap .settings-field > .settings-item-hint { margin-top: 14px; }
-/* The season tabs' -24px margin lets their ring room bleed into the gap. */
-html.q-no-flex-gap .detail-rail-head > .series-seasons { margin-left: 4px; }
 
 /*
  * The quirk class makes each generated margin more specific than the
@@ -47,13 +45,6 @@ html.q-no-flex-gap .parental-header .parental-account,
 html.q-no-flex-gap .parental-row strong,
 html.q-no-flex-gap .player-sidebar .sidebar-picker-arrow,
 html.q-no-flex-gap .player-menu .menu-item-value { margin-left: auto; }
-
-/*
- * The All categories rail shares .catalog-rail-track but is a block, not a
- * flex row: its generated scroll-end spacer would become an inline line box
- * and overflow the rail's fixed height.
- */
-html.q-scroll-end-padding .catalog-category-rail::after { content: none; }
 
 @supports not (backdrop-filter: blur(1px)) {
   .player-sidebar { background: rgb(20, 20, 35); }

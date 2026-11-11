@@ -438,6 +438,40 @@ button:not(:disabled):not(.account-avatar):not(.toggle-option):not(.source-toggl
   font-size: 26px;
 }
 
+/* A pill-shaped shortcut (a recent search, a catalog category): the
+   control fill, ringed like the detail buttons and season pills when
+   focused. */
+.pill-chip {
+  display: flex;
+  align-items: center;
+  height: var(--control-height);
+  padding: 0 28px;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-size: 24px;
+  white-space: nowrap;
+  color: var(--text-primary);
+  background: var(--catalog-control);
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+.pill-chip > svg {
+  flex: none;
+  width: calc(24px * var(--font-scale));
+  height: calc(24px * var(--font-scale));
+  margin-right: 12px;
+  opacity: 0.7;
+}
+.pill-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pill-chip[data-focusable].focused {
+  border-color: transparent !important;
+  box-shadow: 0 0 0 4px var(--focus-ring), 0 0 30px rgb(var(--accent-rgb) / 0.5);
+}
+.pill-chip.focused > svg { opacity: 1; }
+
 /* Toast */
 .toast {
   position: fixed;

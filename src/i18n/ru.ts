@@ -145,6 +145,12 @@ export const RU_MESSAGES = {
     many: '{count} серий',
     other: '{count} серии',
   },
+  'catalog.categoryCount': {
+    one: '{number} категория',
+    few: '{number} категории',
+    many: '{number} категорий',
+    other: '{number} категории',
+  },
   'catalog.noMovies': 'Для этого аккаунта нет доступных фильмов.',
   'catalog.noMoviesCategory': 'В этой категории нет фильмов.',
   'catalog.noSeries': 'Для этого аккаунта нет доступных сериалов.',

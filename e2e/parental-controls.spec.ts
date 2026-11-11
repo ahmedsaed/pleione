@@ -1103,6 +1103,13 @@ test('relocking drops hidden channels from open search results', async ({ page }
   const rows = page.locator('#view-search .search-channel-card');
   await expect(rows.filter({ hasText: 'Channel One' })).toHaveCount(1);
   await expect(rows.filter({ hasText: 'Channel Two' })).toHaveCount(1);
+  // The lock sits in the logo's corner, as on a poster, not in the name.
+  const one = rows.filter({ hasText: 'Channel One' });
+  await expect(one.locator('.search-channel-name .lock-badge')).toHaveCount(0);
+  const logo = (await one.locator('.search-channel-logo').boundingBox())!;
+  const badge = (await one.locator('.lock-badge').boundingBox())!;
+  expect(Math.abs(badge.y - (logo.y + 10))).toBeLessThan(1);
+  expect(Math.abs(badge.x + badge.width - (logo.x + logo.width - 10))).toBeLessThan(1);
 
   await relockInBackground(page);
   await expect(page.locator('#view-search')).toBeVisible();

@@ -249,8 +249,9 @@ test('More like this ranks the category and opens a title; Back returns to brows
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await expect(similar.locator('.focused')).toHaveAttribute('data-item-id', '11');
-  // The row snaps to the top of the rail area.
-  const rails = await page.locator('#view-movies .detail-rails').evaluate(el => el.getBoundingClientRect().top);
+  // The row snaps to the top of the rail area, below its padding.
+  const rails = await page.locator('#view-movies .detail-rails').evaluate(el =>
+    el.getBoundingClientRect().top + parseFloat(getComputedStyle(el).paddingTop));
   await expect.poll(() => similar.evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(Math.round(rails));
   await page.keyboard.press('Enter');
   await expect(page.locator('#view-movies .detail-title')).toHaveText('Movie Two');
@@ -289,8 +290,11 @@ test('series: season tabs, episode cards, and Resume on the last-watched episode
   await page.keyboard.press('ArrowLeft');
   expect(await focusedKey(page, 'series')).toBe('resume');
 
-  // Down walks line by line: season tabs, then the cards.
+  // Down walks line by line: season tabs, entered on the season shown, then
+  // the cards.
   await page.keyboard.press('ArrowDown');
+  expect(await focusedKey(page, 'series')).toBe('season:2');
+  await page.keyboard.press('ArrowLeft');
   expect(await focusedKey(page, 'series')).toBe('season:1');
   await page.keyboard.press('ArrowRight');
   expect(await focusedKey(page, 'series')).toBe('season:2');
@@ -316,6 +320,56 @@ test('series: season tabs, episode cards, and Resume on the last-watched episode
   await page.keyboard.press('Enter');
   await expect(page.locator('#view-player')).toBeVisible();
   await expect(page.locator('#player-osd .osd-channel-name')).toContainText('S2E2');
+});
+
+// Season pills: the season shown takes the detail buttons' gray, focus takes
+// their ring, and the scroller leaves room for the whole ring.
+test('series: the shown season is a gray pill and the focused one has the detail ring', async ({ page }) => {
+  await routeLiveManifest(page);
+  await neuterVideo(page);
+  await seed(page);
+  await page.goto('/');
+  await enterTab(page, 'series');
+  await openTitle(page, 'series', '1');
+  const detail = page.locator('#view-series .catalog-layer-detail');
+  await expect(detail.locator('.series-season-btn.active')).toHaveText('Season 1');
+  const style = (selector: string) => detail.locator(selector).evaluate((el) => {
+    const css = getComputedStyle(el);
+    return { background: css.backgroundColor, border: css.borderTopWidth, color: css.color, shadow: css.boxShadow };
+  });
+  const button = await style('.detail-actions .detail-btn:not(.detail-btn-primary)');
+
+  await page.keyboard.press('ArrowDown');
+  expect(await focusedKey(page, 'series')).toBe('season:1');
+  await page.keyboard.press('ArrowRight');
+  expect(await focusedKey(page, 'series')).toBe('season:2');
+  const active = await style('.series-season-btn.active');
+  expect(active.background).toBe(button.background);
+  expect(active.border).toBe('0px');
+  expect(active.color).toBe(button.color);
+  expect(active.shadow).toBe('none');
+  // Buttons ease their ring in; read it once it lands.
+  await expect.poll(async () => (await style('.series-season-btn.focused')).shadow)
+    .toMatch(/0px 0px 0px 4px.*0px 0px 30px/);
+  const focused = await style('.series-season-btn.focused');
+  expect(focused.background).toBe('rgba(0, 0, 0, 0)');
+  expect(focused.border).toBe('0px');
+
+  // No scroller above the focused pill cuts its ring.
+  const clipped = await detail.locator('.series-season-btn.focused').evaluate((el) => {
+    const own = el.getBoundingClientRect();
+    const ring = { top: own.top - 4, bottom: own.bottom + 4, left: own.left - 4, right: own.right + 4 };
+    const cuts: string[] = [];
+    for (let n = el.parentElement; n && !n.classList.contains('catalog-layer-detail'); n = n.parentElement) {
+      const css = getComputedStyle(n);
+      if (css.overflowX === 'visible' && css.overflowY === 'visible') continue;
+      const box = n.getBoundingClientRect();
+      if (ring.top < box.top - 0.5 || ring.bottom > box.bottom + 0.5
+        || ring.left < box.left - 0.5 || ring.right > box.right + 0.5) cuts.push(n.className);
+    }
+    return cuts;
+  });
+  expect(clipped).toEqual([]);
 });
 
 for (const variant of [
@@ -469,8 +523,9 @@ for (const locale of ['en', 'ar'] as const) {
     await openTitle(page, 'series', '1');
     await expect(page.locator('#view-series .series-season-btn').first()).toBeVisible();
     await walkRow(page, 'series', ['resume', 'restart', 'watchlist']);
+    // The tabs are entered on the resumed episode's season.
     await page.keyboard.press('ArrowDown');
-    expect(await focusedKey(page, 'series')).toBe('season:1');
+    expect(await focusedKey(page, 'series')).toBe('season:2');
     await page.keyboard.press('ArrowUp');
     expect(await focusedKey(page, 'series')).toBe('resume');
     await expect(page.locator('.focused:visible')).toHaveCount(1);

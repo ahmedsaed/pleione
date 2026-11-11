@@ -7,6 +7,7 @@ import {
   readUserDataStore,
   openGuide,
   pressBack, BACK_KEY,
+  walkRailToEnd,
 } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
@@ -113,6 +114,113 @@ test('M3U channel results sit above matching programmes', async ({ page }) => {
     return channelBox.height >= 80
       && channelBox.y + channelBox.height <= programmeBox.y;
   }).toBe(true);
+});
+
+// Names that share a long prefix used to truncate to the same few letters.
+test('a channel result is a logo tile whose name wraps to two lines, ringed on the logo', async ({ page }) => {
+  const names = ['Alpha Cinema Classic Collection', 'Alpha Cinema Action Collection'];
+  const m3u = ['#EXTM3U', ...names.flatMap((name, i) =>
+    [`#EXTINF:-1 tvg-id="c${String(i)}",${name}`, `http://host/s${String(i)}.m3u8`])].join('\n');
+  await page.route('**/playlist.m3u', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/x-mpegurl', body: m3u }));
+  await page.addInitScript(() => {
+    localStorage.setItem('iptv_playlists', JSON.stringify([{ name: 'P', url: 'http://host/playlist.m3u' }]));
+  });
+  await page.goto('/');
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await enterSearch(page);
+  await page.locator('.search-box-input').fill('alpha cinema');
+
+  const tile = page.locator('#view-search .search-channel-card').filter({ hasText: names[0] });
+  await expect(tile).toBeVisible();
+  const logo = (await tile.locator('.search-channel-logo').boundingBox())!;
+  expect(Math.round(logo.width)).toBe(260);
+  expect(Math.round(logo.height)).toBe(146);
+  const name = tile.locator('.search-channel-name');
+  const lines = await name.evaluate((el) =>
+    Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+  expect(lines).toBe(2);
+  // The whole name shows: nothing is cut off at the end of the second line.
+  expect(await name.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+  const xs = await page.locator('#view-search .search-channel-card').evaluateAll((els) =>
+    els.map((el) => Math.round(el.getBoundingClientRect().left)).sort((a, b) => a - b));
+  expect(xs).toEqual([80, 80 + 288]);
+
+  await page.locator('.search-box-input').press('ArrowDown');
+  const focused = page.locator('#view-search .search-channel-card.focused');
+  await expect(focused).toHaveCount(1);
+  await expect(page.locator('.focused:visible')).toHaveCount(1);
+  const shadows = await focused.evaluate((el) => ({
+    tile: getComputedStyle(el).boxShadow,
+    logo: getComputedStyle(el.querySelector('.search-channel-logo')!).boxShadow,
+  }));
+  expect(shadows.tile).toBe('none');
+  expect(shadows.logo).not.toBe('none');
+});
+
+// The rail starts on the 80px keyline; the focused card keeps the same room
+// before the end edge, and the last one ends on that keyline.
+test('a virtual result rail walked to its end keeps the 80px keyline after its last card', async ({ page }) => {
+  const m3u = ['#EXTM3U', ...Array.from({ length: 12 }, (_, i) => i).flatMap((i) =>
+    [`#EXTINF:-1 tvg-id="c${String(i)}",Alpha ${String(i + 1)}`, `http://host/s${String(i)}.m3u8`])].join('\n');
+  await page.route('**/playlist.m3u', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/x-mpegurl', body: m3u }));
+  await page.addInitScript(() => {
+    localStorage.setItem('iptv_playlists', JSON.stringify([{ name: 'P', url: 'http://host/playlist.m3u' }]));
+  });
+  await page.goto('/');
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await enterSearch(page);
+  await page.locator('.search-box-input').fill('alpha');
+  await expect(page.locator('#view-search .search-channel-card').first()).toBeVisible();
+  await page.locator('.search-box-input').press('ArrowDown');
+  const rail = '#view-search [data-search-virtual="channels"]';
+  await expect(page.locator(`${rail} .focused`)).toHaveCount(1);
+
+  const end = await walkRailToEnd(page, rail);
+  expect(end.steps).toBe(11);
+  expect(end.closest).toBeGreaterThanOrEqual(80 - 1);
+  expect(Math.abs(end.last - 80)).toBeLessThanOrEqual(2);
+  expect(end.atEnd).toBe(true);
+});
+
+// A 1x1 transparent PNG.
+const PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+
+test('a channel logo that fails shows the letter; one that loads hides it', async ({ page }) => {
+  const m3u = ['#EXTM3U',
+    '#EXTINF:-1 tvg-id="c1" tvg-logo="http://host/bad.png",Alpha One', 'http://host/s1.m3u8',
+    '#EXTINF:-1 tvg-id="c2" tvg-logo="http://host/good.png",Bravo One', 'http://host/s2.m3u8',
+  ].join('\n');
+  await page.route('**/playlist.m3u', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/x-mpegurl', body: m3u }));
+  await page.route('http://host/bad.png', (route) => route.fulfill({ status: 404, body: '' }));
+  await page.route('http://host/good.png', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL_PNG }));
+  await page.addInitScript(() => {
+    localStorage.setItem('iptv_playlists', JSON.stringify([{ name: 'P', url: 'http://host/playlist.m3u' }]));
+  });
+  await page.goto('/');
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await enterSearch(page);
+  await page.locator('.search-box-input').fill('one');
+
+  const logo = (name: string) => page.locator('#view-search .search-channel-card')
+    .filter({ hasText: name }).locator('.search-channel-logo');
+  const bad = logo('Alpha One');
+  await expect(bad.locator('.catalog-poster-empty')).toBeVisible();
+  await expect(bad.locator('.catalog-poster-empty')).toHaveText('A');
+  await expect(bad.locator('img:visible')).toHaveCount(0);
+  // The fallback survives the next render.
+  await page.locator('.search-box-input').fill('on');
+  await expect(bad.locator('.catalog-poster-empty')).toBeVisible();
+
+  const good = logo('Bravo One');
+  await expect.poll(() => good.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+    .toBe(1);
+  await expect(good.locator('img')).toBeVisible();
+  await expect(good.locator('.catalog-poster-empty')).toBeHidden();
 });
 
 test('unified search matches channels, movies, and series; a channel result plays', async ({ page }) => {
@@ -585,9 +693,10 @@ test('at Interface size 130 the box and rails scale and one ring shows', async (
   await expect(page.locator('.focused:visible')).toHaveCount(1);
   await page.keyboard.press('Enter');
   await expect(page.locator('#view-search .catalog-tile[data-stream-id="10"]')).toBeVisible();
-  const card = (await page.locator('#view-search .search-channel-card').boundingBox())!;
+  // The cell, not the tile: a ringed tile scales up from its center.
+  const card = (await page.locator('#view-search [data-search-section="channels"]').first().boundingBox())!;
   expect(Math.round(card.x)).toBe(104);
-  expect(Math.round(card.width)).toBe(390);
+  expect(Math.round(card.width)).toBe(338);
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.focused:visible')).toHaveCount(1);
 });

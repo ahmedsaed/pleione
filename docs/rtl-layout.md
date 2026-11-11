@@ -7,7 +7,7 @@ or Urdu need only a catalog and a flag.
 | | |
 |---|---|
 | **Code** | `src/utils/direction.ts`, `scripts/css-transforms.mjs` (`mirrorStylesheet`), `src/services/theme-service.ts` (`applyDirection`), `src/engine-quirks.ts`, `index.html` |
-| **Tests** | `e2e/rtl-layout.spec.ts`, `e2e/arabic-locale.spec.ts`, `src/utils/direction.test.ts`, `scripts/css-transforms.test.mjs` |
+| **Tests** | `e2e/rtl-layout.spec.ts`, `e2e/rtl-name-direction.spec.ts`, `e2e/arabic-locale.spec.ts`, `src/utils/direction.test.ts`, `scripts/css-transforms.test.mjs` |
 
 ## 1. The switch
 
@@ -74,8 +74,21 @@ name or a time range keeps its order inside the mirrored layout, and an
 Arabic sentence reads right to left. Text aligns right, the layout's start
 edge, whichever way it reads. Interpolated values in translated strings stay
 isolated with LRM marks (`bidiIsolate`), since Chromium 53 predates the
-isolate characters. A marquee name in the player's channel list reads in its
-own direction (`dir="auto"`), so a long Latin name shows its start first.
+isolate characters.
+
+`plaintext` orders the text but leaves the element's `direction` at `rtl`,
+and Chromium 53 overflows and places the ellipsis by `direction`: a long
+Latin name would lose its start, showing `…the World`. So every element
+that shows an untrusted name (channel, program, group, category, movie,
+series, episode, cast, account, track), the player's marquee channel list
+included, carries `dir="${nameDir()}"`, which
+is `auto` in right to left: a Latin name lays out left to right, keeps its
+start in view and ends in the ellipsis, while an Arabic one stays right to
+left. Short names still align right, since `text-align: right` is inherited,
+not `start`. Left to right leaves `dir` unset. Search's `<mark>` sits inside
+the name and does not change its direction. The engine suite's `rtl-live`
+check measures this in the real Chromium 53, and
+`e2e/rtl-name-direction.spec.ts` covers tiles, pills, Search and Live.
 
 ## 4. Keys
 

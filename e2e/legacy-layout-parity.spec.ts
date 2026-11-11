@@ -590,15 +590,15 @@ const XTREAM_SCREENS: Screen[] = [
     },
   },
   {
-    name: 'movies-all-categories',
+    name: 'movies-category-pills',
     budget: 0,
     go: async (p) => {
-      const cat = p.locator('#view-movies .catalog-cat[data-category-id="1"]');
+      const cat = p.locator('#view-movies .catalog-pill[data-category-id="1"]');
       await cat.evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
       await p.keyboard.press('ArrowRight');
-      await expect(p.locator('#view-movies .catalog-cat[data-category-id="2"]')).toHaveClass(/focused/);
+      await expect(p.locator('#view-movies .catalog-pill[data-category-id="2"]')).toHaveClass(/focused/);
       await railAtRest(p, '#view-movies .catalog-rails');
-      await railAtRest(p, '#view-movies .catalog-category-rail');
+      await railAtRest(p, '#view-movies .catalog-pill-track');
       await heroAtRest(p);
     },
   },

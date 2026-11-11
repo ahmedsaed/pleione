@@ -14,6 +14,7 @@ import { VirtualList } from '../utils/virtual-list';
 import { VirtualScrollGuard } from '../utils/virtual-scroll';
 import { AccountSwitcher } from './account-switcher';
 import { uiPx } from '../utils/ui-scale';
+import { nameDir } from '../utils/direction';
 
 const log = createLogger('LiveCategories');
 
@@ -385,7 +386,7 @@ export class LiveCategoryPicker {
               data-focusable data-key="${isNew ? 'new' : 'all'}:${category.id}"
               data-category-id="${category.id}" aria-pressed="${selected ? 'true' : 'false'}">
         <span class="favorite-checkbox">${selected ? raw(CHECK_ICON) : ''}</span>
-        <span>${category.name}</span>
+        <span dir="${nameDir()}">${category.name}</span>
         ${isNew ? html`<em class="live-category-new">${t('liveCategories.newTag')}</em>` : ''}
         ${count === undefined ? '' : html`<strong>${count}</strong>`}
       </button>`;

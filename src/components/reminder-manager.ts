@@ -14,6 +14,7 @@ import {
 import { showToast } from './toast';
 import { ConfirmationPrompt } from './confirmation-prompt';
 import { BACK_ICON, CLOCK_ICON, REMOVE_ICON, TRASH_ICON } from './icons';
+import { nameDir } from '../utils/direction';
 
 interface ReminderDayGroup {
   key: string;
@@ -174,8 +175,8 @@ export class ReminderManager {
           <span>${formatTime(start)}</span>
         </time>
         <div class="reminder-manager-details">
-          <div class="reminder-manager-program">${reminder.title}</div>
-          <div class="reminder-manager-channel">${reminder.channelName}</div>
+          <div class="reminder-manager-program" dir="${nameDir()}">${reminder.title}</div>
+          <div class="reminder-manager-channel" dir="${nameDir()}">${reminder.channelName}</div>
         </div>
         <button class="reminder-manager-remove" data-focusable
                 data-key="remove:${reminder.channelKey}|${reminder.startMs}"

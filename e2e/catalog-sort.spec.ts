@@ -93,7 +93,7 @@ for (const section of ['movies', 'series'] as const) {
     await expect(layer.locator('[data-rail-key="cat:1"] .catalog-tile').first()).toBeAttached();
     const order = await layer.locator('.catalog-rails-body').evaluate(el => Array.from(el.children)
       .map(row => row.classList.contains('catalog-sort') ? 'sort' : row.getAttribute('data-rail-key')));
-    expect(order.slice(0, 3)).toEqual(['continue', 'watchlist', 'cat:1']);
+    expect(order.slice(0, 4)).toEqual(['continue', 'watchlist', 'categories', 'cat:1']);
     await expect(page.locator(`#view-${section} .catalog-layer-browse .catalog-sort`)).toHaveCount(0);
     const savedNames = () => layer.locator(
       '[data-rail-key="continue"] .catalog-tile-name, [data-rail-key="watchlist"] .catalog-tile-name',
@@ -231,7 +231,7 @@ test('keeps virtual grids and newly loaded categories sorted, independently for 
   await full.locator('[data-dropdown-value="name"]').click();
   await page.keyboard.press('Escape');
   await expect(layer).toBeVisible();
-  await layer.locator('[data-category-id="7"].catalog-cat').click();
+  await layer.locator('[data-category-id="7"].catalog-pill').click();
   await expect(full.locator('.catalog-grid-title')).toHaveText('Category 7');
   await expect(full.locator('.catalog-tile-name').first()).toHaveText('Title 1');
   await full.locator('.catalog-tile').first().hover();

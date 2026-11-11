@@ -137,6 +137,29 @@ describe('i18n', () => {
     expect(tp('settings.refreshHours', 3)).toBe('3 小时');
   });
 
+  it('formats and pluralizes category counts in every locale', () => {
+    const categories = (n: number) => tp('catalog.categoryCount', n, { number: formatNumber(n) });
+    const expected: Record<string, [number, string][]> = {
+      en: [[1, '1 category'], [48, '48 categories'], [1200, '1,200 categories']],
+      ar: [[1, '1 فئة'], [2, '2 فئة'], [3, '3 فئات'], [11, '11 فئة'], [100, '100 فئة']],
+      de: [[1, '1 Kategorie'], [48, '48 Kategorien']],
+      es: [[1, '1 categoría'], [48, '48 categorías']],
+      fr: [[1, '1 catégorie'], [48, '48 catégories']],
+      it: [[1, '1 categoria'], [48, '48 categorie']],
+      pl: [[1, '1 kategoria'], [2, '2 kategorie'], [5, '5 kategorii'], [22, '22 kategorie']],
+      'pt-BR': [[1, '1 categoria'], [48, '48 categorias']],
+      ru: [[1, '1 категория'], [3, '3 категории'], [5, '5 категорий'], [21, '21 категория']],
+      tr: [[1, '1 kategori'], [48, '48 kategori']],
+      uk: [[1, '1 категорія'], [3, '3 категорії'], [5, '5 категорій'], [21, '21 категорія']],
+      'zh-CN': [[48, '共 48 类']],
+    };
+    for (const [locale, cases] of Object.entries(expected)) {
+      setLocale(locale as Parameters<typeof setLocale>[0]);
+      for (const [n, text] of cases) expect(categories(n).replace(/[⁦-⁩]/g, '')).toBe(text);
+    }
+    setLocale('en');
+  });
+
   it('formats and pluralizes second durations by locale', () => {
     const duration = (seconds: number) => tp('settings.durationSeconds', seconds, {
       seconds: formatNumber(seconds, { maximumFractionDigits: 1 }),

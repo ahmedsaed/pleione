@@ -195,7 +195,7 @@ describe('Series browse + grid', () => {
   const sevenCats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
   const grid = () => container.querySelector<HTMLElement>('.catalog-layer-grid')!;
   function openCategory(view: Series): void {
-    container.querySelector<HTMLElement>('.catalog-cat[data-category-id="1"]')!
+    container.querySelector<HTMLElement>('.catalog-pill[data-category-id="1"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     view.handleAction('select');
   }
@@ -230,7 +230,7 @@ describe('Series browse + grid', () => {
 
   it('renders a rail per preloaded category with poster tiles', async () => {
     await openWith([{ id: '1', name: 'Cat A' }], [series('s1', 'Series One')]);
-    expect(container.querySelector('.catalog-rail-title')?.textContent).toContain('Cat A');
+    expect(container.querySelector('[data-rail-key="cat:1"] .catalog-rail-title')?.textContent).toContain('Cat A');
     expect(container.querySelector('.catalog-tile[data-item-id="s1"]')?.textContent).toContain('Series One');
   });
 
@@ -349,10 +349,10 @@ describe('Series browse + grid', () => {
 
   it('drills into a non-rail category grid and back to browse', async () => {
     // 7 categories: the first RAIL_CATEGORIES (6) become poster rails; the 7th
-    // is a non-rail tile in the "All Categories" rail — the drill-in target.
+    // is a non-rail category pill — the drill-in target.
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
     const { view, handlers } = await openWith(cats, [series('s1', 'Series One')]);
-    const cat = container.querySelector('.catalog-cat[data-category-id="7"]') as HTMLElement;
+    const cat = container.querySelector('.catalog-pill[data-category-id="7"]') as HTMLElement;
     expect(cat).not.toBeNull();
     cat.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     catalogMock.loadSeries.mockResolvedValue([series('s2', 'Series Two', '7')]);
@@ -606,6 +606,68 @@ async function openDetail(view: Series) {
 }
 
 describe('Series detail', () => {
+  describe('episode thumbnails', () => {
+    const withEpisode = (poster: string, extra: Record<string, unknown> = {}) => ({
+      ...SERIES_INFO, ...extra,
+      episodesBySeason: { ...SERIES_INFO.episodesBySeason, 1: [{ ...SERIES_INFO.episodesBySeason[1][0], episode: 7, poster }] },
+    });
+    const thumb = () => container.querySelector<HTMLElement>('.episode-card[data-episode-id="e1"] .episode-thumb')!;
+    const art = () => thumb().querySelector<HTMLElement>('.episode-thumb-art')?.style.backgroundImage ?? '';
+
+    it('shows the series backdrop and the episode number when an episode has no still', async () => {
+      catalogMock.loadSeriesInfo.mockResolvedValue(withEpisode('', { backdrop: 'http://host/back drop.jpg' }));
+      const { view } = await openWith();
+      await openDetail(view);
+      expect(thumb().classList.contains('episode-thumb-fallback')).toBe(true);
+      expect(art()).toContain('http://host/back%20drop.jpg');
+      expect(thumb().querySelector('.episode-thumb-scrim')).not.toBeNull();
+      expect(thumb().querySelector('.episode-thumb-number')?.textContent).toBe('7');
+      expect(thumb().style.backgroundImage).toBe('');
+    });
+
+    it('treats a still that repeats the series cover as missing', async () => {
+      catalogMock.loadSeriesInfo.mockResolvedValue(withEpisode('http://host/series.jpg'));
+      const { view } = await openWith();
+      await openDetail(view);
+      expect(thumb().classList.contains('episode-thumb-fallback')).toBe(true);
+      expect(art()).toContain('http://host/series.jpg');
+      expect(thumb().querySelector('.episode-thumb-number')?.textContent).toBe('7');
+    });
+
+    it('shows only the number when the series has no art either', async () => {
+      catalogMock.loadSeriesInfo.mockResolvedValue(withEpisode('', { poster: '' }));
+      const { view } = await openWith();
+      await openDetail(view);
+      expect(thumb().querySelector('.episode-thumb-art')).toBeNull();
+      expect(thumb().querySelector('.episode-thumb-number')?.textContent).toBe('7');
+      expect(thumb().style.backgroundImage).toBe('');
+    });
+
+    it('keeps a real still as it was', async () => {
+      catalogMock.loadSeriesInfo.mockResolvedValue(withEpisode('http://host/still.jpg'));
+      const { view } = await openWith();
+      await openDetail(view);
+      expect(thumb().classList.contains('episode-thumb-fallback')).toBe(false);
+      expect(thumb().querySelector('img.episode-thumb-still')?.getAttribute('src')).toBe('http://host/still.jpg');
+      expect(thumb().querySelector('.episode-thumb-art')).toBeNull();
+      expect(thumb().querySelector('.episode-thumb-scrim')).toBeNull();
+      expect(thumb().querySelector('.episode-thumb-number')).toBeNull();
+    });
+
+    it('shows the series art and the episode number when a still fails to load', async () => {
+      catalogMock.loadSeriesInfo.mockResolvedValue(withEpisode('http://host/still.jpg', { backdrop: 'http://host/back.jpg' }));
+      const { view } = await openWith();
+      await openDetail(view);
+      thumb().querySelector('img.episode-thumb-still')!.dispatchEvent(new Event('error'));
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      expect(thumb().classList.contains('episode-thumb-fallback')).toBe(true);
+      expect(thumb().querySelector('.episode-thumb-still')).toBeNull();
+      expect(art()).toContain('http://host/back.jpg');
+      expect(thumb().querySelector('.episode-thumb-scrim')).not.toBeNull();
+      expect(thumb().querySelector('.episode-thumb-number')?.textContent).toBe('7');
+    });
+  });
+
   it('renders a bounded episode window for a 50,000-item season', async () => {
     const episodes = Array.from({ length: 50_000 }, (_, index) => ({
       id: `e${String(index)}`,
@@ -627,7 +689,7 @@ describe('Series detail', () => {
 
     expect(container.querySelectorAll('.episode-card').length).toBeLessThan(20);
     expect(container.querySelector<HTMLElement>('.episode-track-spacer')?.style.width)
-      .toBe('21400000px');
+      .toBe(`${String(21_400_000 - 28 + 80)}px`);
 
     const track = container.querySelector<HTMLElement>('.episode-track')!;
     track.scrollLeft = 100 * 428;
@@ -788,7 +850,8 @@ describe('Series detail', () => {
     }).episodeVirtualizer;
     const viewport = 1760;
     expect(list.getItemOffset(41) - list.getItemOffset(40)).toBe(428);
-    expect(list.getItemOffset(41)).toBeLessThanOrEqual(list.scrollOffset + viewport);
+    // The card itself, not the gap after it, stays in view.
+    expect(list.getItemOffset(41) - 28).toBeLessThanOrEqual(list.scrollOffset + viewport);
     expect(list.getItemOffset(40)).toBeGreaterThanOrEqual(list.scrollOffset);
     expect(container.querySelector<HTMLElement>('.episode-track')!.scrollLeft).toBe(list.scrollOffset);
     expect(container.querySelector<HTMLElement>('.focused')?.dataset.key).toBe('ep:e40');
@@ -1061,12 +1124,29 @@ describe('Series detail', () => {
     }));
   });
 
+  it('heads the episodes with the season tabs, naming the rail Episodes', async () => {
+    catalogMock.loadSeriesInfo.mockResolvedValue(SERIES_INFO);
+    const { view } = await openWith();
+    await openDetail(view);
+    const rail = container.querySelector('[data-rail-key="episodes"]') as HTMLElement;
+    expect(rail.querySelector('.detail-rail-head > .series-seasons')).not.toBeNull();
+    expect(rail.querySelector('.catalog-rail-title')).toBeNull();
+    expect(rail.getAttribute('role')).toBe('region');
+    expect(rail.getAttribute('aria-label')).toBe('Episodes');
+    expect(container.querySelector('[data-rail-key="cast"] .catalog-rail-title')?.textContent).toBe('Cast');
+    expect(container.querySelector('[data-rail-key="cast"]')?.hasAttribute('aria-label')).toBe(false);
+  });
+
   it('shows an empty state when the series has no seasons', async () => {
     catalogMock.loadSeriesInfo.mockResolvedValue({ seasons: [], episodesBySeason: {} });
     const { view } = await openWith();
     await openDetail(view);
     expect(container.querySelector('.series-detail')).not.toBeNull();
     expect(container.textContent).toContain('No episodes available');
+    const rail = container.querySelector('[data-rail-key="episodes"]') as HTMLElement;
+    expect(rail.querySelector('.catalog-rail-title')?.textContent).toBe('Episodes');
+    expect(rail.querySelector('.series-seasons')).toBeNull();
+    expect(rail.hasAttribute('aria-label')).toBe(false);
   });
 
   it('shows a failed state instead of a perpetual Loading when info is null', async () => {

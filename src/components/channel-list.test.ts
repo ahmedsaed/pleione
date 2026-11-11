@@ -286,6 +286,20 @@ describe('ChannelList.render', () => {
     expect(container.querySelector('.edit-text-input')).toBeNull();
   });
 
+  it('reads each untrusted name in its own direction in a right-to-left layout', () => {
+    document.documentElement.dir = 'rtl';
+    try {
+      list.render();
+      expect(channelItems()[0].querySelector('.channel-name')?.getAttribute('dir')).toBe('auto');
+      expect(container.querySelector('[data-group="source:News"] .group-name')?.getAttribute('dir'))
+        .toBe('auto');
+    } finally {
+      document.documentElement.dir = '';
+    }
+    list.render();
+    expect(channelItems()[0].querySelector('.channel-name')?.getAttribute('dir')).toBe('');
+  });
+
   it('reports a one-channel playlist to the header', () => {
     const onCount = vi.fn();
     list = new ChannelList(container, { onChannelSelect: onSelect, onCount });

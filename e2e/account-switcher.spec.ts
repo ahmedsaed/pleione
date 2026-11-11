@@ -162,7 +162,7 @@ test('an account picked on Home persists across a reload, and Movies uses it', a
   await page.reload();
   await expect(homeAvatar(page)).toHaveText('B');
   await enterTab(page, 'movies');
-  await expect(page.locator('#view-movies .catalog-rail-title')).toContainText('Cat Bravo');
+  await expect(page.locator('#view-movies [data-rail-key^="cat:"] .catalog-rail-title')).toContainText('Cat Bravo');
   await expect(page.locator('.catalog-tile[data-item-id="20"]')).toContainText('Bravo Movie');
 });
 

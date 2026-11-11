@@ -19,10 +19,11 @@
  */
 html.q-scroll-end-padding .playlist-tabs::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 3px; margin-right: -8px; }
 html.q-scroll-end-padding .theme-swatch-rail::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: -7px; margin-right: -12px; }
-html.q-scroll-end-padding .catalog-rail-track::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: -1px; margin-right: -20px; }
-html.q-scroll-end-padding .series-seasons::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 13px; margin-right: -24px; }
+html.q-scroll-end-padding .catalog-rail-track::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 59px; margin-right: -80px; }
+html.q-scroll-end-padding .series-seasons::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 15px; margin-right: -24px; }
 html.q-scroll-end-padding .playlist-tabs.parental-tabs::after { content: none; }
-html.q-scroll-end-padding .detail-rail .catalog-rail-track::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: -9px; margin-right: -20px; }
+html.q-scroll-end-padding .catalog-rail-track.catalog-pill-track::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 63px; margin-right: -80px; }
+html.q-scroll-end-padding .detail-rail .catalog-rail-track::after { content: ''; flex: 0 0 1px; width: 1px; height: 1px; margin-left: 51px; margin-right: -80px; }
 html.q-scroll-end-padding .catalog-rail-track.episode-track::after { content: none; }
 html.q-no-flex-gap .live-badge > * + * { margin-left: 8px; }
 html.q-no-flex-gap .reminder-buttons > * + *, html.q-no-flex-gap .catchup-resume-buttons > * + *, html.q-no-flex-gap .confirmation-buttons > * + * { margin-left: 24px; }
@@ -127,6 +128,7 @@ html.q-no-flex-gap .home-bento-cols-1 > * + * { margin-left: 48px; }
 html.q-no-flex-gap .home-bento-row > * + * { margin-left: 32px; }
 html.q-no-flex-gap .search-busy > * + * { margin-left: 16px; }
 html.q-no-flex-gap .catalog-rail-track > * + * { margin-left: 20px; }
+html.q-no-flex-gap .catalog-rail-track.catalog-pill-track > * + * { margin-left: 16px; }
 html.q-no-flex-gap .catalog-sort { margin-right: -16px; }
 html.q-no-flex-gap .catalog-sort > * { margin-right: 16px; }
 html.q-no-flex-gap .catalog-sort .catalog-sort-direction > * + * { margin-left: 10px; }
@@ -134,7 +136,7 @@ html.q-no-flex-gap .detail-actions > * + * { margin-left: 20px; }
 html.q-no-flex-gap .detail-btn > * + * { margin-left: 14px; }
 html.q-no-flex-gap .catalog-rail-head.detail-rail-head > * + * { margin-left: 28px; }
 html.q-no-flex-gap .detail-rail .catalog-rail-track > * + * { margin-left: 28px; }
-html.q-no-flex-gap .series-seasons > * + * { margin-left: 10px; }
+html.q-no-flex-gap .series-seasons > * + * { margin-left: 8px; }
 html.q-no-flex-gap .catalog-rail-head > * + * { margin-left: 24px; }
 html.q-no-flex-gap .account-menu-item > * + * { margin-left: 16px; }
 html.q-no-flex-gap .parental-header > * + * { margin-left: 32px; }
@@ -145,6 +147,7 @@ html.q-no-flex-gap .live-category-header > * + * { margin-left: 32px; }
 html.q-no-flex-gap .live-category-row > * + * { margin-left: 12px; }
 html.q-no-flex-gap .playlist-tabs::after { margin-left: 7px; }
 html.q-no-flex-gap .theme-swatch-rail::after { margin-left: 11px; }
-html.q-no-flex-gap .catalog-rail-track::after { margin-left: 19px; }
+html.q-no-flex-gap .catalog-rail-track::after { margin-left: 79px; }
 html.q-no-flex-gap .series-seasons::after { margin-left: 23px; }
-html.q-no-flex-gap .detail-rail .catalog-rail-track::after { margin-left: 19px; }
+html.q-no-flex-gap .catalog-rail-track.catalog-pill-track::after { margin-left: 79px; }
+html.q-no-flex-gap .detail-rail .catalog-rail-track::after { margin-left: 79px; }

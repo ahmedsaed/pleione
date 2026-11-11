@@ -270,7 +270,7 @@ describe('Movies browse + grid', () => {
       root.querySelector<HTMLElement>(`[data-dropdown-value="${by}"]`)!.click();
     }
     function openCategory(view: Movies, id = '1'): void {
-      browse().querySelector<HTMLElement>(`.catalog-cat[data-category-id="${id}"]`)!
+      browse().querySelector<HTMLElement>(`.catalog-pill[data-category-id="${id}"]`)!
         .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
       view.handleAction('select');
     }
@@ -359,8 +359,8 @@ describe('Movies browse + grid', () => {
       }));
       const { view } = await openWith(cats, streams());
       const rows = Array.from(browse().querySelector('.catalog-rails-body')!.children);
-      expect(rows.slice(0, 3).map(row => row.getAttribute('data-rail-key')))
-        .toEqual(['continue', 'watchlist', 'cat:1']);
+      expect(rows.slice(0, 4).map(row => row.getAttribute('data-rail-key')))
+        .toEqual(['continue', 'watchlist', 'categories', 'cat:1']);
       const special = () => ['continue', 'watchlist'].map(key =>
         browse().querySelector(`[data-rail-key="${key}"]`)!.textContent);
       const before = special();
@@ -435,8 +435,67 @@ describe('Movies browse + grid', () => {
 
   it('renders a rail per preloaded category with poster tiles', async () => {
     await openWith([{ id: '1', name: 'Cat A' }], [vod('10', 'Movie One')]);
-    expect(container.querySelector('.catalog-rail-title')?.textContent).toContain('Cat A');
+    expect(container.querySelector('[data-rail-key="cat:1"] .catalog-rail-title')?.textContent).toContain('Cat A');
     expect(container.querySelector('.catalog-tile[data-item-id="10"]')?.textContent).toContain('Movie One');
+  });
+
+  it('reads poster and pill names in their own direction in a right-to-left layout', async () => {
+    document.documentElement.dir = 'rtl';
+    try {
+      const cats = Array.from({ length: CONFIG.XTREAM.ALL_CATEGORIES_AFTER + 1 },
+        (_, i) => ({ id: String(i + 1), name: `Cat ${String(i + 1)}` }));
+      await openWith(cats, cats.map(c => vod(`1${c.id}`, `Movie ${c.id}`, c.id)));
+      expect(container.querySelector('.catalog-tile[data-item-id="11"] .catalog-tile-name')?.getAttribute('dir'))
+        .toBe('auto');
+      expect(container.querySelector('.catalog-pill[data-category-id="1"] .pill-chip-label')?.getAttribute('dir'))
+        .toBe('auto');
+      expect(container.querySelector('.catalog-hero-title')?.getAttribute('dir')).toBe('auto');
+    } finally {
+      document.documentElement.dir = '';
+    }
+  });
+
+  describe('category pills', () => {
+    const categories = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({ id: String(i + 1), name: `Cat ${String(i + 1)}` }));
+    const railKeys = () => Array.from(container.querySelectorAll<HTMLElement>('.catalog-browse [data-rail-key]'))
+      .map(rail => rail.dataset.railKey);
+    const catTiles = () => Array.from(container.querySelectorAll<HTMLElement>('.catalog-pill[data-category-id]'))
+      .map(cat => cat.dataset.categoryId);
+
+    it('lists every category right after the viewer\'s rails once there are more than a few', async () => {
+      storageMock.getResumeList.mockReturnValue([
+        { accountId: 'x1', kind: 'vod', itemId: '10', categoryId: '1', name: 'Movie One', poster: '', ext: 'mp4', position: 100, duration: 600, updatedAt: 1 },
+      ]);
+      watchlistState.entries = [{
+        accountId: 'x1', kind: 'vod', itemId: '11', name: 'Movie Two', poster: '',
+        rating: '', categoryId: '2', containerExtension: 'mp4', addedAt: 1,
+      }];
+      const count = CONFIG.XTREAM.ALL_CATEGORIES_AFTER + 1;
+      const cats = categories(count);
+      await openWith(cats, cats.map(c => vod(`1${c.id}`, `Movie ${c.id}`, c.id)));
+      expect(railKeys()).toEqual(['continue', 'watchlist', 'categories', ...cats.map(c => `cat:${c.id}`)]);
+      expect(catTiles()).toEqual(cats.map(c => c.id));
+    });
+
+    it('is left out when a few categories each have their own rail', async () => {
+      const cats = categories(CONFIG.XTREAM.ALL_CATEGORIES_AFTER);
+      await openWith(cats, cats.map(c => vod(`1${c.id}`, `Movie ${c.id}`, c.id)));
+      expect(railKeys()).toEqual(cats.map(c => `cat:${c.id}`));
+      expect(catTiles()).toEqual([]);
+    });
+
+    it('stays while some of a few categories have no rail', async () => {
+      const cats = categories(2);
+      catalogMock.loadVodCategories.mockResolvedValue(cats);
+      catalogMock.loadVodStreams.mockImplementation((_account: PlaylistEntry, categoryId: string) =>
+        categoryId === '1' ? Promise.resolve([vod('10', 'Movie One', '1')]) : Promise.reject(new Error('offline')));
+      const view = new Movies(container, { onBack: vi.fn(), onPlayVod: vi.fn() });
+      Focus.setBase(() => view.focusScope);
+      await view.open(account);
+      expect(railKeys()).toEqual(['categories', 'cat:1']);
+      expect(catTiles()).toEqual(['1', '2']);
+    });
   });
 
   it('updates the hero title and backdrop to the focused movie', async () => {
@@ -683,8 +742,8 @@ describe('Movies browse + grid', () => {
     errors.mockRestore();
     warns.mockRestore();
 
-    // The failed category stays reachable from All Categories and retries.
-    const cat = container.querySelector<HTMLElement>('.catalog-cat[data-category-id="3"]')!;
+    // The failed category stays reachable from its pill and retries.
+    const cat = container.querySelector<HTMLElement>('.catalog-pill[data-category-id="3"]')!;
     expect(cat).not.toBeNull();
     catalogMock.loadVodStreams.mockResolvedValue([vod('30', 'Movie 3', '3')]);
     cat.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
@@ -698,7 +757,7 @@ describe('Movies browse + grid', () => {
     const { view } = await openWith(cats, [vod('10', 'Movie One')]);
     const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const openCategory = async () => {
-      container.querySelector<HTMLElement>('.catalog-cat[data-category-id="7"]')!
+      container.querySelector<HTMLElement>('.catalog-pill[data-category-id="7"]')!
         .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
       view.handleAction('select');
       await Promise.resolve(); await Promise.resolve();
@@ -739,10 +798,10 @@ describe('Movies browse + grid', () => {
 
   it('drills into a non-rail category grid and back to browse', async () => {
     // 7 categories: the first RAIL_CATEGORIES (6) become poster rails; the 7th
-    // is a non-rail tile in the "All Categories" rail — the drill-in target.
+    // is a non-rail category pill — the drill-in target.
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
     const { view, handlers } = await openWith(cats, [vod('10', 'Movie One')]);
-    const cat = container.querySelector('.catalog-cat[data-category-id="7"]') as HTMLElement;
+    const cat = container.querySelector('.catalog-pill[data-category-id="7"]') as HTMLElement;
     expect(cat).not.toBeNull();
     cat.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     catalogMock.loadVodStreams.mockResolvedValue([vod('20', 'Movie Two', '7')]);
@@ -759,7 +818,7 @@ describe('Movies browse + grid', () => {
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
     const { view } = await openWith(cats, [vod('10', 'Movie One')]);
     const browse = container.querySelector('.catalog-browse');
-    const cat = container.querySelector('.catalog-cat[data-category-id="7"]') as HTMLElement;
+    const cat = container.querySelector('.catalog-pill[data-category-id="7"]') as HTMLElement;
     cat.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     catalogMock.loadVodStreams.mockResolvedValue([vod('20', 'Movie Two', '7')]);
     view.handleAction('select');
@@ -1063,7 +1122,7 @@ describe('Movies browse + grid', () => {
   it('stays in browse when Back cancels a category grid that is still loading', async () => {
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
     const { view } = await openWith(cats, [vod('10', 'Movie One')]);
-    const cat = container.querySelector('.catalog-cat[data-category-id="7"]') as HTMLElement;
+    const cat = container.querySelector('.catalog-pill[data-category-id="7"]') as HTMLElement;
     cat.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     let resolve!: (items: unknown[]) => void;
     catalogMock.loadVodStreams.mockReturnValueOnce(new Promise((r) => { resolve = r; }));
@@ -1145,10 +1204,10 @@ describe('Movies browse + grid', () => {
       view.handleAction('back');
     }
 
-    const tiles = Array.from(container.querySelectorAll<HTMLElement>('.catalog-cat'))
+    const tiles = Array.from(container.querySelectorAll<HTMLElement>('.catalog-pill[data-category-id]'))
       .map((el) => el.dataset.categoryId);
     expect(tiles).toEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
-    await selectAndSettle(view, container.querySelector<HTMLElement>('.catalog-cat[data-category-id="2"]')!);
+    await selectAndSettle(view, container.querySelector<HTMLElement>('.catalog-pill[data-category-id="2"]')!);
     expect(container.querySelector('.catalog-grid-title')?.textContent).toBe('Cat 2');
   });
 
@@ -1228,24 +1287,91 @@ describe('Movies browse + grid', () => {
       .toBe('continue');
   });
 
-  it('returns focus to an All Categories tile beyond the first rendered window', async () => {
-    const cats = Array.from({ length: 60 }, (_, i) => ({ id: String(i + 1), name: `Cat ${String(i + 1)}` }));
-    catalogMock.loadVodCategories.mockResolvedValue(cats);
-    catalogMock.loadVodStreams.mockResolvedValue([]);
-    const view = new Movies(container, { onBack: vi.fn(), onPlayVod: vi.fn() });
-    Focus.setBase(() => view.focusScope);
-    await view.open(account);
-    container.querySelector<HTMLElement>('.catalog-cat[data-category-id="1"]')!
-      .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-    for (let i = 0; i < 40; i++) view.handleAction('right');
-    expect(focusedKey()).toBe('c:41');
-    expect(container.querySelector('.catalog-cat[data-category-id="1"]')).toBeNull();
-    view.handleAction('select');
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(container.querySelector('.catalog-grid-title')?.textContent).toBe('Cat 41');
-    view.handleAction('back');
-    expect(focusedKey()).toBe('c:41');
+  describe('category pills and All categories', () => {
+    const manyCategories = async (count: number) => {
+      const cats = Array.from({ length: count }, (_, i) => ({ id: String(i + 1), name: `Cat ${String(i + 1)}` }));
+      catalogMock.loadVodCategories.mockResolvedValue(cats);
+      catalogMock.loadVodStreams.mockImplementation((_account: PlaylistEntry, categoryId: string) =>
+        Promise.resolve([vod(`${categoryId}-1`, `Movie ${categoryId}`, categoryId)]));
+      const view = new Movies(container, { onBack: vi.fn(), onPlayVod: vi.fn() });
+      Focus.setBase(() => view.focusScope);
+      await view.open(account);
+      return view;
+    };
+    const pills = () => Array.from(container.querySelectorAll<HTMLElement>('.catalog-layer-browse .catalog-pill'))
+      .map(el => el.dataset.categoryId ?? el.dataset.key);
+    const chips = () => container.querySelector<HTMLElement>('.catalog-layer-categories')!;
+    const chip = (id: string) => chips().querySelector<HTMLElement>(`.catalog-cat[data-category-id="${id}"]`)!;
+
+    it.each([0, 1])('caps the pills and adds All categories only past the cap (+%i)', async (extra) => {
+      const limit = CONFIG.XTREAM.CATEGORY_PILLS;
+      await manyCategories(limit + extra);
+      const capped = Array.from({ length: limit }, (_, i) => String(i + 1));
+      expect(pills()).toEqual(extra ? [...capped, 'all-categories'] : capped);
+      // The pills sit right under the viewer's rails, with no title.
+      expect(container.querySelector('[data-rail-key="categories"] .catalog-rail-title')).toBeNull();
+    });
+
+    it('lists every category, with a title count only where it is already loaded', async () => {
+      const view = await manyCategories(14);
+      await selectAndSettle(view, container.querySelector<HTMLElement>('[data-action="all-categories"]')!);
+      expect(chips().classList.contains('catalog-layer-hidden')).toBe(false);
+      expect(chips().querySelector('.catalog-grid-title')?.textContent).toMatch(/All categories\s*14 categories/);
+      expect(chips().querySelector('.catalog-grid-count')?.textContent).toBe('14 categories');
+      expect(chips().querySelectorAll('.catalog-cat').length).toBe(14);
+      // The six rails are loaded; the rest are not counted until opened.
+      expect(chip('6').querySelector('.catalog-cat-count')?.textContent).toBe('1 movie');
+      expect(chip('7').querySelector('.catalog-cat-count')).toBeNull();
+      expect(chip('7').textContent?.trim()).toBe('Cat 7');
+      expect(catalogMock.loadVodStreams).toHaveBeenCalledTimes(CONFIG.XTREAM.RAIL_CATEGORIES);
+
+      // OK opens the category's poster grid; Back returns to its chip, and
+      // the count it loaded now shows.
+      await selectAndSettle(view, chip('7'));
+      expect(container.querySelector('.catalog-layer-grid .catalog-grid-title')?.textContent).toBe('Cat 7');
+      view.handleAction('back');
+      expect(chips().classList.contains('catalog-layer-hidden')).toBe(false);
+      expect(focusedKey()).toBe('c:7');
+      expect(chip('7').querySelector('.catalog-cat-count')?.textContent).toBe('1 movie');
+      // Back again lands on the All categories pill.
+      view.handleAction('back');
+      expect(focusedKey()).toBe('all-categories');
+      expect(container.querySelector('.catalog-layer-categories .catalog-cat')).toBeNull();
+    });
+
+    it('shows a locked category with its lock', async () => {
+      const lockState = vi.spyOn(ParentalControlService, 'groupLockState').mockImplementation(
+        (targets) => (targets.some((target) => 'categoryId' in target && target.categoryId === '12') ? 'locked' : null));
+      try {
+        const view = await manyCategories(14);
+        await selectAndSettle(view, container.querySelector<HTMLElement>('[data-action="all-categories"]')!);
+        expect(chip('12').querySelector('.lock-badge.is-locked')).not.toBeNull();
+        expect(chip('12').classList.contains('catalog-cat-locked')).toBe(true);
+        expect(chip('11').querySelector('.lock-badge')).toBeNull();
+      } finally {
+        lockState.mockRestore();
+      }
+    });
+
+    it('moves a row at a time, and returns from a category past the first window', async () => {
+      const view = await manyCategories(300);
+      await selectAndSettle(view, container.querySelector<HTMLElement>('[data-action="all-categories"]')!);
+      expect(focusedKey()).toBe('c:1');
+      // Six columns on the 1760px track: Down moves six on.
+      pressKey(view, 'down');
+      expect(focusedKey()).toBe('c:7');
+      pressKey(view, 'right');
+      expect(focusedKey()).toBe('c:8');
+      for (let i = 0; i < 40; i++) pressKey(view, 'down');
+      expect(focusedKey()).toBe('c:248');
+      expect(chip('1')).toBeNull();
+      expect(chips().querySelectorAll('.catalog-category-cell').length).toBeLessThan(80);
+      await selectAndSettle(view, chip('248'));
+      expect(container.querySelector('.catalog-layer-grid .catalog-grid-title')?.textContent).toBe('Cat 248');
+      view.handleAction('back');
+      expect(focusedKey()).toBe('c:248');
+      expect(container.querySelector('.focused')?.closest('.catalog-layer-categories')).not.toBeNull();
+    });
   });
 
   describe('rail edge gutter', () => {
@@ -1331,13 +1457,19 @@ describe('Movies browse + grid', () => {
       (_, i) => vod(String(i), `Movie ${String(i)}`, '7'),
     );
     const { view } = await openWith(cats, streams);
+    expect(container.querySelectorAll('.catalog-pill').length).toBe(CONFIG.XTREAM.CATEGORY_PILLS + 1);
 
-    expect(container.querySelectorAll('.catalog-category-rail-cell').length).toBeLessThan(20);
-    expect(container.querySelector<HTMLElement>('.catalog-category-rail-spacer')?.style.width)
-      .toBe(`${String(50_000 * 320)}px`);
+    container.querySelector<HTMLElement>('[data-action="all-categories"]')!
+      .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+    view.handleAction('select');
+    expect(container.querySelectorAll('.catalog-category-cell').length).toBeLessThan(100);
+    // 8,334 rows of six 104px chips, each row with its 24px gap.
+    expect(container.querySelector<HTMLElement>('.catalog-layer-categories .catalog-grid-track')?.style.height)
+      .toBe(`${String(Math.ceil(50_000 / 6) * 128)}px`);
+    view.handleAction('back');
 
     const category = container.querySelector<HTMLElement>(
-      '.catalog-cat[data-category-id="7"]',
+      '.catalog-pill[data-category-id="7"]',
     )!;
     category.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     view.handleAction('select');
@@ -1345,26 +1477,31 @@ describe('Movies browse + grid', () => {
     await Promise.resolve();
 
     expect(container.querySelectorAll('.catalog-grid-cell').length).toBeLessThan(60);
-    expect(container.querySelector<HTMLElement>('.catalog-grid-track')?.style.height)
+    expect(container.querySelector<HTMLElement>('.catalog-layer-grid .catalog-grid-track')?.style.height)
       .toBe('2821485px');
   });
 
-  it('re-renders a scrolled All categories rail only when its window changes', async () => {
-    const cats = Array.from({ length: 200 }, (_, i) => ({ id: String(i + 1), name: `Category ${String(i + 1)}` }));
+  it('re-renders a scrolled All categories grid only when its window changes', async () => {
+    const cats = Array.from({ length: 600 }, (_, i) => ({ id: String(i + 1), name: `Category ${String(i + 1)}` }));
     const { view } = await openWith(cats, [vod('1', 'Movie 1', '1')]);
-    const rail = container.querySelector<HTMLElement>('.catalog-category-rail')!;
-    const render = vi.spyOn(view as unknown as { renderBrowse(restore?: boolean): void }, 'renderBrowse');
-    const scrollTo = async (left: number): Promise<void> => {
-      rail.scrollLeft = left;
-      rail.dispatchEvent(new Event('scroll', { bubbles: true }));
+    container.querySelector<HTMLElement>('[data-action="all-categories"]')!
+      .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+    view.handleAction('select');
+    const grid = container.querySelector<HTMLElement>('.catalog-category-grid')!;
+    const track = grid.querySelector<HTMLElement>('.catalog-grid-track')!;
+    track.getBoundingClientRect = () => ({ top: 126 - grid.scrollTop } as DOMRect);
+    const render = vi.spyOn(view as unknown as { renderCategoryGrid(): void }, 'renderCategoryGrid');
+    const scrollTo = async (top: number): Promise<void> => {
+      grid.scrollTop = top;
+      grid.dispatchEvent(new Event('scroll', { bubbles: true }));
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     };
-    // An edge scroll moves a few pixels a frame; the same cells stay.
-    for (const left of [10, 20, 30]) await scrollTo(left);
+    // A scroll within a row keeps the same cells.
+    for (const top of [10, 20, 30]) await scrollTo(top);
     expect(render).not.toHaveBeenCalled();
-    await scrollTo(320 * 50);
+    await scrollTo(128 * 50);
     expect(render).toHaveBeenCalledTimes(1);
-    expect(container.querySelector('[data-category-virtual-index="50"]')).not.toBeNull();
+    expect(container.querySelector('[data-category-index="300"]')).not.toBeNull();
   });
 
   // The grid virtualizer is only measured while rendering, so a call to
@@ -1379,7 +1516,7 @@ describe('Movies browse + grid', () => {
       (_, index) => ({ id: String(index + 1), name: `Cat ${String(index + 1)}` }),
     );
     const { view } = await openWith(cats, streams);
-    container.querySelector<HTMLElement>('.catalog-cat[data-category-id="7"]')!
+    container.querySelector<HTMLElement>('.catalog-pill[data-category-id="7"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     view.handleAction('select');
     await Promise.resolve();
@@ -1476,7 +1613,7 @@ describe('Movies browse + grid', () => {
     );
     const { view } = await openWith(cats, streams);
     const category = container.querySelector<HTMLElement>(
-      '.catalog-cat[data-category-id="7"]',
+      '.catalog-pill[data-category-id="7"]',
     )!;
     category.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     view.handleAction('select');

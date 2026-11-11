@@ -12,7 +12,7 @@ import { EpgService } from '../services/epg-service';
 import { RecentlyWatchedService, type RecentlyWatchedItem } from '../services/recently-watched';
 import { $, html, inShownView, onceTransitionEnd, raw, type Safe } from '../utils/dom';
 import { morph } from '../utils/morph';
-import { isRtl } from '../utils/direction';
+import { nameDir } from '../utils/direction';
 import { rankChannels } from '../utils/channel-search';
 import { groupDisplayLabel } from '../utils/channel';
 import { formatPosition } from '../utils/time';
@@ -784,7 +784,7 @@ export class Sidebar {
     }
     // A marquee name in a mirrored row reads in its own direction, so the
     // start of a left-to-right name shows first.
-    const textDir = isRtl() ? 'auto' : '';
+    const textDir = nameDir();
     const currentIdx = this.getCurrentIndex();
     const currentCatchupStart = this.getCurrentCatchupStart();
     const activeGroup = groups.find(item => item.id === this.group) || groups[0];
@@ -795,7 +795,7 @@ export class Sidebar {
       <div class="sidebar-group-panel" data-key="group-panel">
         <div class="sidebar-group-width-probe" aria-hidden="true">
           <span class="sidebar-group-icon"></span>
-          <span class="sidebar-group-name">${widthProbeGroup.label}</span>
+          <span class="sidebar-group-name" dir="${nameDir()}">${widthProbeGroup.label}</span>
           <span class="sidebar-group-count">${widthProbeGroup.count}</span>
         </div>
         <div class="sidebar-title">${t('common.groups')}</div>
@@ -810,7 +810,7 @@ export class Sidebar {
                  data-hover-target
                  style="top:${this.groupVirtualizer.getItemOffset(i)}px">
               <span class="sidebar-group-icon">${raw(groupIcon(item.label, item.builtin))}</span>
-              <span class="sidebar-group-name">${
+              <span class="sidebar-group-name" dir="${nameDir()}">${
                 raw(liveGroupLockBadge(item.id, ''))}${item.label}</span>
               <span class="sidebar-group-count">${item.count}</span>
             </div>
@@ -821,7 +821,7 @@ export class Sidebar {
       </div>
       <div class="sidebar-channel-panel" data-key="channel-panel">
         <button type="button" class="sidebar-title sidebar-channel-title" data-open-groups>
-          <span class="sidebar-picker-label">${activeGroup?.label || t('common.channels')}</span>
+          <span class="sidebar-picker-label" dir="${nameDir()}">${activeGroup?.label || t('common.channels')}</span>
           <span class="sidebar-picker-arrow" aria-hidden="true">
             ${raw(CHEVRON_LEFT_ICON)}
           </span>

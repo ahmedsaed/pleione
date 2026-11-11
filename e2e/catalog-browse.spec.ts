@@ -1,15 +1,16 @@
-import { test, expect, enterTab, type Page } from './helpers';
+import { test, expect, enterTab, isChromium53, pressBack, walkRailToEnd, type Page } from './helpers';
 
 // Opened from Home's Live card after every load (see `startOn`).
 test.use({ startOn: 'live' });
 
 type Section = 'movies' | 'series';
 
-// Eight categories of 25 titles: rails end in See all, and All categories
-// follows the six preloaded rails.
-const CATEGORIES = Array.from({ length: 8 }, (_, i) => ({
+// Eight categories of 25 titles: rails end in See all, and a pill for each
+// category leads the six preloaded rails.
+const categoryList = (count: number) => Array.from({ length: count }, (_, i) => ({
   category_id: String(i + 1), category_name: `Category ${i + 1}`,
 }));
+const CATEGORIES = categoryList(8);
 // Long enough to fill every plot line the hero allows.
 const LONG = ' More words follow here.'.repeat(30);
 const titles = (categoryId: string) => Array.from({ length: 25 }, (_, i) => {
@@ -24,7 +25,7 @@ const titles = (categoryId: string) => Array.from({ length: 25 }, (_, i) => {
   };
 });
 
-async function seedCatalog(page: Page, vodInfoRequests: string[]): Promise<void> {
+async function seedCatalog(page: Page, vodInfoRequests: string[], categories = CATEGORIES): Promise<void> {
   await page.route('**/get.php*', route => route.fulfill({ status: 404, body: '' }));
   await page.route('**/xmltv.php*', route => route.fulfill({ contentType: 'application/xml', body: '<tv></tv>' }));
   await page.route('http://host/*.png', route => route.fulfill({ contentType: 'image/png', body: '' }));
@@ -33,7 +34,7 @@ async function seedCatalog(page: Page, vodInfoRequests: string[]): Promise<void>
     const action = url.searchParams.get('action');
     const category = url.searchParams.get('category_id') ?? '1';
     let body: unknown = {};
-    if (action === 'get_vod_categories' || action === 'get_series_categories') body = CATEGORIES;
+    if (action === 'get_vod_categories' || action === 'get_series_categories') body = categories;
     else if (action === 'get_live_categories') body = [];
     else if (action === 'get_live_streams') body = [{ stream_id: 1, name: 'ch1', category_id: '1' }];
     else if (action === 'get_vod_streams') {
@@ -68,6 +69,8 @@ interface Geometry {
   visibleAbove: number;
   heroTitle: string;
   focusedName: string;
+  // How much of the next rail's first poster shows below the focused rail.
+  nextPeek: number;
 }
 
 async function geometry(page: Page, section: Section): Promise<Geometry> {
@@ -88,7 +91,9 @@ async function geometry(page: Page, section: Section): Promise<Geometry> {
       });
     });
     const heroBox = hero.getBoundingClientRect();
+    const nextPoster = all[all.indexOf(rail) + 1]?.querySelector('.catalog-poster-wrap');
     return {
+      nextPeek: nextPoster ? box.bottom - nextPoster.getBoundingClientRect().top : 0,
       railsTop: box.top,
       railsBottom: box.bottom,
       heroTop: heroBox.top,
@@ -184,6 +189,8 @@ for (const section of ['movies', 'series'] as const) {
       expect(g.focusedRailTop).toBeCloseTo(g.railsTop, 0);
       expect(g.visibleAbove).toBe(0);
       expect(g.focusedRailBottom).toBeLessThanOrEqual(g.railsBottom + 0.5);
+      // The next rail's posters peek in, so the rails read as scrollable.
+      expect(g.nextPeek).toBeGreaterThan(80);
       expect(g.heroTitle).toBe(g.focusedName);
       expect(g.heroTop).toBeCloseTo(start.heroTop, 0);
       expect(g.heroBottom).toBeCloseTo(start.heroBottom, 0);
@@ -202,9 +209,14 @@ for (const section of ['movies', 'series'] as const) {
     expect(up.focusedRailTop).toBeCloseTo(up.railsTop, 0);
     expect(up.visibleAbove).toBe(0);
 
-    // Up stops at the first rail.
-    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowUp');
+    // Up reaches the category pills above the first rail, and stops there.
+    for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowUp');
     await expect(layer.locator('[data-rail-key="cat:1"] .focused')).toHaveCount(1);
+    for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowUp');
+    await expect(layer.locator('[data-rail-key="categories"] .catalog-pill.focused')).toHaveCount(1);
+    const top = await settled(page, section);
+    expect(top.focusedRailTop).toBeCloseTo(top.railsTop, 0);
+    expect(top.nextPeek).toBeGreaterThan(80);
     await expect(layer.locator('.catalog-hero-title')).not.toHaveText('');
 
     // The category page keeps its sort row.
@@ -244,6 +256,7 @@ for (const section of ['movies', 'series'] as const) {
     expect(g.visibleAbove).toBe(0);
   });
 
+  // From the top, where the pills and the first rail show together.
   test(`${section}: the wheel steps the rails one at a time`, async ({ page }) => {
     await seedCatalog(page, []);
     await page.goto('/');
@@ -251,7 +264,7 @@ for (const section of ['movies', 'series'] as const) {
     const layer = browse(page, section);
     const box = (await layer.locator('.catalog-rails').boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + 40);
-    for (const [delta, rail] of [[120, 'cat:2'], [120, 'cat:3'], [-120, 'cat:2']] as const) {
+    for (const [delta, rail] of [[120, 'cat:1'], [120, 'cat:2'], [-120, 'cat:1']] as const) {
       await page.mouse.wheel(0, delta);
       await expect.poll(() => layer.evaluate((el, key) => {
         const rails = el.querySelector<HTMLElement>('.catalog-rails')!;
@@ -320,6 +333,12 @@ test('fits one whole rail under the hero at Interface size 130 and text size 150
   await page.goto('/');
   await enterRails(page, 'movies');
   const layer = browse(page, 'movies');
+  // The pills and the first rail no longer fit together: that rail snaps
+  // to the top on its own, whole.
+  await expect(layer.locator('[data-rail-key="cat:1"] .focused')).toHaveCount(1);
+  const opening = await settled(page, 'movies');
+  expect(opening.focusedRailTop).toBeCloseTo(opening.railsTop, 0);
+  expect(opening.focusedRailBottom).toBeLessThanOrEqual(opening.railsBottom + 0.5);
   for (let n = 1; n <= 3; n++) {
     await page.keyboard.press('ArrowDown');
     await expect(layer.locator(`[data-rail-key="cat:${n + 1}"] .focused`)).toHaveCount(1);
@@ -339,6 +358,74 @@ test('fits one whole rail under the hero at Interface size 130 and text size 150
       .some(r => r.top < body.top - 0.5 || r.bottom > body.bottom + 0.5);
   });
   expect(clipped).toBe(false);
+});
+
+test('an All categories chip holds a two-line name at text size 150', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('iptv_text_size', JSON.stringify('150'));
+  });
+  await seedCatalog(page, [], categoryList(30));
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  await openAllCategories(page);
+  const chips = page.locator('#view-movies .catalog-layer-categories .catalog-cat');
+  // A counted chip (a preloaded rail) and a name-only one.
+  for (const id of ['1', '7']) {
+    const box = await chips.and(page.locator(`[data-category-id="${id}"]`)).evaluate((el) => {
+      const name = el.querySelector<HTMLElement>('.catalog-cat-name')!;
+      // A name long enough to wrap to two lines at this size.
+      name.textContent = 'Action & Adventure Classics';
+      const own = el.getBoundingClientRect();
+      const text = Array.from(el.children).map(child => child.getBoundingClientRect());
+      return { lines: Math.round(name.getBoundingClientRect().height / parseFloat(getComputedStyle(name).lineHeight)),
+        textTop: Math.min(...text.map(r => r.top)), textBottom: Math.max(...text.map(r => r.bottom)),
+        top: own.top, bottom: own.bottom };
+    });
+    // Two lines for the name alone; one beside a count.
+    expect(box.lines).toBe(id === '1' ? 1 : 2);
+    expect(box.textTop).toBeGreaterThanOrEqual(box.top);
+    expect(box.textBottom).toBeLessThanOrEqual(box.bottom);
+  }
+});
+
+// Focused posters and chips ring and glow with no drop shadow: unseen on dark
+// themes, a smudge on light ones, and a chip's rail would clip it. The
+// detail page's own poster keeps its shadow.
+test('focused posters and category chips have no drop shadow; the detail poster keeps its own', async ({ page }) => {
+  await seedCatalog(page, []);
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  const layer = browse(page, 'movies');
+  // The y offset of each of an element's shadows.
+  const offsets = (el: Element) => getComputedStyle(el).boxShadow.split(/,(?![^(]*\))/)
+    .map((shadow) => parseFloat((shadow.replace(/rgba?\([^)]*\)/, '').match(/-?[\d.]+px/g) ?? [])[1] ?? '0'));
+
+  const chip = layer.locator('.catalog-pill.focused');
+  for (let i = 0; i < 8 && await chip.count() === 0; i++) await page.keyboard.press('ArrowUp');
+  await expect(chip).toHaveCount(1);
+  expect(await chip.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none');
+  expect(await chip.evaluate(offsets)).toEqual([0, 0]);
+  // Every shadow ends inside the rail, which would clip it.
+  const room = await chip.evaluate((el) => {
+    const track = el.closest('.catalog-pill-track')!;
+    const below = getComputedStyle(el).boxShadow.split(/,(?![^(]*\))/).map((shadow) => {
+      const [, y = 0, blur = 0, spread = 0] = (shadow.replace(/rgba?\([^)]*\)/, '').match(/-?[\d.]+px/g) ?? [])
+        .map(parseFloat);
+      return y + blur + spread;
+    });
+    return track.getBoundingClientRect().bottom - (el.getBoundingClientRect().bottom + Math.max(...below));
+  });
+  expect(room).toBeGreaterThanOrEqual(0);
+
+  await page.keyboard.press('ArrowDown');
+  const poster = layer.locator('.catalog-tile.focused .catalog-poster-wrap');
+  await expect(poster).toHaveCount(1);
+  expect(await poster.evaluate(offsets)).toEqual([0, 0]);
+
+  await page.keyboard.press('Enter');
+  const detailPoster = page.locator('#view-movies .detail-poster-wrap');
+  await expect(detailPoster).toBeVisible();
+  expect(await detailPoster.evaluate(offsets)).toEqual([30]);
 });
 
 test('snaps smoothly to the same place under full animation', async ({ page }) => {
@@ -451,3 +538,239 @@ test('the See all grid is centered: equal space left and right of its columns', 
   expect(Math.abs(gaps.left - gaps.right)).toBeLessThanOrEqual(2);
 });
 
+// Rails start on the 80px keyline; the focused item keeps the same room
+// before the end edge, and the last one ends on that keyline.
+test('a rail walked to its end keeps the 80px keyline after its last item', async ({ page }) => {
+  await seedCatalog(page, [], categoryList(300));
+  await page.goto('/');
+  await enterTab(page, 'movies');
+  const layer = '#view-movies .catalog-layer-browse';
+  await expect(page.locator(`${layer} [data-rail-key="cat:1"] .catalog-tile`).first()).toBeVisible();
+  // The first key after a pointer tab click only shows the ring.
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator(`${layer} .catalog-rails .focused`)).toHaveCount(1);
+  const chip = page.locator(`${layer} .catalog-pill-track .focused`);
+  for (let i = 0; i < 3 && !(await chip.count()); i++) await page.keyboard.press('ArrowUp');
+  await expect(chip).toHaveCount(1);
+
+  // The category pills, out to All categories.
+  const pills = await walkRailToEnd(page, `${layer} .catalog-pill-track`);
+  expect(pills.steps).toBe(10);
+  expect(pills.closest).toBeGreaterThanOrEqual(80 - 1);
+  expect(Math.abs(pills.last - 80)).toBeLessThanOrEqual(2);
+  if (!isChromium53()) expect(pills.atEnd).toBe(true);
+
+  // A poster rail, from its first tile.
+  await page.keyboard.press('ArrowDown');
+  const track = `${layer} [data-rail-key="cat:1"] .catalog-rail-track`;
+  await expect(page.locator(`${track} .focused`)).toHaveCount(1);
+  for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowLeft');
+  await expect(page.locator(`${track} > *`).first()).toHaveClass(/\bfocused\b/);
+  const posters = await walkRailToEnd(page, track);
+  expect(posters.steps).toBe(10);
+  expect(posters.closest).toBeGreaterThanOrEqual(80 - 1);
+  expect(Math.abs(posters.last - 80)).toBeLessThanOrEqual(2);
+  // The simulation's engine counts the end padding beside the old engines'
+  // spacer, so only there does a flex rail scroll on past its keyline.
+  if (!isChromium53()) expect(posters.atEnd).toBe(true);
+});
+
+// Opens All categories from the pill row, from anywhere in browse.
+async function openAllCategories(page: Page): Promise<void> {
+  const layer = browse(page, 'movies');
+  const all = layer.locator('.catalog-pill[data-action="all-categories"]');
+  for (let i = 0; i < 4 && !(await layer.locator('.catalog-pill.focused').count()); i++) {
+    await page.keyboard.press('ArrowUp');
+  }
+  for (let i = 0; i < 12 && !(await all.evaluate(el => el.classList.contains('focused'))); i++) {
+    await page.keyboard.press('ArrowRight');
+  }
+  await expect(all).toHaveClass(/\bfocused\b/);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#view-movies .catalog-layer-categories .catalog-cat').first()).toBeVisible();
+}
+
+test('the first rail keeps the category pills above it in view', async ({ page }) => {
+  await seedCatalog(page, []);
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  const layer = browse(page, 'movies');
+  const pills = layer.locator('[data-rail-key="categories"]');
+  const pillsShown = async () => {
+    const g = await settled(page, 'movies');
+    const box = await pills.evaluate(el => el.getBoundingClientRect().toJSON() as DOMRect);
+    return box.top >= g.railsTop - 0.5 && g.focusedRailBottom <= g.railsBottom + 0.5;
+  };
+  // The first key lands on the first title, and the pills stay above it.
+  await expect(layer.locator('[data-rail-key="cat:1"] .focused')).toHaveCount(1);
+  expect(await pillsShown()).toBe(true);
+  await page.keyboard.press('ArrowUp');
+  await expect(layer.locator('.catalog-pill.focused')).toHaveCount(1);
+  await page.keyboard.press('ArrowDown');
+  await expect(layer.locator('[data-rail-key="cat:1"] .focused')).toHaveCount(1);
+  expect(await pillsShown()).toBe(true);
+  // Further rails snap to the top on their own, as before.
+  await page.keyboard.press('ArrowDown');
+  await expect(layer.locator('[data-rail-key="cat:2"] .focused')).toHaveCount(1);
+  const g = await settled(page, 'movies');
+  expect(g.focusedRailTop).toBeCloseTo(g.railsTop, 0);
+  expect(g.visibleAbove).toBe(0);
+});
+
+test('a focused category pill keeps its fill and takes the detail buttons\' ring', async ({ page }) => {
+  await seedCatalog(page, []);
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  const layer = browse(page, 'movies');
+  await expect(layer.locator('[data-rail-key="cat:1"] .focused')).toHaveCount(1);
+  const rest = await layer.locator('.catalog-pill').nth(1)
+    .evaluate(el => getComputedStyle(el).backgroundColor);
+  await page.keyboard.press('ArrowUp');
+  const pill = layer.locator('.catalog-pill.focused');
+  await expect(pill).toHaveCount(1);
+  // Buttons ease box-shadow in, so poll until the ring has settled.
+  await expect.poll(() => pill.evaluate(el => getComputedStyle(el).boxShadow)).toMatch(/0px 0px 0px 4px/);
+  const focused = await pill.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { background: cs.backgroundColor, ring: cs.boxShadow };
+  });
+  expect(focused.background).toBe(rest);
+  expect(focused.ring).toMatch(/0px 0px 30px/);
+});
+
+// Every way back into browse lays the rails out as the first visit did.
+test('coming back to the first rail keeps the category pills in view', async ({ page }) => {
+  await seedCatalog(page, []);
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  const layer = browse(page, 'movies');
+  const firstRail = layer.locator('[data-rail-key="cat:1"] .focused');
+  const pillsShown = async () => {
+    const g = await settled(page, 'movies');
+    const box = await layer.locator('[data-rail-key="categories"]')
+      .evaluate(el => el.getBoundingClientRect().toJSON() as DOMRect);
+    return box.top >= g.railsTop - 0.5 && g.focusedRailBottom <= g.railsBottom + 0.5;
+  };
+  await expect(firstRail).toHaveCount(1);
+  expect(await pillsShown()).toBe(true);
+
+  // Home and back with the remote.
+  await pressBack(page);
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('#view-home [data-key="section:movies"].focused')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(firstRail).toHaveCount(1);
+  expect(await pillsShown()).toBe(true);
+
+  // A title's detail and back.
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#view-movies .catalog-layer-detail')).toBeVisible();
+  await pressBack(page);
+  await expect(firstRail).toHaveCount(1);
+  expect(await pillsShown()).toBe(true);
+
+  // A deeper rail still snaps alone to the top when coming back to it.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(layer.locator('[data-rail-key="cat:3"] .focused')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#view-movies .catalog-layer-detail')).toBeVisible();
+  await pressBack(page);
+  await expect(layer.locator('[data-rail-key="cat:3"] .focused')).toHaveCount(1);
+  const g = await settled(page, 'movies');
+  expect(g.focusedRailTop).toBeCloseTo(g.railsTop, 0);
+  expect(g.visibleAbove).toBe(0);
+});
+
+test('All categories lists every category in a grid, and Back walks out through it', async ({ page }) => {
+  await seedCatalog(page, [], categoryList(300));
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  const layer = browse(page, 'movies');
+  // Ten categories, then All categories.
+  await expect(layer.locator('.catalog-pill')).toHaveCount(11);
+  await openAllCategories(page);
+  const grid = page.locator('#view-movies .catalog-layer-categories');
+  await expect(grid.locator('.catalog-grid-title')).toHaveText(/^All categories\s*300 categories$/);
+  // A bounded window of chips, not all 300.
+  expect(await grid.locator('.catalog-cat').count()).toBeLessThan(100);
+  const focused = grid.locator('.catalog-cat.focused');
+  await expect(focused).toHaveAttribute('data-category-id', '1');
+  // The focused chip rings like a poster: no drop shadow.
+  expect(await focused.evaluate(el => getComputedStyle(el).boxShadow))
+    .toMatch(/0px 0px 0px 5px.*0px 0px 20px/);
+  // Counts show only where the titles are loaded (the six rails).
+  await expect(grid.locator('[data-category-id="6"] .catalog-cat-count')).toHaveText('25 movies');
+  await expect(grid.locator('[data-category-id="7"] .catalog-cat-count')).toHaveCount(0);
+  const at = () => focused.evaluate(el => el.getBoundingClientRect().toJSON() as DOMRect);
+  const first = await at();
+  // Down moves one row.
+  await page.keyboard.press('ArrowDown');
+  await expect(focused).toHaveAttribute('data-category-id', '7');
+  const second = await at();
+  expect(second.left).toBeCloseTo(first.left, 0);
+  expect(second.top).toBeGreaterThan(first.bottom);
+  for (let i = 0; i < 20; i++) await page.keyboard.press('ArrowDown');
+  await expect(focused).toHaveAttribute('data-category-id', '127');
+  expect(await grid.locator('.catalog-cat').count()).toBeLessThan(100);
+  await expect(grid.locator('[data-category-id="1"]')).toHaveCount(0);
+  // The focused chip is on screen.
+  await expect.poll(async () => {
+    const box = await at();
+    return box.top >= 0 && box.bottom <= 1080;
+  }).toBe(true);
+
+  await page.keyboard.press('Enter');
+  const posters = page.locator('#view-movies .catalog-layer-grid');
+  await expect(posters.locator('.catalog-grid-title')).toHaveText('Category 127');
+  await expect(posters.locator('.catalog-tile').first()).toBeVisible();
+  await pressBack(page);
+  await expect(focused).toHaveAttribute('data-category-id', '127');
+  await expect(grid).toBeVisible();
+  // Its titles are loaded now, so its count shows.
+  await expect(grid.locator('[data-category-id="127"] .catalog-cat-count')).toHaveText('25 movies');
+  await pressBack(page);
+  await expect(layer.locator('.catalog-pill[data-action="all-categories"]')).toHaveClass(/\bfocused\b/);
+  await expect(grid.locator('.catalog-cat')).toHaveCount(0);
+});
+
+test('the pointer opens a category from All categories', async ({ page }) => {
+  await seedCatalog(page, [], categoryList(40));
+  await page.goto('/');
+  await enterTab(page, 'movies');
+  const layer = browse(page, 'movies');
+  await layer.locator('.catalog-pill[data-action="all-categories"]').click();
+  const chip = page.locator('#view-movies .catalog-layer-categories .catalog-cat[data-category-id="9"]');
+  await chip.hover();
+  await expect(chip).toHaveClass(/\bfocused\b/);
+  await chip.click();
+  await expect(page.locator('#view-movies .catalog-layer-grid .catalog-grid-title')).toHaveText('Category 9');
+});
+
+test('in Arabic the category pills mirror and keep the 80px keyline', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('iptv_locale', JSON.stringify('ar')));
+  await seedCatalog(page, [], categoryList(300));
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  const layer = '#view-movies .catalog-layer-browse';
+  await page.keyboard.press('ArrowUp');
+  const first = page.locator(`${layer} .catalog-pill[data-category-id="1"]`);
+  await expect(first).toHaveClass(/\bfocused\b/);
+  // The row starts on the right keyline.
+  const box = (await first.boundingBox())!;
+  expect(Math.abs(1920 - (box.x + box.width) - 80)).toBeLessThanOrEqual(2);
+  const pills = await walkRailToEnd(page, `${layer} .catalog-pill-track`, true);
+  expect(pills.steps).toBe(10);
+  expect(pills.closest).toBeGreaterThanOrEqual(80 - 1);
+  expect(Math.abs(pills.last - 80)).toBeLessThanOrEqual(2);
+  if (!isChromium53()) expect(pills.atEnd).toBe(true);
+
+  // All categories mirrors too: the first chip on the right.
+  await page.keyboard.press('Enter');
+  const grid = page.locator('#view-movies .catalog-layer-categories');
+  const one = (await grid.locator('[data-category-id="1"]').boundingBox())!;
+  const two = (await grid.locator('[data-category-id="2"]').boundingBox())!;
+  expect(two.x + two.width).toBeLessThan(one.x);
+  await page.keyboard.press('ArrowLeft');
+  await expect(grid.locator('.catalog-cat.focused')).toHaveAttribute('data-category-id', '2');
+});

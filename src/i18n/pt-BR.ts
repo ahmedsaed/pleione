@@ -137,6 +137,10 @@ export const PT_BR_MESSAGES = {
     one: '{count} episódio',
     other: '{count} episódios',
   },
+  'catalog.categoryCount': {
+    one: '{number} categoria',
+    other: '{number} categorias',
+  },
   'catalog.noMovies': 'Nenhum filme disponível para esta conta.',
   'catalog.noMoviesCategory': 'Nenhum filme nesta categoria.',
   'catalog.noSeries': 'Nenhuma série disponível para esta conta.',

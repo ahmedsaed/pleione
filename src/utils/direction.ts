@@ -15,6 +15,15 @@ export function isRtl(): boolean {
   return typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
 }
 
+/**
+ * The `dir` attribute for an element showing an untrusted name: `auto` in
+ * right-to-left, so a Latin name lays out left to right and truncates at
+ * its end, its start in view; none otherwise. Text still aligns right.
+ */
+export function nameDir(): 'auto' | '' {
+  return isRtl() ? 'auto' : '';
+}
+
 function swap<T extends string>(side: T): T {
   if (side === 'left') return 'right' as T;
   if (side === 'right') return 'left' as T;

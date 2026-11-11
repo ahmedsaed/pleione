@@ -1,7 +1,7 @@
 import type { CatchupInfo, Channel, Programme } from '../types';
 import { StorageService } from '../services/storage-service';
 import { $, hide, html, inShownView, raw, type Safe, show } from '../utils/dom';
-import { isRtl, screenSide } from '../utils/direction';
+import { isRtl, screenSide, nameDir } from '../utils/direction';
 import { type DvrState } from '../utils/dvr';
 import { morph } from '../utils/morph';
 import { formatDuration, formatPosition, formatTime, formatTimeRange, getProgress } from '../utils/time';
@@ -304,7 +304,7 @@ export class PlayerOsd {
           <div class="osd-programme-detail">
             ${this.programmeIcon(catchup.icon)}
             <div class="osd-programme-info">
-              <div class="osd-programme-title">${catchup.title}</div>
+              <div class="osd-programme-title" dir="${nameDir()}">${catchup.title}</div>
               <div class="osd-programme-time">
                 <span>${formatTimeRange(start, end, ' - ')}</span>
                 <span class="osd-remaining">${formatDuration(end.getTime() - start.getTime())}</span>
@@ -325,7 +325,7 @@ export class PlayerOsd {
           ${upcoming.map((programme) => html`
             <div class="osd-next">
               <span class="osd-next-label">${t('player.next')}</span>
-              <span class="osd-next-title">${programme.title}
+              <span class="osd-next-title" dir="${nameDir()}">${programme.title}
                 <span class="osd-next-time">${formatTime(programme.start)}</span>
               </span>
             </div>
@@ -336,7 +336,7 @@ export class PlayerOsd {
         <div class="osd-programme-detail">
           ${this.programmeIcon(nowPlaying.icon)}
           <div class="osd-programme-info">
-            <div class="osd-programme-title">${nowPlaying.title}</div>
+            <div class="osd-programme-title" dir="${nameDir()}">${nowPlaying.title}</div>
             <div class="osd-programme-time">
               <span>${formatTimeRange(nowPlaying.start, nowPlaying.stop, ' - ')}</span>
               <span class="osd-remaining">${t('player.remaining', {
@@ -377,7 +377,7 @@ export class PlayerOsd {
         ${state.channel.logo
           ? html`<img class="osd-channel-logo" src="${state.channel.logo}" alt="">`
           : ''}
-        <div class="osd-channel-name">${state.channel.name}</div>
+        <div class="osd-channel-name" dir="${nameDir()}">${state.channel.name}</div>
         ${this.renderStreamInfo(state.streamInfo)}
       </div>
       ${programmeHtml}
@@ -530,7 +530,7 @@ export class PlayerOsd {
       morph(osd, html`
         <div class="osd-next-episode">
           <div class="osd-next-episode-label">${t('player.upNext')}</div>
-          <div class="osd-channel-name">${state.vodTitle ?? ''}</div>
+          <div class="osd-channel-name" dir="${nameDir()}">${state.vodTitle ?? ''}</div>
           <div class="osd-next-episode-time">${tp('player.playingIn', state.upNextSeconds)}</div>
           <div class="osd-next-episode-actions">
             <button data-next-play>${t('player.playNow')}</button>
@@ -545,7 +545,7 @@ export class PlayerOsd {
     const pos = playback ? Math.min(playback.position, dur || Infinity) : 0;
     morph(osd, html`
       <div class="osd-channel">
-        <div class="osd-channel-name">${state.vodTitle ?? ''}</div>
+        <div class="osd-channel-name" dir="${nameDir()}">${state.vodTitle ?? ''}</div>
         ${this.renderStreamInfo(state.streamInfo)}
       </div>
       ${this.seekRow(pos, dur, state.seek)}

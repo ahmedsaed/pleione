@@ -47,6 +47,7 @@ import { ConfirmationPrompt } from './confirmation-prompt';
 import { showToast } from './toast';
 import { isAdultGroupName } from './group-icon';
 import { uiPx } from '../utils/ui-scale';
+import { nameDir } from '../utils/direction';
 
 const log = createLogger('ParentalControls');
 
@@ -1184,7 +1185,7 @@ export class ParentalControls {
             return html`
               <button class="parental-row ${index === this.sourceIndex ? 'active' : ''}"
                       data-focusable data-key="${source.key}" data-parental-source="${index}">
-                <span>${source.account.name}</span>
+                <span dir="${nameDir()}">${source.account.name}</span>
                 ${isSourceEnabled(source.account)
                   ? ''
                   : html`<small>${t('parental.sourceDisabled')}</small>`}
@@ -1209,7 +1210,7 @@ export class ParentalControls {
                         style="top:${top}px" data-focusable data-key="${group.key}"
                         data-parental-group="${index}">
                   ${raw(lockBadge(locked ? 'locked' : 'unlocked'))}
-                  <span>${group.name}</span>
+                  <span dir="${nameDir()}">${group.name}</span>
                   ${group.count === null ? '' : html`<small>${group.count}</small>`}
                   ${group.suggested && !locked
                     ? html`<em class="parental-suggested">${t('parental.suggested')}</em>`
@@ -1238,7 +1239,7 @@ export class ParentalControls {
                         data-focusable data-key="${item.key}"
                         data-parental-item="${index}">
                   ${raw(lockBadge(locked ? 'locked' : 'unlocked'))}
-                  <span>${item.name}</span>
+                  <span dir="${nameDir()}">${item.name}</span>
                   ${currentGroup && locked !== groupLocked
                     ? html`<em class="parental-exception">${t('parental.setSeparately')}</em>`
                     : ''}

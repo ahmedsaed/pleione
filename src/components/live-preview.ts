@@ -20,6 +20,7 @@ import { liveBadge } from './live-badge';
 import type { Player } from './player';
 import { PlayerPresentation } from './player-presentation';
 import { showToast } from './toast';
+import { nameDir } from '../utils/direction';
 
 type PreviewHostView = 'channels' | 'player' | string;
 
@@ -341,7 +342,7 @@ export class LivePreview {
           </div>` : ''}
         <div class="live-preview-program"
              data-key="program:${item.start.getTime()}:${item.stop.getTime()}">
-          <time>${this.programTimeRange(item)}</time><span>${item.title}</span>
+          <time>${this.programTimeRange(item)}</time><span dir="${nameDir()}">${item.title}</span>
         </div>`;
     })}`;
   }
@@ -381,7 +382,7 @@ export class LivePreview {
       : state.status === 'error' ? t('channel.healthUnavailable') : '';
     morph(this.container, html`
       <div class="live-preview-heading" data-key="preview-heading">
-        <span class="live-preview-channel">${state.channel.name}</span>
+        <span class="live-preview-channel" dir="${nameDir()}">${state.channel.name}</span>
         ${favorite ? html`<span class="live-preview-favorite" data-key="preview-favorite"
               title="${t('channel.favorites')}">${raw(favoriteIcon(true))}</span>` : ''}
       </div>
@@ -392,7 +393,7 @@ export class LivePreview {
                data-key="preview-message">${message}</div>` : ''}
       </div>
       <div class="live-preview-details" data-key="preview-details">
-        ${program ? html`<h2 class="live-preview-title">${program.title}</h2>` : ''}
+        ${program ? html`<h2 class="live-preview-title" dir="${nameDir()}">${program.title}</h2>` : ''}
         ${program && length > 0 ? html`
           <div class="live-preview-schedule">
             <time class="live-preview-time-range">${this.programTimeRange(program)}</time>
@@ -403,7 +404,7 @@ export class LivePreview {
             <div style="width:${fraction * 100}%"></div>
           </div>` : ''}
         ${program?.description ? html`
-          <p class="live-preview-description">${program.description}</p>` : ''}
+          <p class="live-preview-description" dir="${nameDir()}">${program.description}</p>` : ''}
         ${upcoming.length ? html`
           <div class="live-preview-upcoming">
             <h3>${t('player.upNext')}</h3>

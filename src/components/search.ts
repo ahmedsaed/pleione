@@ -2,7 +2,7 @@ import type { Action, CatchupInfo, Channel, PlaylistEntry, Programme, VodItem, S
 import { SpatialNav, isFocusMove } from '../navigation/spatial-nav';
 import { Focus, type FocusScope } from '../navigation/focus-scope';
 import { html, raw, type Safe } from '../utils/dom';
-import { inlineStart } from '../utils/direction';
+import { inlineStart, nameDir } from '../utils/direction';
 import { channelLockBadge, seriesLockBadge, vodLockBadge } from './parental-badge';
 import { morph } from '../utils/morph';
 import { PlaylistService } from '../services/playlist-service';
@@ -66,14 +66,17 @@ import {
   selectCatalogItems,
 } from './search-cache-source';
 import { uiPx } from '../utils/ui-scale';
+import { railKeyline, railViewport } from '../utils/rail-keyline';
 
 const log = createLogger('Search');
 const SEARCH_RAIL_VIEWPORT = 1760;
 const SEARCH_RAIL_OVERSCAN = 4;
 // Card width plus the gap between cards, per rail.
-const CHANNEL_STRIDE = 322;
+const CHANNEL_STRIDE = 288;
 const PROGRAM_STRIDE = 442;
 const POSTER_STRIDE = 202;
+const CHANNEL_GAP = 28;
+const CARD_GAP = 22;
 
 type RailKey = 'channels' | 'programmes' | 'movies' | 'series';
 const RAIL_KEYS: RailKey[] = ['channels', 'programmes', 'movies', 'series'];
@@ -206,10 +209,10 @@ export class Search {
   // Each catalog list's item positions by id, for ranking boosts.
   private readonly idIndexes = new WeakMap<object, Map<string, number>>();
   private resumePrompt = new CatchupResumePrompt('prompt.search');
-  private readonly channelVirtualizer = this.createVirtualizer(CHANNEL_STRIDE);
-  private readonly programVirtualizer = this.createVirtualizer(PROGRAM_STRIDE);
-  private readonly movieVirtualizer = this.createVirtualizer(POSTER_STRIDE);
-  private readonly seriesVirtualizer = this.createVirtualizer(POSTER_STRIDE);
+  private readonly channelVirtualizer = this.createVirtualizer(CHANNEL_STRIDE, CHANNEL_GAP);
+  private readonly programVirtualizer = this.createVirtualizer(PROGRAM_STRIDE, CARD_GAP);
+  private readonly movieVirtualizer = this.createVirtualizer(POSTER_STRIDE, CARD_GAP);
+  private readonly seriesVirtualizer = this.createVirtualizer(POSTER_STRIDE, CARD_GAP);
   private scrollFrame: number | null = null;
   // The window each virtual rail last rendered; its cells sit at fixed
   // offsets, so a scroll inside the window needs no render.
@@ -272,6 +275,9 @@ export class Search {
   private workerIndexedSeries: SeriesItem[] | null = null;
   private releaseWorker: (() => void) | null = null;
   private readonly scrollGuard = new VirtualScrollGuard();
+  // A channel logo that failed to load renders as its letter from then on,
+  // so a re-render neither retries it nor drops the fallback.
+  private readonly failedLogos = new Set<string>();
 
   constructor(private container: HTMLElement, private handlers: SearchHandlers) {
     this.focusScope = Focus.register({
@@ -287,7 +293,19 @@ export class Search {
     this.container.setAttribute('data-self-activate', '');
     this.container.addEventListener('click', (e: MouseEvent) => this.onPointerRelease(e.clientX, e.clientY));
     this.container.addEventListener('scroll', (e: Event) => this.onVirtualScroll(e), true);
+    this.container.addEventListener('error', (e: Event) => this.onLogoError(e), true);
     onCatalogListRefreshed((key, changed) => this.onCatalogRefreshed(key, changed));
+  }
+
+  // The letter stays hidden under a logo that loads: logos are often
+  // transparent, so it would show through.
+  private onLogoError(e: Event): void {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement)) return;
+    const box = img.parentElement;
+    if (!box?.classList.contains('search-channel-logo')) return;
+    this.failedLogos.add(img.getAttribute('src') ?? '');
+    box.classList.add('logo-failed');
   }
 
   private onPointerRelease(x: number, y: number): void {
@@ -961,7 +979,7 @@ export class Search {
         <h2 class="search-section-title">${title}<span class="search-section-count">${
           String(Math.max(this.totals[key], items.length))}</span></h2>
         <div class="search-rail" data-edge-scroll data-search-virtual="${key}" data-search-axis="horizontal">
-          <div class="search-rail-spacer" style="width:${virtualizer.getTotalSize(items.length)}px">
+          <div class="search-rail-spacer" style="width:${virtualizer.getTotalSize(items.length) + railKeyline()}px">
             ${items.slice(range.start, range.end).map((item, offset) => {
               const index = range.start + offset;
               return html`
@@ -999,15 +1017,15 @@ export class Search {
     const epgId = EpgService.findChannelId(ch);
     const now = epgId ? EpgService.getNowPlaying(epgId) : null;
     return html`
-      <div class="search-card search-channel-card" data-focusable data-key="ch:${String(idx)}"
+      <div class="catalog-tile search-channel-card" data-focusable data-key="ch:${String(idx)}"
            data-channel-index="${String(idx)}">
-        <div class="search-card-logo">${ch.logo
-          ? html`<img src="${ch.logo}" alt="" loading="lazy" onerror="this.style.display='none'">`
-          : html`<span>${ch.name.charAt(0)}</span>`}</div>
-        <div class="search-card-text">
-          <div class="search-card-title">${raw(channelLockBadge(ch))}${this.highlighted(ch.name)}</div>
-          ${now ? html`<div class="search-card-sub">${now.title}</div>` : ''}
-        </div>
+        <div class="catalog-poster-wrap search-channel-logo">${ch.logo && !this.failedLogos.has(ch.logo)
+          ? html`<img src="${ch.logo}" alt="" loading="lazy"><div
+              class="catalog-poster catalog-poster-empty search-channel-letter">${ch.name.charAt(0)}</div>`
+          : html`<div class="catalog-poster catalog-poster-empty">${ch.name.charAt(0)}</div>`}${
+          raw(channelLockBadge(ch))}</div>
+        <div class="catalog-tile-name search-channel-name" dir="${nameDir()}">${this.highlighted(ch.name)}</div>
+        ${now ? html`<div class="search-card-sub" dir="${nameDir()}">${now.title}</div>` : ''}
       </div>
     `;
   }
@@ -1017,7 +1035,7 @@ export class Search {
       <div class="catalog-tile search-poster-tile" data-focusable data-key="v:${v.streamId}" data-stream-id="${v.streamId}">
         <div class="catalog-poster-wrap">${this.posterCell(v.name, v.poster)}${
           raw(vodLockBadge(v))}</div>
-        <div class="catalog-tile-name">${this.highlighted(v.name)}</div>
+        <div class="catalog-tile-name" dir="${nameDir()}">${this.highlighted(v.name)}</div>
       </div>
     `;
   }
@@ -1027,7 +1045,7 @@ export class Search {
       <div class="catalog-tile search-poster-tile" data-focusable data-key="s:${s.seriesId}" data-series-id="${s.seriesId}">
         <div class="catalog-poster-wrap">${this.posterCell(s.name, s.poster)}${
           raw(seriesLockBadge(s))}</div>
-        <div class="catalog-tile-name">${this.highlighted(s.name)}</div>
+        <div class="catalog-tile-name" dir="${nameDir()}">${this.highlighted(s.name)}</div>
       </div>
     `;
   }
@@ -1045,8 +1063,8 @@ export class Search {
         </div>
         <div class="search-recent-chips">
           ${history.map(query => html`
-            <div class="search-recent-chip" data-focusable data-key="recent:${query}"
-                 data-history-query="${query}">${raw(CLOCK_ICON)}<span class="search-recent-label">${query}</span></div>
+            <div class="pill-chip search-recent-chip" data-focusable data-key="recent:${query}"
+                 data-history-query="${query}">${raw(CLOCK_ICON)}<span class="pill-chip-label" dir="${nameDir()}">${query}</span></div>
           `)}
         </div>
       </section>
@@ -1700,7 +1718,7 @@ export class Search {
            data-key="p:${String(result.channelIndex)}:${String(programme.start.getTime())}"
            data-program-index="${String(index)}">
         <div class="search-card-text">
-          <div class="search-card-title">${this.highlighted(programme.title)}</div>
+          <div class="search-card-title" dir="${nameDir()}">${this.highlighted(programme.title)}</div>
           <div class="search-card-sub">${day.weekday} ${day.date} ${formatTime(programme.start)} · ${channel.name}</div>
           <div class="search-program-action">${action}</div>
         </div>
@@ -1872,9 +1890,10 @@ export class Search {
     `;
   }
 
-  private createVirtualizer(itemSize: number): VirtualList {
+  private createVirtualizer(itemSize: number, gap: number): VirtualList {
     return new VirtualList({
       itemSize: () => uiPx(itemSize),
+      gap: () => uiPx(gap),
       overscan: SEARCH_RAIL_OVERSCAN,
       fallbackViewportSize: SEARCH_RAIL_VIEWPORT,
     });
@@ -1951,7 +1970,7 @@ export class Search {
     if (next >= this.resultItems(key).length && this.expandResults()) next = current + 1;
     if (next < 0 || next >= this.resultItems(key).length) return false;
     const scroll = this.container.querySelector<HTMLElement>(`[data-search-virtual="${key}"]`);
-    this.virtualizers()[key].ensureVisible(next, this.railContentWidth(scroll));
+    this.virtualizers()[key].ensureVisible(next, railViewport(scroll, SEARCH_RAIL_VIEWPORT));
     this.render();
     this.nav.focus(
       this.container.querySelector<HTMLElement>(
@@ -1959,14 +1978,6 @@ export class Search {
       ),
     );
     return true;
-  }
-
-  // Item offsets start after the rail's padding, so a tile kept in view
-  // rests on the left keyline and clears the right edge's ring gutter.
-  private railContentWidth(rail: HTMLElement | null): number {
-    if (!rail?.clientWidth) return SEARCH_RAIL_VIEWPORT;
-    const style = getComputedStyle(rail);
-    return rail.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
   }
 
   private resultItems(key: RailKey): unknown[] {

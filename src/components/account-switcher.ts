@@ -5,6 +5,7 @@ import { avatarColor, firstLetter } from '../utils/avatar';
 import { t } from '../i18n';
 import { CHECK_ICON } from './icons';
 import { Focus, Tier, type FocusScope, type Via } from '../navigation/focus-scope';
+import { nameDir } from '../utils/direction';
 
 export type AccountMenuOpenMode = 'key' | 'pointer';
 // `outside` is a pointer click away from the switcher, `toggle` one on it;
@@ -182,7 +183,7 @@ export class AccountSwitcher {
             <div class="account-menu-item ${painted && i === this.menuIndex ? 'focused' : ''} ${a.id === this.selectedId ? 'current' : ''}"
                  data-key="acc:${a.id}" data-account-id="${a.id}" data-hover-target>
               <span class="account-menu-avatar" style="background:${avatarColor(a.name)}">${firstLetter(a.name)}</span>
-              <span class="account-menu-name">${a.name}</span>
+              <span class="account-menu-name" dir="${nameDir()}">${a.name}</span>
               <span class="account-menu-check">${a.id === this.selectedId ? raw(CHECK_ICON) : ''}</span>
             </div>
           `)}

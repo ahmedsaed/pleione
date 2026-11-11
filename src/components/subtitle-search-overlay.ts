@@ -7,6 +7,7 @@ import { InputMode } from '../navigation/input-mode';
 import { languageName } from '../utils/subtitle-tracks';
 import { DOWNLOAD_ICON } from './icons';
 import { t } from '../i18n';
+import { nameDir } from '../utils/direction';
 
 const PROVIDER_LABEL: Record<string, string> = { opensubtitles: 'OpenSubtitles', subdl: 'SubDL', assrt: 'Assrt' };
 
@@ -251,7 +252,7 @@ export class SubtitleSearchOverlay {
           ${this.results.map((r, i) => html`
             <div class="subs-row"
                  data-key="${this.keyAt(i)}" data-focusable data-result-index="${i}">
-              <span class="subs-row-label">${this.label(r)}</span>
+              <span class="subs-row-label" dir="${nameDir()}">${this.label(r)}</span>
               ${r.downloads ? html`<span class="subs-count" title="${t('subtitle.downloads')}">${raw(DOWNLOAD_ICON)}<span>${formatCount(r.downloads)}</span></span>` : ''}
             </div>
           `)}

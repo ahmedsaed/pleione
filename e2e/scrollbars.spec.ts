@@ -119,7 +119,7 @@ test('catalog, settings, and search show no scrollbar', async ({ page }) => {
   for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowDown');
   await expect.poll(() => rails.evaluate((el) => el.scrollTop), { message: 'movie rails scroll' })
     .toBeGreaterThan(0);
-  for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
+  for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
   await expect.poll(() => page.locator('#view-movies .catalog-rail-track')
     .evaluateAll((tracks) => Math.max(...tracks.map((el) => el.scrollLeft))), { message: 'a rail scrolls' })
     .toBeGreaterThan(0);

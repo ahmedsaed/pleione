@@ -48,6 +48,19 @@ describe('VirtualList', () => {
     expect(list.getRange(5)).toEqual({ start: 2, end: 5 });
   });
 
+  it('leaves the gap after the last item out, and reveals an item up to its own end', () => {
+    const list = new VirtualList({ itemSize: 100, gap: () => 20, overscan: 0, fallbackViewportSize: 300 });
+    expect(list.getTotalSize(0)).toBe(0);
+    expect(list.getTotalSize(10)).toBe(980);
+    // Item 3 ends at 380 and its gap at 400.
+    expect(list.ensureVisible(3)).toBe(true);
+    expect(list.scrollOffset).toBe(80);
+    list.setScrollOffset(0);
+    // The last item lines up with the viewport's end, as at the scroll end.
+    list.ensureVisible(9);
+    expect(list.scrollOffset + 300).toBe(list.getTotalSize(10));
+  });
+
   it('moves only enough to reveal an item', () => {
     const list = createList();
 

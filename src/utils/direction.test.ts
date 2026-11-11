@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  inlineStart, isRtl, logicalAction, resetScrollModel, screenSide,
+  inlineStart, isRtl, logicalAction, nameDir, resetScrollModel, screenSide,
   scrollFromLeft, scrollStart, setScrollFromLeft, setScrollStart,
 } from './direction';
 
@@ -46,6 +46,7 @@ describe('direction', () => {
     expect(logicalAction('left')).toBe('left');
     expect(screenSide('right')).toBe('right');
     expect(inlineStart()).toBe('left');
+    expect(nameDir()).toBe('');
   });
 
   it('turns Left and Right around in right to left, and nothing else', () => {
@@ -57,6 +58,7 @@ describe('direction', () => {
     expect(logicalAction('select')).toBe('select');
     expect(screenSide('left')).toBe('right');
     expect(inlineStart()).toBe('right');
+    expect(nameDir()).toBe('auto');
   });
 
   for (const model of ['negative', 'default'] as const) {

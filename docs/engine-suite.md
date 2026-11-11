@@ -87,7 +87,8 @@ Sources and Advanced pages, auditing each step: the intended pane must
 scroll, the view and the header must stay put. The suite also opens and
 cancels a confirmation prompt, and covers Home, Live, the Guide, the
 player OSD, Movies and Series (rails, See all grid, detail), Search, and
-every Settings page, then Home and Settings in Arabic and Home and Live at
+every Settings page, then Home, Settings and Live in Arabic (Live checks
+that a long Latin channel name keeps its start in view) and Home and Live at
 the largest sizes. Any uncaught script error fails the check it happened
 in, except the media `play()` rejections the stream-less fixtures cause
 (`ERROR_ALLOWLIST` in `checks.mjs`).
@@ -95,8 +96,9 @@ in, except the media `play()` rejections the stream-less fixtures cause
 To add a screen, add a `screen({ id, title, go, view })` entry to `CHECKS`
 in `scripts/engines/checks.mjs`: `go` gets there with the `App` helpers
 (`openSection`, `openSettingsPage`, `steer`, `pressUntil`,
-`page.press`), `view` is its root, and `visible`, `ring`, `ringIn`, `dir`
-and `htmlData` add assertions. A scrolling screen is a `walk({...})` with
+`page.press`), `view` is its root, and `visible`, `ring`, `ringIn`, `dir`,
+`htmlData` and `names` (name elements whose truncated text must keep its
+first character in view) add assertions. A scrolling screen is a `walk({...})` with
 its `scroller` and `header`. Code sent to the page (`page.run` and
 `page.waitFor` bodies, `probes.mjs`) must parse as ES2015 and use no API
 newer than Chromium 53; `probes.test.mjs` checks the syntax.

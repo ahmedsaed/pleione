@@ -23,6 +23,7 @@ import { createLogger } from '../utils/logger';
 import { Focus } from '../navigation/focus-scope';
 import { uiPx } from '../utils/ui-scale';
 import { isBackKey } from '../navigation/keys';
+import { nameDir } from '../utils/direction';
 
 const log = createLogger('ChannelEditor');
 
@@ -1345,7 +1346,7 @@ export class ChannelListEditor {
                      data-key="epg:${candidate.id}" data-focusable
                      tabindex="-1" data-epg-position="${position}"
                      data-epg-channel="${candidate.id}">
-                  <span class="epg-mapping-name">${candidate.name}</span>
+                  <span class="epg-mapping-name" dir="${nameDir()}">${candidate.name}</span>
                   <span class="epg-mapping-meta">${candidate.channelId} - ${
                     candidate.sourceName
                   }</span>

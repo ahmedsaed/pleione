@@ -147,6 +147,8 @@ export const CONFIG = {
     BACKGROUND_REFRESH_CONCURRENCY: 2,   // stale catalog lists re-fetched at once; the rest queue
     RAIL_CATEGORIES: 6,                  // categories preloaded as rails in the browse view
     RAIL_ITEMS: 10,                      // titles a rail shows before its trailing See all tile
+    ALL_CATEGORIES_AFTER: 4,             // more categories than this earn browse a row of category pills
+    CATEGORY_PILLS: 10,                  // category pills browse shows before its All categories pill
     RESUME_MIN_SECS: 15,                 // below this, treat as "start over" (don't store a resume point)
     RESUME_FINISH_PAD: 30,               // within this of the end = finished (clear the resume point)
     RESUME_MAX_ITEMS: 50,                // Continue Watching entries per account and kind

@@ -1,7 +1,7 @@
 import type { Action, CatchupInfo, CatchupProgressEntry, Channel, ChannelScope, Programme } from '../types';
 import { Focus, type FocusScope } from '../navigation/focus-scope';
 import { html, raw, type Safe } from '../utils/dom';
-import { inlineStart } from '../utils/direction';
+import { inlineStart, nameDir } from '../utils/direction';
 import { morph } from '../utils/morph';
 import { channelKey, legacyChannelKey } from '../utils/channel';
 import { addDisplayDays, displayDayKey, formatDayLabel, formatTime, formatTimeRange } from '../utils/time';
@@ -269,7 +269,7 @@ export class LiveGuide {
           <span class="channel-logo-wrap">${channel.logo
             ? html`<img class="channel-logo" src="${channel.logo}" alt="">`
             : html`<span class="channel-logo-placeholder">${channel.name.charAt(0)}</span>`}</span>
-          <span class="guide-name">${raw(channelLockBadge(channel))}${channel.name}</span>
+          <span class="guide-name" dir="${nameDir()}">${raw(channelLockBadge(channel))}${channel.name}</span>
           ${index === this.options.watching()
             ? html`<span class="live-badge-icon live-badge-watching">${raw(NOW_PLAYING_ICON)}</span>` : ''}
         </div>
@@ -303,7 +303,7 @@ export class LiveGuide {
            data-key="${this.cellKey(index, cell)}" data-focusable data-guide-cell
            data-row="${position}" data-time="${cell.start}"
            style="${inlineStart()}:${box.left}%;width:${box.width}%">
-        <span class="guide-cell-title">${catchup ? raw(REPLAY_ICON) : ''}${reminder ? raw(bellIcon(true)) : ''}<span>${
+        <span class="guide-cell-title">${catchup ? raw(REPLAY_ICON) : ''}${reminder ? raw(bellIcon(true)) : ''}<span dir="${nameDir()}">${
           program ? program.title : noData ? t('epg.noData') : ''}</span></span>
         ${program ? html`<span class="guide-cell-time">${formatTimeRange(program.start, program.stop)}</span>` : ''}
         ${resume ? html`<span class="guide-cell-badge ${resume.completed ? 'watched' : 'resume'}">${

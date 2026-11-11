@@ -85,6 +85,13 @@ export function judgeScreen(audit, spec = {}) {
   for (const [attr, value] of Object.entries(spec.htmlData ?? {})) {
     if (audit.htmlData?.[attr] !== value) reasons.push(`<html data-${attr}> is "${audit.htmlData?.[attr]}", not "${value}"`);
   }
+  if (spec.names?.length) {
+    const truncated = (audit.names ?? []).filter(n => n.overflows);
+    if (!truncated.length) reasons.push(`no truncated name in ${spec.names.join(', ')} to check`);
+    for (const n of truncated) {
+      if (!n.startInside) reasons.push(`${n.element} clips the start of its name`);
+    }
+  }
   for (const s of audit.shownChecks ?? []) {
     if (!s.shown) reasons.push(`${s.selector} is not shown`);
     else if (!s.inViewport) reasons.push(`${s.selector} is off screen (${rectText(s.rect)})`);
@@ -272,11 +279,18 @@ export class App {
         return { selector: sel, shown: shown, rect: r,
           inViewport: !!r && lib.within(r, { left: 0, top: 0, right: innerWidth, bottom: innerHeight }, 1) };
       });
+      out.names = [];
+      (opts.names || []).forEach(sel => {
+        Array.prototype.forEach.call(document.querySelectorAll(sel), el => {
+          if (lib.shown(el)) out.names.push(lib.nameStart(el));
+        });
+      });
       if (opts.ringIn) out.ringInside = lib.rings().some(el => !!el.closest(opts.ringIn));
       return out;
     }, {
       root: spec.view, scrollers: spec.scroller ? [spec.scroller] : [], header: spec.header,
       slack: spec.slack ?? 12, visible: spec.visible ?? [], ringIn: spec.ringIn, walk: !!spec.walk,
+      names: spec.names ?? [],
     });
   }
 }
@@ -413,6 +427,10 @@ export const CHECKS = [
     view: '#view-home', dir: 'rtl' }),
   screen({ id: 'rtl-settings', title: 'Arabic (RTL): Settings', profile: 'rtl',
     go: app => app.openSettingsPage('sources'), view: '#view-settings', dir: 'rtl' }),
+  // Channel 4's long Latin name keeps its start in view, truncated at its end.
+  screen({ id: 'rtl-live', title: 'Arabic (RTL): Live, a long Latin name', profile: 'rtl',
+    go: app => app.openSection('live'), view: '#view-channels', dir: 'rtl',
+    names: ['#view-channels .channel-main .channel-name'] }),
   screen({ id: 'large-home', title: 'Largest text and Interface size: Home', profile: 'large',
     go: app => app.goHome(), view: '#view-home', htmlData: PROFILES_DATA }),
   screen({ id: 'large-live', title: 'Largest text and Interface size: Live', profile: 'large',

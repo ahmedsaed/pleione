@@ -126,7 +126,7 @@ export const EN_MESSAGES = {
   'catalog.sortOldest': 'Oldest',
   'catalog.sortHighest': 'Highest',
   'catalog.sortLowest': 'Lowest',
-  'catalog.allCategories': 'All Categories',
+  'catalog.allCategories': 'All categories',
   'catalog.seeAll': 'See all',
   'catalog.movieCount': {
     one: '{count} movie',
@@ -138,6 +138,10 @@ export const EN_MESSAGES = {
   'catalog.episodeCount': {
     one: '{count} episode',
     other: '{count} episodes',
+  },
+  'catalog.categoryCount': {
+    one: '{number} category',
+    other: '{number} categories',
   },
   'catalog.noMovies': 'No movies are available for this account.',
   'catalog.noMoviesCategory': 'No movies in this category.',

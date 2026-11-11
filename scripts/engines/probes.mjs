@@ -45,6 +45,27 @@ export const PAGE_LIB = {
     return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + cls + (key ? '[' + key + ']' : '');
   },
 
+  // Whether a name element's text overflows its box, and whether its first
+  // character still lies inside it (a right-to-left layout once clipped the
+  // start of a long Latin name).
+  nameStart(el) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+    let first = null;
+    while (!first && walker.nextNode()) {
+      if (/\S/.test(walker.currentNode.data)) first = walker.currentNode;
+    }
+    const overflows = el.scrollWidth > el.clientWidth + 1;
+    if (!first) return { element: this.describe(el), overflows: overflows, startInside: true };
+    const offset = first.data.search(/\S/);
+    const range = document.createRange();
+    range.setStart(first, offset);
+    range.setEnd(first, offset + 1);
+    const glyph = range.getBoundingClientRect();
+    const box = el.getBoundingClientRect();
+    return { element: this.describe(el), overflows: overflows,
+      startInside: glyph.left >= box.left - 1 && glyph.right <= box.right + 1 };
+  },
+
   shown(el) {
     if (!el || !el.getClientRects().length) return false;
     const r = el.getBoundingClientRect();

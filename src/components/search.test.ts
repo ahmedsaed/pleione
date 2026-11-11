@@ -118,6 +118,7 @@ vi.mock('../workers/app-worker-client', async () => {
 import { Search } from './search';
 import { CONFIG } from '../config';
 import { Focus } from '../navigation/focus-scope';
+import { ParentalControlService } from '../services/parental-control';
 
 const account: PlaylistEntry = {
   id: 'x1', name: 'X', url: 'http://host:8080', source: 'xtream', xtream: { username: 'u', password: 'p' },
@@ -1151,6 +1152,23 @@ describe('Search', () => {
     expect(container.querySelector('.catalog-tile[data-series-id="s1"]')?.textContent).toContain('Series One');
   });
 
+  it('reads result names in their own direction in a right-to-left layout, matches marked', async () => {
+    document.documentElement.dir = 'rtl';
+    try {
+      playlistMock.channels = [chan('Channel One')];
+      const { view } = await openWith({ vod: [vod('10', 'Movie One')], series: [ser('s1', 'Series One')] });
+      await view.setQuery('one');
+      const names = Array.from(container.querySelectorAll('.catalog-tile-name'));
+      expect(names).toHaveLength(3);
+      for (const name of names) {
+        expect(name.getAttribute('dir')).toBe('auto');
+        expect(name.querySelector('mark.search-match')?.textContent).toBe('One');
+      }
+    } finally {
+      document.documentElement.dir = '';
+    }
+  });
+
   it('publishes a bounded first batch from 50,000 ranked results', async () => {
     const initial = CONFIG.SEARCH.INITIAL_RESULTS;
     const many = Array.from(
@@ -1163,7 +1181,7 @@ describe('Search', () => {
     expect(container.querySelectorAll('.catalog-tile[data-stream-id]').length).toBeLessThan(30);
     expect(container.querySelector<HTMLElement>(
       '[data-search-virtual="movies"] .search-rail-spacer',
-    )?.style.width).toBe(`${String(initial * 202)}px`);
+    )?.style.width).toBe(`${String(initial * 202 - 22 + 80)}px`);
   });
 
   it('expands the ranked batch near the virtual rail boundary', async () => {
@@ -1181,7 +1199,7 @@ describe('Search', () => {
       '[data-search-virtual="movies"] .search-rail-spacer',
     )?.style.width).toBe(
       `${String(CONFIG.SEARCH.INITIAL_RESULTS
-        * CONFIG.SEARCH.EXPANSION_FACTOR * 202)}px`,
+        * CONFIG.SEARCH.EXPANSION_FACTOR * 202 - 22 + 80)}px`,
     );
   });
 
@@ -2576,7 +2594,7 @@ describe('Search (M3U-only, no account)', () => {
     expect(catalogMock.loadAllSeries).not.toHaveBeenCalled();
   });
 
-  it('renders channel results as a counted rail of wide cards', async () => {
+  it('renders channel results as a counted rail of logo tiles', async () => {
     playlistMock.channels = [chan('Alpha News'), chan('Beta News')];
     playlistMock.indexOf.mockImplementation((ch: { name: string }) => (ch.name === 'Alpha News' ? 0 : 1));
     const { view } = await openM3U();
@@ -2586,7 +2604,40 @@ describe('Search (M3U-only, no account)', () => {
       .toBe('Channels2');
     const cells = container.querySelectorAll<HTMLElement>('[data-search-section="channels"]');
     expect(cells[0].style.left).toBe('0px');
-    expect(cells[1].style.left).toBe('322px');
+    expect(cells[1].style.left).toBe('288px');
+  });
+
+  it('shows a channel\'s letter in place of a logo that fails, and keeps it on re-render', async () => {
+    playlistMock.channels = [{ ...chan('Alpha News'), logo: 'http://host/a.png' }];
+    playlistMock.indexOf.mockReturnValue(0);
+    const { view } = await openM3U();
+    await view.setQuery('news');
+    const box = () => container.querySelector<HTMLElement>('.search-channel-logo')!;
+    // The letter waits, hidden, under a logo that loads.
+    expect(box().classList.contains('logo-failed')).toBe(false);
+    expect(box().querySelector('.search-channel-letter')?.textContent).toBe('A');
+    box().querySelector('img')!.dispatchEvent(new Event('error'));
+    expect(box().classList.contains('logo-failed')).toBe(true);
+    await view.setQuery('alpha');
+    expect(box().querySelector('img')).toBeNull();
+    expect(box().querySelector('.catalog-poster-empty')?.textContent).toBe('A');
+  });
+
+  it('puts a channel\'s lock badge in the logo\'s corner', async () => {
+    playlistMock.channels = [chan('Alpha News')];
+    playlistMock.indexOf.mockReturnValue(0);
+    const enabled = vi.spyOn(ParentalControlService, 'enabled', 'get').mockReturnValue(true);
+    const lockState = vi.spyOn(ParentalControlService, 'lockState').mockReturnValue('locked');
+    try {
+      const { view } = await openM3U();
+      await view.setQuery('news');
+      const card = container.querySelector<HTMLElement>('.search-channel-card')!;
+      expect(card.querySelector('.search-channel-logo .lock-badge')).not.toBeNull();
+      expect(card.querySelector('.search-channel-name .lock-badge')).toBeNull();
+    } finally {
+      enabled.mockRestore();
+      lockState.mockRestore();
+    }
   });
 
   it('plays a channel row on select', async () => {

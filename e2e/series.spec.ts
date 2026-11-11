@@ -103,7 +103,7 @@ test('browse Series, open a detail, and play an episode', async ({ page }) => {
   await enterTab(page, 'series');
   await expect(page.locator('#view-series')).toBeVisible();
 
-  await expect(page.locator('#view-series .catalog-rail-title')).toContainText('Cat A');
+  await expect(page.locator('#view-series [data-rail-key^="cat:"] .catalog-rail-title')).toContainText('Cat A');
   await expect(page.locator('.catalog-tile[data-item-id="1"]')).toContainText('Series One');
 
   // Open the series detail. Dispatch an explicit bubbling nav:hover so
@@ -183,6 +183,71 @@ for (const [size, locale] of [['100', 'en'], ['130', 'en'], ['100', 'ar']] as co
   });
 }
 
+// The season tabs are the episodes' heading: the first tab's box starts on the
+// keyline, like the Play button and the episode cards, and its ring stays
+// inside every clip.
+for (const [size, locale] of [['100', 'en'], ['130', 'en'], ['100', 'ar']] as const) {
+  test(`at Interface size ${size} in ${locale} the season tabs head the episodes on the keyline`, async ({ page }) => {
+    const seasons: Record<string, { id: number; title: string; episode_num: number }[]> = {};
+    for (let n = 1; n <= 3; n++) seasons[String(n)] = [{ id: 100 + n, title: `Episode ${n}`, episode_num: 1 }];
+    await seedSeries(page, seasons);
+    await page.addInitScript(([s, l]) => {
+      localStorage.setItem('iptv_interface_size', JSON.stringify(s));
+      localStorage.setItem('iptv_locale', JSON.stringify(l));
+    }, [size, locale]);
+    await page.goto('/');
+    await expect(page.locator('#view-channels')).toBeVisible();
+    await enterTab(page, 'series');
+    await page.locator('.catalog-tile[data-item-id="1"]')
+      .evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
+    await page.keyboard.press('Enter');
+    const first = page.locator('#view-series .series-season-btn[data-season="1"]');
+    await expect(first).toBeVisible();
+    const rail = page.locator('#view-series [data-rail-key="episodes"]');
+    await expect(rail.locator('.catalog-rail-title')).toHaveCount(0);
+    await expect(rail).toHaveAttribute('aria-label', locale === 'ar' ? 'الحلقات' : 'Episodes');
+
+    await first.evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
+    await expect(first).toHaveClass(/focused/);
+    const m = await first.evaluate((el, rtl) => {
+      const body = el.closest('.catalog-rails-body')!;
+      const bodyRect = body.getBoundingClientRect();
+      const style = getComputedStyle(body);
+      const keyline = rtl ? bodyRect.right - parseFloat(style.paddingRight) : bodyRect.left + parseFloat(style.paddingLeft);
+      const pill = el.getBoundingClientRect();
+      // The focused tab is scaled up; measure its edge without the scale.
+      const lift = (pill.width - (el as HTMLElement).offsetWidth) / 2;
+      const ring = 4;
+      const clipped: string[] = [];
+      for (let p = el.parentElement; p; p = p.parentElement) {
+        const cs = getComputedStyle(p);
+        if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+        const r = p.getBoundingClientRect();
+        if (pill.left - ring < r.left - 0.5 || pill.right + ring > r.right + 0.5
+          || pill.top - ring < r.top - 0.5 || pill.bottom + ring > r.bottom + 0.5) {
+          clipped.push(p.className);
+        }
+      }
+      return { keyline, pillEdge: rtl ? pill.right - lift : pill.left + lift, clipped };
+    }, locale === 'ar');
+    expect(Math.abs(m.pillEdge - m.keyline)).toBeLessThanOrEqual(2);
+    expect(m.clipped).toEqual([]);
+  });
+}
+
+test('a series without seasons keeps the Episodes title', async ({ page }) => {
+  await seedSeries(page, {});
+  await page.goto('/');
+  await expect(page.locator('#view-channels')).toBeVisible();
+  await enterTab(page, 'series');
+  await page.locator('.catalog-tile[data-item-id="1"]')
+    .evaluate((el) => el.dispatchEvent(new CustomEvent('nav:hover', { bubbles: true })));
+  await page.keyboard.press('Enter');
+  const rail = page.locator('#view-series [data-rail-key="episodes"]');
+  await expect(rail.locator('.catalog-rail-title')).toHaveText('Episodes');
+  await expect(rail.locator('.series-season-btn')).toHaveCount(0);
+});
+
 test('Back walks Series detail -> browse -> Home instead of ejecting', async ({ page }) => {
   await seedSeries(page);
   await routeLiveManifest(page);
@@ -203,7 +268,7 @@ test('Back walks Series detail -> browse -> Home instead of ejecting', async ({ 
   // First Back steps detail -> browse: still inside Series, not ejected to Live.
   await pressBack(page);
   await expect(page.locator('#view-series')).toBeVisible();
-  await expect(page.locator('#view-series .catalog-rail-title')).toContainText('Cat A');
+  await expect(page.locator('#view-series [data-rail-key^="cat:"] .catalog-rail-title')).toContainText('Cat A');
   await expect(page.locator('#view-channels')).toBeHidden();
 
   // Second Back from the browse top level goes Home, on the Series card.

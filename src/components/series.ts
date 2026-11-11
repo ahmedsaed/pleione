@@ -1,6 +1,6 @@
 import type { Action, PlaylistEntry, SeriesCategory, SeriesItem, SeriesInfo, Episode, ResumeEntry, ResumeKind, VodQueueItem, WatchlistEntry } from '../types';
 import { html, Safe } from '../utils/dom';
-import { inlineStart, scrollStart } from '../utils/direction';
+import { inlineStart, scrollStart, nameDir } from '../utils/direction';
 import { morph } from '../utils/morph';
 import { StorageService } from '../services/storage-service';
 import { loadSeriesCategories, loadSeries, loadSeriesInfo } from '../services/xtream-catalog';
@@ -8,10 +8,11 @@ import { xtreamEpisodeUrl, type XtreamCredentials } from '../utils/xtream-url';
 import { CatalogView, type CatalogHandlers, type CollectionKind, type CollectionEntry, type HeroDetails } from './catalog-view';
 import { PLAY_ICON, RESTART_ICON } from './icons';
 import { showToast } from './toast';
-import { t, tp } from '../i18n';
+import { formatNumber, t, tp } from '../i18n';
 import { VirtualList } from '../utils/virtual-list';
 import { uiPx } from '../utils/ui-scale';
-import { castGradient, parseCast } from '../utils/cast';
+import { railKeyline, railViewport } from '../utils/rail-keyline';
+import { parseCast } from '../utils/cast';
 import { formatPosition } from '../utils/time';
 import { loadTmdbCredits, matchTmdbPeople, type TmdbPerson } from '../services/tmdb';
 import { CONFIG } from '../config';
@@ -19,6 +20,7 @@ import { composeEpisodeLabel, episodeCodeOf, episodeLabelOf, episodeTitle, serie
 
 // An episode card's width plus the gap after it, as in catalog-view.css.
 const EPISODE_STRIDE = 428;
+const EPISODE_GAP = 28;
 const EPISODE_OVERSCAN = 3;
 const EPISODE_VIEWPORT_FALLBACK = 1760;
 function episodeRowTitle(ep: Episode): string {
@@ -28,6 +30,7 @@ function episodeRowTitle(ep: Episode): string {
 }
 
 // What the browse hero keeps of a series' provider details.
+type SeriesArt = { url: string; covers: string[] };
 type SeriesSummary = Pick<SeriesInfo, 'poster' | 'genre' | 'year' | 'plot' | 'backdrop'>;
 
 // A saved queue's episodes, named in the UI language.
@@ -62,6 +65,7 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
   private castPhotos = new Map<string, TmdbPerson>();
   private readonly episodeVirtualizer = new VirtualList({
     itemSize: () => uiPx(EPISODE_STRIDE),
+    gap: () => uiPx(EPISODE_GAP),
     overscan: EPISODE_OVERSCAN,
     fallbackViewportSize: EPISODE_VIEWPORT_FALLBACK,
   });
@@ -71,8 +75,24 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
   // A held key's reveal writes the row's offset without a smooth scroll.
   private instantEpisodeScroll = false;
 
+  // Stills that failed to load render as missing from then on.
+  private readonly failedStills = new Set<string>();
+  private stillErrorFrame: number | null = null;
+
   constructor(container: HTMLElement, handlers: CatalogHandlers) {
     super(container, handlers);
+    this.container.addEventListener('error', (e: Event) => this.onStillError(e), true);
+  }
+
+  private onStillError(e: Event): void {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.classList.contains('episode-thumb-still')) return;
+    this.failedStills.add(img.getAttribute('src') ?? '');
+    if (this.stillErrorFrame !== null) return;
+    this.stillErrorFrame = requestAnimationFrame(() => {
+      this.stillErrorFrame = null;
+      if (this.mode === 'detail') this.renderDetail(false);
+    });
   }
 
   protected loadCategories(
@@ -488,27 +508,42 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
         <div class="catalog-poster-wrap">${this.posterCell(this.resumeName(r), this.resumePoster(r))}${
           this.itemLockBadge(r.categoryId ?? '', r.watchlistOwner?.itemId ?? r.itemId)}${
           this.progressBar(r.position, r.duration)}</div>
-        <div class="catalog-tile-name">${this.resumeName(r)}</div>
+        <div class="catalog-tile-name" dir="${nameDir()}">${this.resumeName(r)}</div>
       </div>
     `;
   }
 
-  private episodeCard(accountId: string, ep: Episode): Safe {
+  // A still that is only the series cover again counts as none: the card then
+  // shows the series art under the episode number.
+  private episodeCard(accountId: string, ep: Episode, art: SeriesArt): Safe {
     const saved = StorageService.getResume(accountId, 'episode', ep.id);
     const mins = ep.durationSecs >= 60 ? t('catalog.minutes', { count: Math.floor(ep.durationSecs / 60) }) : '';
+    const still = ep.poster && !art.covers.includes(ep.poster) && !this.failedStills.has(ep.poster)
+      ? ep.poster : '';
     // Percent-encoded like the hero's, for the CSS url('…') string.
-    const poster = ep.poster.replace(/["'()\\\s]/g, encodeURIComponent);
+    const bg = art.url.replace(/["'()\\\s]/g, encodeURIComponent);
     return html`
       <div class="episode-card" data-focusable data-key="ep:${ep.id}" data-episode-id="${ep.id}">
-        <div class="episode-thumb" style="background-image:${castGradient(`${ep.season}:${ep.episode}:${ep.id}`)}">
-          ${poster ? html`<div class="episode-thumb-art" style="background-image:url('${poster}')"></div>` : ''}
+        <div class="episode-thumb${still ? '' : ' episode-thumb-fallback'}">
+          ${still ? html`<img class="episode-thumb-still" src="${still}" alt="">`
+            : bg ? html`<div class="episode-thumb-art" style="background-image:url('${bg}')"></div>` : ''}
+          ${still ? '' : html`<div class="episode-thumb-scrim"></div>${ep.episode > 0
+            ? html`<div class="episode-thumb-number">${formatNumber(ep.episode, { useGrouping: false })}</div>` : ''}`}
           ${saved ? this.progressBar(saved.position, saved.duration)
             : StorageService.isWatched(accountId, 'episode', ep.id) ? this.progressBar(1, 1) : ''}
         </div>
-        <div class="episode-title">${episodeRowTitle(ep)}</div>
+        <div class="episode-title" dir="${nameDir()}">${episodeRowTitle(ep)}</div>
         <div class="episode-meta">${mins}</div>
       </div>
     `;
+  }
+
+  private seriesArt(): SeriesArt {
+    const series = this.currentSeries;
+    const info = this.currentInfo;
+    const poster = info?.poster || series?.poster || '';
+    const backdrop = info?.backdrop || series?.backdrop || '';
+    return { url: backdrop || poster, covers: [poster, backdrop].filter(Boolean) };
   }
 
   private seasonTabs(info: SeriesInfo): Safe | '' {
@@ -527,7 +562,7 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
   private episodesRail(accountId: string): Safe {
     const info = this.currentInfo;
     const hint = (text: string, head: Safe | '' = ''): Safe => this.detailRail(
-      'episodes', t('catalog.episodes'), [html`<p class="catalog-hint episode-hint">${text}</p>`], head,
+      'episodes', t('catalog.episodes'), [html`<p class="catalog-hint episode-hint">${text}</p>`], head, '', !!head,
     );
     if (this.detailLoading) return hint(t('common.loading'));
     if (!info) return hint(t('catalog.loadEpisodesFailed'));
@@ -536,19 +571,20 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
     if (!episodes.length) return hint(t('catalog.noSeasonEpisodes'), this.seasonTabs(info));
     const range = this.episodeVirtualizer.getRange(episodes.length, this.episodeViewport());
     this.episodeWindow = `${this.selectedSeason}:${range.start}:${range.end}`;
+    const art = this.seriesArt();
     return this.detailRail('episodes', t('catalog.episodes'), [html`
-      <div class="episode-track-spacer" style="width:${this.episodeVirtualizer.getTotalSize(episodes.length)}px">
+      <div class="episode-track-spacer" style="width:${this.episodeVirtualizer.getTotalSize(episodes.length) + railKeyline()}px">
         ${episodes.slice(range.start, range.end).map((ep, offset) => {
           const index = range.start + offset;
           return html`
             <div class="episode-cell" data-key="episode-cell:${ep.id}" data-episode-index="${index}"
                  style="${inlineStart()}:${this.episodeVirtualizer.getItemOffset(index)}px">
-              ${this.episodeCard(accountId, ep)}
+              ${this.episodeCard(accountId, ep, art)}
             </div>
           `;
         })}
       </div>
-    `], this.seasonTabs(info), 'episode-track');
+    `], this.seasonTabs(info), 'episode-track', true);
   }
 
   // Resume, then Play from start for the episode it resumes. The episode after
@@ -618,12 +654,8 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
     return this.layer('detail').querySelector<HTMLElement>('.episode-track');
   }
 
-  // The cards sit inside the track's padding, which bleeds under its margin.
   private episodeViewport(): number {
-    const track = this.episodeTrack();
-    if (!track?.clientWidth) return EPISODE_VIEWPORT_FALLBACK;
-    const style = getComputedStyle(track);
-    return track.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+    return railViewport(this.episodeTrack(), EPISODE_VIEWPORT_FALLBACK);
   }
 
   private selectedEpisodes(): Episode[] {

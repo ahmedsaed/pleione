@@ -127,7 +127,8 @@ async function main(argv) {
   const hosts = values.host === '0.0.0.0' ? ['127.0.0.1', ...lanAddresses()] : [values.host];
   const { catalog } = demo;
   print(`Catalog (${values.size}): ${catalog.channels.length} channels, `
-    + `${catalog.movies.length} movies, ${catalog.series.length} series`);
+    + `${catalog.movies.length} movies in ${catalog.vodCategories.length} categories, `
+    + `${catalog.series.length} series in ${catalog.seriesCategories.length} categories`);
   for (const address of hosts) print(`Server URL: http://${address}:${demo.port}`);
   print(`Username: ${values.username}`);
   print(`Password: ${values.password}`);

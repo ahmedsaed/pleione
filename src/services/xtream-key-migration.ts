@@ -3,7 +3,6 @@ import { channelKey, streamUrlKey } from '../utils/channel';
 import { createLogger } from '../utils/logger';
 import { xtreamLiveUrlVariants, type XtreamCredentials } from '../utils/xtream-url';
 import { ChannelCustomizationService } from './channel-customization';
-import { ParentalControlService } from './parental-control';
 import { StorageService } from './storage-service';
 import { createXtreamClient } from './xtream-client';
 
@@ -26,7 +25,6 @@ export function migrateXtreamChannelKeys(
   loaded: readonly Channel[],
 ): number {
   const stored = StorageService.channelDataKeys();
-  ParentalControlService.liveChannelKeys().forEach(key => stored.add(key));
   if (!stored.size) return 0;
   const loadedKeys = new Set(loaded.map(channelKey));
   const orphans = new Set(Array.from(stored).filter(key => !loadedKeys.has(key)));
@@ -52,8 +50,7 @@ export function migrateXtreamChannelKeys(
   claims.forEach((key, old) => { if (key) aliases.set(old, key); });
   if (!aliases.size) return 0;
 
-  const moved = StorageService.renameChannelKeys(aliases)
-    + ParentalControlService.renameChannelKeys(aliases);
+  const moved = StorageService.renameChannelKeys(aliases);
   ChannelCustomizationService.reload();
   log.info(
     'Channel data moved to Player API stream keys',

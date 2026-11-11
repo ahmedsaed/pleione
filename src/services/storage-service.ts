@@ -1,7 +1,7 @@
 import { CONFIG } from '../config';
-import { DEFAULT_THEME, DEFAULT_OVERLAY, DEFAULT_TEXT_SIZE, DEFAULT_INTERFACE_SIZE, isValidTextSize, isValidInterfaceSize, type OverlayStyle, type TextSize, type InterfaceSize } from '../config/themes';
+import { DEFAULT_THEME, DEFAULT_TEXT_SIZE, DEFAULT_INTERFACE_SIZE, migrateThemeId, isValidTextSize, isValidInterfaceSize, type TextSize, type InterfaceSize } from '../config/themes';
 import { latestPerSeries } from './continue-watching';
-import type { AudioPref, CatchupProgressEntry, ChannelCustomization, ChannelCycleMode, ManualEpgSource, ParentalControlConfig, ParentalPinThrottle, PlaylistEntry, RecentlyWatchedLiveEntry, Reminder, ResumeEntry, ResumeKind, SubtitlePref, TimeFormat, TzMode, WatchlistEntry, WatchlistKind, XtreamLiveCategorySnapshot } from '../types';
+import type { AudioPref, CatchupProgressEntry, ChannelCustomization, ManualEpgSource, PlaylistEntry, RecentlyWatchedLiveEntry, Reminder, ResumeEntry, ResumeKind, SubtitlePref, TimeFormat, TzMode, WatchlistEntry, WatchlistKind, XtreamLiveCategorySnapshot } from '../types';
 import type { OnlineSubtitleConfig, PickedOnlineSub } from './subtitle-search/types';
 import { genPlaylistId } from '../utils/playlist';
 import { isCatalogSort, isCatalogSortDirection, type CatalogSortPreference } from '../utils/catalog-sort';
@@ -77,7 +77,6 @@ interface UserDataState {
   onlineSubPicks: Record<string, PickedOnlineSub>;
   catchupProgress: Record<string, StoredCatchup>;
   recentlyWatchedLive: RecentlyWatchedLiveEntry[];
-  parentalControl: ParentalControlConfig | null;
   liveCategorySnapshots: Record<string, XtreamLiveCategorySnapshot>;
 }
 
@@ -97,7 +96,6 @@ let userDataInitPromise: Promise<void> | null = null;
 // (e.g. a dead IndexedDB connection until the next reconnect) doesn't spam it.
 let writeFailing = false;
 let onWriteFailure: (() => void) | null = null;
-let onPlaylistsReplaced: ((previous: PlaylistEntry[], next: PlaylistEntry[]) => void) | null = null;
 
 
 function cloneValue<T>(value: T): T {
@@ -317,9 +315,6 @@ function allUserRecords(data: UserDataState): Parameters<typeof replaceAllUserDa
       record(`live:${entry.channelKey}`, entry, { updatedAt: entry.updatedAt })),
     'online-sub-picks': Object.keys(data.onlineSubPicks)
       .map(key => record(`pick:${key}`, data.onlineSubPicks[key])),
-    'parental-control': data.parentalControl
-      ? [record('config', data.parentalControl)]
-      : [],
   };
 }
 
@@ -450,8 +445,6 @@ async function loadUserDataState(): Promise<UserDataState> {
     UserDataRecord<RecentlyWatchedLiveEntry>[];
   const onlineSubPicks = records['online-sub-picks'] as
     UserDataRecord<PickedOnlineSub>[];
-  const parentalControl = records['parental-control'] as
-    UserDataRecord<ParentalControlConfig>[];
 
   const data: UserDataState = {
     favorites: favorites.map(item => item.value),
@@ -466,7 +459,6 @@ async function loadUserDataState(): Promise<UserDataState> {
     onlineSubPicks: {},
     catchupProgress: {},
     recentlyWatchedLive: recentlyWatched.map(item => item.value),
-    parentalControl: parentalControl.find(item => item.key === 'config')?.value ?? null,
     liveCategorySnapshots: {},
   };
 
@@ -553,19 +545,6 @@ async function initUserData(): Promise<void> {
       replaceExisting: !migrated,
     });
   }
-  // A config saved while IndexedDB was unavailable is newer than the stored one.
-  const fallbackParental = localStorage.getItem(PREFIX + 'parental_control') !== null
-    ? get<ParentalControlConfig | null>('parental_control', null)
-    : null;
-  if (fallbackParental) {
-    pending.push({
-      legacyKey: 'parental_control',
-      storeName: 'parental-control' as const,
-      records: [record('config', fallbackParental)],
-      replacePrefix: null,
-      replaceExisting: false,
-    });
-  }
   const unsaved = await migrateUserRecordSets(pending);
   // After the legacy migration, which may replace whole stores.
   await restoreFallbackUserData();
@@ -573,7 +552,6 @@ async function initUserData(): Promise<void> {
   for (const [key] of migrations) {
     if (unsaved.indexOf(key) < 0) remove(key);
   }
-  if (unsaved.indexOf('parental_control') < 0) remove('parental_control');
   const trimmed = trimResume(loadedUserData.resume);
   if (trimmed.length) persistUserChanges('playback-progress', [], trimmed.map(resumeKey));
   userData = loadedUserData;
@@ -649,6 +627,18 @@ function remove(key: string): void {
   localStorage.removeItem(PREFIX + key);
 }
 
+// What removed features left behind; the IndexedDB stores go in the schema
+// upgrade (RETIRED_STORES).
+const RETIRED_KEYS = [
+  'parental_control',
+  'parental_throttle',
+  'fb_parental-control', // its IndexedDB fallback (user-data-fallback)
+];
+
+function removeRetiredKeys(): void {
+  for (const key of RETIRED_KEYS) remove(key);
+}
+
 // Derived caches, dropped together: both are re-derivable from the playlist
 // config, and a config edit can change what a provider serves — an account that
 // switches live output keeps its stream route but changes container, so a probed
@@ -692,12 +682,8 @@ export const StorageService = {
     return idbWritesRefused();
   },
 
-  // Sees every source change, from Settings, phone setup, or a LAN upload.
-  setPlaylistsReplacedHandler(handler: (previous: PlaylistEntry[], next: PlaylistEntry[]) => void): void {
-    onPlaylistsReplaced = handler;
-  },
-
   async init(): Promise<void> {
+    removeRetiredKeys();
     if (!userDataInitPromise) {
       userDataInitPromise = initUserData()
         .then(() => log.info(
@@ -768,7 +754,6 @@ export const StorageService = {
     if (stored) {
       evictCache();
       pruneLiveCategorySnapshots(previous, playlists);
-      onPlaylistsReplaced?.(previous, playlists);
     }
     return stored;
   },
@@ -1019,36 +1004,6 @@ export const StorageService = {
     persistUserChanges('channel-state', [], previous.map(item => item.key));
   },
 
-  getParentalControl(): ParentalControlConfig | null {
-    return userData
-      ? cloneValue(userData.parentalControl)
-      : get<ParentalControlConfig | null>('parental_control', null);
-  },
-  setParentalControl(config: ParentalControlConfig): void {
-    if (!userData) {
-      set('parental_control', config);
-      return;
-    }
-    userData.parentalControl = cloneValue(config);
-    persistUserChanges('parental-control', [record('config', config)]);
-  },
-  // Kept in localStorage so restarting the app cannot reset the retry delay.
-  getParentalThrottle(): ParentalPinThrottle | null {
-    return get<ParentalPinThrottle | null>('parental_throttle', null);
-  },
-  setParentalThrottle(throttle: ParentalPinThrottle | null): void {
-    if (throttle) set('parental_throttle', throttle);
-    else remove('parental_throttle');
-  },
-  clearParentalControl(): void {
-    if (!userData) {
-      remove('parental_control');
-      return;
-    }
-    userData.parentalControl = null;
-    persistUserChanges('parental-control', [], ['config']);
-  },
-
   // Reveal hidden channels in the normal lists (dimmed), for recovery.
   getShowHiddenChannels(): boolean {
     return get<boolean>('show_hidden_channels', false);
@@ -1235,14 +1190,11 @@ export const StorageService = {
     set('animation_mode', mode);
   },
 
-  // 'active' (the default) = channel_up/channel_down stays within the
-  // group/playlist/Favorites a channel was tuned from; 'global' = cycles the
-  // entire channel list. A stored choice keeps its value.
-  getChannelCycleMode(): ChannelCycleMode {
-    return get<ChannelCycleMode>('channel_cycle_mode', 'active');
-  },
-  setChannelCycleMode(mode: ChannelCycleMode): void {
-    set('channel_cycle_mode', mode);
+  // Settings that no longer exist: the player overlay is always dark, and
+  // Channel Up/Down always stays within the list a channel was tuned from.
+  pruneRetiredSettings(): void {
+    remove('overlay_style');
+    remove('channel_cycle_mode');
   },
 
   // Agreeing to the privacy notice (platform.privacyConsent); Reset App
@@ -1272,8 +1224,12 @@ export const StorageService = {
   },
 
   // Selected color theme id (see src/config/themes.ts). Default = Midnight.
+  // A retired theme's id moves to its closest kept theme, once.
   getTheme(): string {
-    return get<string>('theme', DEFAULT_THEME);
+    const stored = get<string>('theme', DEFAULT_THEME);
+    const migrated = migrateThemeId(stored);
+    if (migrated !== stored) set('theme', migrated);
+    return migrated;
   },
   setTheme(id: string): void {
     set('theme', id);
@@ -1294,14 +1250,6 @@ export const StorageService = {
   },
   setInterfaceSize(size: InterfaceSize): void {
     set('interface_size', size);
-  },
-
-  // Player overlay glass style (see src/config/themes.ts). Default = dark-glass.
-  getOverlayStyle(): OverlayStyle {
-    return get<OverlayStyle>('overlay_style', DEFAULT_OVERLAY);
-  },
-  setOverlayStyle(style: OverlayStyle): void {
-    set('overlay_style', style);
   },
 
   // Preferred audio track per channel (keyed by channelKey). Absent = follow the stream's default.

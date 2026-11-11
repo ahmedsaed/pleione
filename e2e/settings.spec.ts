@@ -1,7 +1,7 @@
 import {
   leaveSettings,
   liveAfterSave,
-  test, expect, type Page, routePlaylist, routeLiveManifest, seedPlaylist, PLAYLIST_URL, enterTab, readUserDataStore,
+  test, expect, type Page, routePlaylist, seedPlaylist, PLAYLIST_URL, enterTab, readUserDataStore,
   isChromium53, pressKeys,
   BACK_KEY,
 } from './helpers';
@@ -153,9 +153,9 @@ test.describe('Settings navigation', () => {
     }, selector);
 
     // Each category is its own page, so each control is measured on its own.
-    await page.locator('[data-settings-target="appearance"]').click();
-    await expect(page.locator('#overlay-style')).toBeVisible();
-    const toggleTitle = await titleGap('#overlay-style');
+    await page.locator('[data-settings-target="sources"]').click();
+    await expect(page.locator('#show-hidden')).toBeVisible();
+    const toggleTitle = await titleGap('#show-hidden');
 
     await page.locator('[data-settings-target="subtitles"]').click();
     await expect(page.locator('#os-pref-lang')).toBeVisible();
@@ -436,41 +436,41 @@ test.describe('Settings navigation', () => {
 
     const general = page.locator('[data-settings-target="general"]');
     const appearance = page.locator('[data-settings-target="appearance"]');
-    const playback = page.locator('[data-settings-target="playback"]');
+    const services = page.locator('[data-settings-target="subtitles"]');
 
-    await playback.hover();
-    await expect(playback).toHaveClass(/focused/);
+    await services.hover();
+    await expect(services).toHaveClass(/focused/);
     await expect(general).toHaveClass(/active/);
     await expect(page.locator('#settings-general')).toBeVisible();
-    await expect(page.locator('#settings-playback')).toBeHidden();
+    await expect(page.locator('#settings-subtitles')).toBeHidden();
 
     await appearance.click();
     await expect(appearance).toHaveClass(/active/);
-    await playback.hover();
-    await expect(playback).toHaveClass(/focused/);
+    await services.hover();
+    await expect(services).toHaveClass(/focused/);
     await expect(appearance).toHaveClass(/active/);
     await expect(page.locator('#settings-appearance')).toBeVisible();
-    await expect(page.locator('#settings-playback')).toBeHidden();
+    await expect(page.locator('#settings-subtitles')).toBeHidden();
   });
 
   test('scales buttons consistently for pointer and D-pad focus', async ({ page }) => {
     await page.goto('/');
-    const playback = page.locator('[data-settings-target="playback"]');
+    const guide = page.locator('[data-settings-target="guide"]');
 
-    await playback.hover();
-    await expect(playback).toHaveCSS('transform', 'matrix(1.03, 0, 0, 1.03, 0, 0)');
+    await guide.hover();
+    await expect(guide).toHaveCSS('transform', 'matrix(1.03, 0, 0, 1.03, 0, 0)');
 
     await page.locator('.settings-title').hover();
-    await expect(playback).not.toHaveClass(/focused/);
-    await expect(playback).toHaveCSS('transform', 'none');
+    await expect(guide).not.toHaveClass(/focused/);
+    await expect(guide).toHaveCSS('transform', 'none');
 
     await page.keyboard.press('ArrowDown');
     const focusedButton = page.locator('#view-settings button.focused');
     await expect(focusedButton).toHaveCount(1);
     await expect(focusedButton).toHaveCSS('transform', 'matrix(1.03, 0, 0, 1.03, 0, 0)');
 
-    await page.locator('[data-settings-target="playback"]').click();
-    const toggle = page.locator('#channel-cycle-mode .toggle-option').first();
+    await page.locator('[data-settings-target="general"]').click();
+    const toggle = page.locator('#time-format .toggle-option').first();
     await toggle.hover();
     await expect(toggle).toHaveClass(/focused/);
     await expect(toggle).toHaveCSS('transform', 'none');
@@ -650,7 +650,7 @@ test.describe('Settings navigation', () => {
     }
   });
 
-  test('lays out the 15 theme swatches in one horizontal rail', async ({ page }) => {
+  test('lays out the 6 theme swatches in one horizontal rail', async ({ page }) => {
     await page.goto('/');
     await page.locator('[data-settings-target="appearance"]').click();
 
@@ -660,7 +660,7 @@ test.describe('Settings navigation', () => {
       return { rows: tops.size, count: rail.children.length, overflows: rail.scrollWidth > rail.clientWidth };
     });
 
-    expect(layout).toEqual({ rows: 1, count: 15, overflows: true });
+    expect(layout).toEqual({ rows: 1, count: 6, overflows: true });
   });
 
   test('the text size picker scales only fonts and persists', async ({ page }) => {
@@ -937,29 +937,6 @@ test.describe('Settings re-entry', () => {
     await page.keyboard.press('ArrowRight');
     await expect.poll(() => focusedCategory(page)).toBe('guide');
     expect(await settledCategory(page)).toEqual(['guide']);
-  });
-
-  test('Back from parental controls returns to the control that opened them', async ({ page }) => {
-    await routePlaylist(page);
-    await routeLiveManifest(page);
-    await seedPlaylist(page);
-    await page.goto('/');
-    await enterTab(page, 'settings');
-    const manage = page.locator('#manage-parental-controls');
-    await manage.click();
-    const prompt = page.locator('.parental-pin-prompt');
-    await prompt.locator('.parental-pin-input').fill('1234');
-    await expect(prompt.locator('h2')).toContainText('Confirm');
-    await prompt.locator('.parental-pin-input').fill('1234');
-    await expect(page.locator('#view-parental-controls')).toBeVisible();
-
-    await page.mouse.move(0, 0);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#view-settings')).toBeVisible();
-    await expect.poll(() => rings(page)).toEqual(['manage-parental-controls']);
-    const category = await manage.evaluate(el =>
-      el.closest<HTMLElement>('.settings-category')?.dataset.settingsCategory);
-    await expect.poll(() => activeCategory(page)).toEqual([category]);
   });
 
   test('coming back from the channel editor returns to its button', async ({ page }) => {
@@ -1639,12 +1616,11 @@ test.describe('Settings upload', () => {
 });
 
 test.describe('Settings phone setup card', () => {
-  // The QR sits beside its instructions via flex `gap`, so on webOS the spacing
+  // The QR sits above its instructions via flex `gap`, so on webOS the spacing
   // comes entirely from the generated margin fallback. Under the
   // `chromium-53-simulation` project this is the regression guard for that
-  // generator: a dropped rule collapses the gap to 0 and knocks the text out
-  // of alignment.
-  test('keeps the QR spaced from its instructions', async ({ page }) => {
+  // generator: a dropped rule collapses the gap to 0.
+  test('shows a large QR above its instructions, beside Language and Time format', async ({ page }) => {
     await page.addInitScript(() => {
       class FakePalmServiceBridge {
         onservicecallback: ((message: string) => void) | null = null;
@@ -1682,21 +1658,40 @@ test.describe('Settings phone setup card', () => {
     await expect(page.locator('#view-settings .setup-qr')).toBeVisible();
 
     const layout = await page.evaluate(() => {
-      const qr = document.querySelector('#view-settings .setup-qr')!.getBoundingClientRect();
-      const text = document.querySelector('.setup-instructions')!.getBoundingClientRect();
+      const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const qr = box('#view-settings .setup-qr');
+      const text = box('.setup-instructions');
+      const language = box('.settings-general-language');
+      const timeFormat = box('#time-format');
+      const device = box('.settings-general-device');
       return {
-        gap: Math.round(text.left - qr.right),
-        centerOffset: Math.round((text.top + text.height / 2) - (qr.top + qr.height / 2)),
+        qrWidth: Math.round(qr.width),
+        qrHeight: Math.round(qr.height),
+        gap: Math.round(text.top - qr.bottom),
+        centerOffset: Math.round((text.left + text.width / 2) - (qr.left + qr.width / 2)),
+        instructionSize: getComputedStyle(document.querySelector('.setup-scan-instruction')!).fontSize,
+        languageWidth: Math.round(language.width),
+        timeFormatInLanguage: timeFormat.top >= language.top && timeFormat.bottom <= language.bottom
+          && timeFormat.left >= language.left && timeFormat.right <= language.right,
+        deviceBeside: device.left >= language.right && Math.round(device.top) === Math.round(language.top),
       };
     });
 
-    expect(layout.gap).toBe(24);
-    expect(layout.centerOffset).toBe(0);
+    expect(layout).toEqual({
+      qrWidth: 360,
+      qrHeight: 360,
+      gap: 24,
+      centerOffset: 0,
+      instructionSize: '22px',
+      languageWidth: 640,
+      timeFormatInLanguage: true,
+      deviceBeside: true,
+    });
   });
 });
 
 test.describe('Settings pages', () => {
-  const CATEGORIES = ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data'];
+  const CATEGORIES = ['general', 'sources', 'guide', 'appearance', 'subtitles', 'advanced', 'data'];
   const shownPages = (page: Page) => page.evaluate(() =>
     Array.from(document.querySelectorAll<HTMLElement>('#view-settings .settings-category'))
       .filter(el => el.getBoundingClientRect().height > 0)
@@ -1736,18 +1731,18 @@ test.describe('Settings pages', () => {
       expect(await activeItems(page), category).toEqual([category]);
       await expect(page.locator('#view-settings .settings-scroll .focused')).toHaveCount(0);
     }
-    for (let step = 0; step < 3; step++) await page.keyboard.press('ArrowUp');
-    const playback = page.locator('[data-settings-target="playback"]');
-    await expect(playback).toHaveClass(/focused/);
-    expect(await shownPages(page)).toEqual(['playback']);
+    for (let step = 0; step < 2; step++) await page.keyboard.press('ArrowUp');
+    const services = page.locator('[data-settings-target="subtitles"]');
+    await expect(services).toHaveClass(/focused/);
+    expect(await shownPages(page)).toEqual(['subtitles']);
 
     await page.keyboard.press('ArrowRight');
-    expect(await shownPages(page)).toEqual(['playback']);
-    await expect(page.locator('#settings-playback [data-focusable].focused')).toHaveCount(1);
+    expect(await shownPages(page)).toEqual(['subtitles']);
+    await expect(page.locator('#settings-subtitles [data-focusable].focused')).toHaveCount(1);
 
     await page.keyboard.press('ArrowLeft');
-    await expect(playback).toHaveClass(/focused/);
-    expect(await shownPages(page)).toEqual(['playback']);
+    await expect(services).toHaveClass(/focused/);
+    expect(await shownPages(page)).toEqual(['subtitles']);
   });
 
   test('Magic Remote hover lights a category without switching; its click does', async ({ page }) => {
@@ -1769,20 +1764,20 @@ test.describe('Settings pages', () => {
     await page.goto('/');
     await enterTab(page, 'settings');
 
-    await page.locator('[data-settings-target="playback"]').click();
-    await page.locator('#channel-cycle-mode [data-value="active"]').click();
-    await page.locator('[data-settings-target="appearance"]').click();
-    await page.locator('.theme-swatch[data-theme-id="arctic"]').click();
     await page.locator('[data-settings-target="general"]').click();
-    await page.locator('[data-settings-target="playback"]').click();
-    await expect(page.locator('#channel-cycle-mode .toggle-option.active')).toHaveAttribute('data-value', 'active');
+    await page.locator('#time-format [data-value="24h"]').click();
     await page.locator('[data-settings-target="appearance"]').click();
-    await expect(page.locator('.theme-swatch.active')).toHaveAttribute('data-theme-id', 'arctic');
+    await page.locator('.theme-swatch[data-theme-id="emerald"]').click();
+    await page.locator('[data-settings-target="guide"]').click();
+    await page.locator('[data-settings-target="general"]').click();
+    await expect(page.locator('#time-format .toggle-option.active')).toHaveAttribute('data-value', '24h');
+    await page.locator('[data-settings-target="appearance"]').click();
+    await expect(page.locator('.theme-swatch.active')).toHaveAttribute('data-theme-id', 'emerald');
 
     await leaveSettings(page);
     await expect.poll(() => page.evaluate(() => [
-      localStorage.getItem('iptv_channel_cycle_mode'), localStorage.getItem('iptv_theme'),
-    ])).toEqual(['"active"', '"arctic"']);
+      localStorage.getItem('iptv_time_format'), localStorage.getItem('iptv_theme'),
+    ])).toEqual(['"24h"', '"emerald"']);
   });
 
   for (const size of ['100', '130']) {
@@ -1819,7 +1814,7 @@ test.describe('Settings pages', () => {
       await page.keyboard.press('ArrowRight');
       await expect(swatches.nth(count - 1)).toHaveClass(/focused/);
       await page.keyboard.press('ArrowDown');
-      await expect(page.locator('#overlay-style .toggle-option').first()).toHaveClass(/focused/);
+      await expect(page.locator('#interface-size .dropdown-trigger')).toHaveClass(/focused/);
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'midnight');
 
       // Up returns to the swatch it left.
@@ -1832,13 +1827,13 @@ test.describe('Settings pages', () => {
   test('hovering a swatch previews its theme and leaving reverts to the selected one', async ({ page }) => {
     await page.goto('/');
     await page.locator('[data-settings-target="appearance"]').click();
-    await page.locator('.theme-swatch[data-theme-id="arctic"]').click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'arctic');
+    await page.locator('.theme-swatch[data-theme-id="emerald"]').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'emerald');
 
     await page.locator('.theme-swatch[data-theme-id="ember"]').hover();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'ember');
     await page.locator('#settings-appearance .settings-section-title').hover();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'arctic');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'emerald');
   });
 
   test('Back from the reminder manager shows the Guide page at its entry', async ({ page }) => {
@@ -2201,7 +2196,7 @@ test.describe('Settings saves without a button', () => {
     await page.locator('[data-settings-target="appearance"]').click();
     const theme = () => page.locator('html').getAttribute('data-theme');
     await page.locator('.theme-swatch[data-theme-id="daylight"]').click();
-    await page.locator('.theme-swatch[data-theme-id="pastel-latte"]').hover();
+    await page.locator('.theme-swatch[data-theme-id="paper-light"]').hover();
     await leaveSettings(page);
     await expect(page.locator('#view-home')).toBeVisible();
     await expect.poll(theme).toBe('daylight');

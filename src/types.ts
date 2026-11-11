@@ -63,17 +63,6 @@ export interface LivePlaybackSnapshot {
   status: LivePlaybackStatus;
 }
 
-export type ChannelHealthStatus = 'healthy' | 'suspect' | 'unavailable';
-
-export interface ChannelHealthRecord {
-  status: ChannelHealthStatus;
-  consecutiveFailures: number;
-  lastCheckedAt: number;
-  lastHealthyAt?: number;
-  latencyMs?: number;
-  error?: string;
-}
-
 export interface EpgSource {
   url: string;
   playlistIds: string[];
@@ -235,88 +224,6 @@ export interface ChannelCustomization {
   customGroups: string[];
 }
 
-export type ParentalRuleValue = 'allow' | 'protect';
-export type ParentalConcealMode = 'show-locked' | 'hide-locked';
-export type ParentalUnlockDuration =
-  | 'once'
-  | '5-minutes'
-  | '15-minutes'
-  | 'until-backgrounded';
-
-export interface ParentalPinThrottle {
-  failures: number;
-  lockouts: number;
-  blockedUntil: number;
-}
-
-export interface ParentalPinRecord {
-  algorithm: 'sha256';
-  salt: string;
-  digest: string;
-}
-
-export interface ParentalControlConfig {
-  version: number;
-  enabled: boolean;
-  pin: ParentalPinRecord | null;
-  concealMode: ParentalConcealMode;
-  unlockDuration: ParentalUnlockDuration;
-  /** Serialized live-group or Xtream-category targets. */
-  groupRules: Record<string, 'protect'>;
-  /** Serialized live-channel or Xtream-item targets. */
-  itemRules: Record<string, ParentalRuleValue>;
-  /** `kind|sourceId` keys the parent has reviewed; any other source is locked. */
-  approvedSources: string[];
-}
-
-export interface LiveGroupTarget {
-  kind: 'live-group';
-  playlistId: string;
-  groupKey: string;
-}
-
-export interface LiveChannelTarget {
-  kind: 'live-channel';
-  channelKey: string;
-}
-
-export interface CatalogCategoryTarget {
-  kind: 'vod-category' | 'series-category';
-  accountId: string;
-  categoryId: string;
-}
-
-export interface CatalogItemTarget {
-  kind: 'vod-item' | 'series-item';
-  accountId: string;
-  itemId: string;
-}
-
-export type ParentalParentTarget = LiveGroupTarget | CatalogCategoryTarget;
-export type ParentalItemTarget = LiveChannelTarget | CatalogItemTarget;
-export type ParentalAccessIntent =
-  | 'browse'
-  | 'preview'
-  | 'play'
-  | 'resume'
-  | 'reminder'
-  | 'manage';
-
-export interface ParentalAccessRequest {
-  target: ParentalItemTarget;
-  parents: ParentalParentTarget[];
-  intent: ParentalAccessIntent;
-  label: string;
-}
-
-export type ParentalAccessDecision =
-  | { allowed: true }
-  | {
-      allowed: false;
-      concealed: boolean;
-      reason: 'item' | 'parent';
-    };
-
 export interface CatchupInfo {
   start: number;
   end: number;
@@ -362,10 +269,6 @@ export interface ChannelScope {
   group: ChannelGroupId;
   playlist?: string;
 }
-
-/** Whether channel_up/channel_down cycles the entire channel list ('global')
- *  or stays within the launch scope above ('active', the default). */
-export type ChannelCycleMode = 'global' | 'active';
 
 export type NavDirection = 'up' | 'down' | 'left' | 'right';
 
@@ -618,7 +521,7 @@ export interface ResumeEntry {
   /** The series' episodes before this one, oldest first, for Previous episode. */
   previousEpisodes?: VodQueueItem[];
   watchlistOwner?: WatchlistOwner;
-  /** Catalog category at save time, so parental rules apply from the Continue rail. */
+  /** Catalog category at save time. */
   categoryId?: string;
   seriesEpisode?: SeriesEpisodeRef;
 }
@@ -661,9 +564,7 @@ export interface VodQueueItem {
   accountId: string;
   itemId: string;
   kind: ResumeKind;
-  /** Category and owning catalog item used by parental-control rules. */
   categoryId?: string;
-  parentalItemId?: string;
   subtitles: SidecarSubtitle[];
   searchMeta?: SearchMeta;
   watchlistOwner?: WatchlistOwner;

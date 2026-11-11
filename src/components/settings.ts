@@ -1,5 +1,5 @@
 import { formatClock } from '../utils/time';
-import type { Action, ChannelCycleMode, EpgSource, ManualEpgSource, NavDirection, PlaylistEntry, TimeFormat, TzMode, XtreamLiveCategoryFilter, XtreamLiveCategorySnapshot } from '../types';
+import type { Action, EpgSource, ManualEpgSource, NavDirection, PlaylistEntry, TimeFormat, TzMode, XtreamLiveCategoryFilter, XtreamLiveCategorySnapshot } from '../types';
 import { $, $$, html, raw, withInstantScroll, type Safe } from '../utils/dom';
 import { TMDB_LOGO, TMDB_NOTICE } from './tmdb-attribution';
 import { morph } from '../utils/morph';
@@ -26,10 +26,6 @@ import {
 import { UploadClient, uploadIdFromUrl } from '../services/upload-client';
 import { SetupClient } from '../services/setup-client';
 import { ReminderService } from '../services/reminder-service';
-import {
-  ChannelHealthService,
-  type ChannelHealthProgress,
-} from '../services/channel-health';
 import { createXtreamClient } from '../services/xtream-client';
 import { newLiveCategoryIds, normalizeLiveCategoryFilter } from '../utils/xtream-category-filter';
 import { LiveCategoryPicker } from './live-category-picker';
@@ -38,7 +34,7 @@ import { genPlaylistId, isSourceEnabled } from '../utils/playlist';
 import { channelKey, legacyChannelKey } from '../utils/channel';
 import { formatEpgOffset } from '../utils/epg-offset';
 import { CONFIG } from '../config';
-import { THEMES, OVERLAY_STYLES, TEXT_SIZES, DEFAULT_TEXT_SIZE, INTERFACE_SIZES, DEFAULT_INTERFACE_SIZE, type ThemeMeta, type OverlayStyle, type TextSize, type InterfaceSize } from '../config/themes';
+import { THEMES, TEXT_SIZES, DEFAULT_TEXT_SIZE, INTERFACE_SIZES, DEFAULT_INTERFACE_SIZE, type ThemeMeta, type TextSize, type InterfaceSize } from '../config/themes';
 import { previewTheme, applyTextSize, applyInterfaceSize } from '../services/theme-service';
 import { showToast } from './toast';
 import { ConfirmationPrompt } from './confirmation-prompt';
@@ -52,8 +48,6 @@ import {
 import { installPasswordReveal, passwordField } from './password-reveal';
 import { qrDataUrl } from './setup-qr';
 import { createLogger } from '../utils/logger';
-import { ParentalControlService, isResumeConcealed, isWatchlistConcealed } from '../services/parental-control';
-import { parentalPinSupported } from '../services/parental-pin';
 import {
   formatNumber,
   localeOptions,
@@ -77,8 +71,6 @@ import {
   DATABASE_ICON,
   GLOBE_ICON,
   GUIDE_ICON,
-  LOCK_ICON,
-  PLAYBACK_ICON,
   SOURCES_ICON,
 } from './icons';
 import { isBackKey } from '../navigation/keys';
@@ -241,7 +233,7 @@ function timeoutOptions(values: readonly number[]): { value: string; label: stri
 }
 
 type SettingsCategory = 'general' | 'sources' | 'guide' | 'appearance'
-  | 'playback' | 'subtitles' | 'data' | 'advanced';
+  | 'subtitles' | 'data' | 'advanced';
 
 const SETTINGS_CATEGORIES: readonly {
   id: SettingsCategory;
@@ -269,13 +261,8 @@ const SETTINGS_CATEGORIES: readonly {
     icon: raw(APPEARANCE_ICON),
   },
   {
-    id: 'playback',
-    label: 'settings.playback',
-    icon: raw(PLAYBACK_ICON),
-  },
-  {
     id: 'subtitles',
-    label: 'settings.onlineSubtitles',
+    label: 'settings.onlineServices',
     icon: raw(CAPTIONS_ICON),
   },
   {
@@ -575,12 +562,6 @@ export class Settings {
   // The category whose page the pane shows; kept across renders.
   private category: SettingsCategory = 'general';
   private onManageReminders: () => void;
-  private onManageParentalControls: () => void;
-  private healthController: AbortController | null = null;
-  private healthCheckPromise: Promise<void> | null = null;
-  private healthProgress: ChannelHealthProgress | null = null;
-  private healthPaused = false;
-  private healthResume: (() => void) | null = null;
   // Settings opens before the channels load; the parts that need them wait.
   private channelsLoading = false;
   private leaveWhenChannelsLoad = false;
@@ -600,18 +581,11 @@ export class Settings {
     onSave: (action: SaveAction) => void | Promise<void>,
     onChannelsChanged: () => void = () => {},
     onManageReminders: () => void = () => {},
-    onManageParentalControls: () => void = () => {},
-    private authorizeLiveEditing: (name: string, proceed: () => void) => void =
-      (_name, proceed) => proceed(),
-    private authorizeSourceRemoval:
-      (id: string, proceed: () => void, turnOff?: boolean) => void =
-      (_id, proceed) => proceed(),
   ) {
     this.container = container;
     this.onSave = onSave;
     this.onChannelsChanged = onChannelsChanged;
     this.onManageReminders = onManageReminders;
-    this.onManageParentalControls = onManageParentalControls;
     this.nav = new SpatialNav(container, (el) => this.onNavFocus(el), { follow: false });
     this.focusScope = Focus.register({
       id: 'view.settings',
@@ -752,23 +726,13 @@ export class Settings {
   private collectionDescription(kind: 'continue' | 'watchlist'): string {
     const account = this.watchlistAccount;
     if (!account) return '';
-    let count: number;
-    let concealed: boolean;
-    if (kind === 'continue') {
-      const entries = StorageService.getResumeList(account.id);
-      count = entries.length;
-      concealed = entries.some(isResumeConcealed);
-    } else {
-      const entries = [
-        ...StorageService.getWatchlist(account.id, 'vod'),
-        ...StorageService.getWatchlist(account.id, 'series'),
-      ];
-      count = entries.length;
-      concealed = entries.some(isWatchlistConcealed);
-    }
+    const count = kind === 'continue'
+      ? StorageService.getResumeList(account.id).length
+      : StorageService.getWatchlist(account.id, 'vod').length
+        + StorageService.getWatchlist(account.id, 'series').length;
     return t(kind === 'continue'
-      ? concealed ? 'settings.clearContinueWatchingDescriptionUncounted' : 'settings.clearContinueWatchingDescription'
-      : concealed ? 'settings.clearWatchlistDescriptionUncounted' : 'settings.clearWatchlistDescription', {
+      ? 'settings.clearContinueWatchingDescription'
+      : 'settings.clearWatchlistDescription', {
       account: account.name, count,
     });
   }
@@ -797,14 +761,12 @@ export class Settings {
     this.storedEpgOffsets = StorageService.getEpgOffsets();
     this.epgOffsets = { ...this.storedEpgOffsets };
     const epgSources = this.epgSources(manualEpgSources, allPlaylists);
-    const channelCycleMode = StorageService.getChannelCycleMode();
     const showHidden = StorageService.getShowHiddenChannels();
     const feedTime = StorageService.getTzMode() === 'feed';
     const tzOffset = StorageService.getEpgTzOffset();
     const os = StorageService.getOnlineSubtitleConfig();
     const theme = StorageService.getTheme();
     this.selectedTheme = theme;
-    const overlayStyle = StorageService.getOverlayStyle();
     const textSize = StorageService.getTextSize();
     const interfaceSize = StorageService.getInterfaceSize();
     const localePreference = StorageService.getLocalePreference();
@@ -815,10 +777,6 @@ export class Settings {
     const playlistRefreshHours = StorageService.getPlaylistRefreshIntervalHours();
     const epgRefreshHours = StorageService.getEpgRefreshIntervalHours();
     const xtreamCatalogRefreshHours = StorageService.getXtreamCatalogRefreshIntervalHours();
-    const overlayStyles = OVERLAY_STYLES.map(option => ({
-      value: option.value,
-      label: t(option.value === 'dark' ? 'settings.overlayDark' : 'settings.overlayFrosted'),
-    }));
     const textSizes = TEXT_SIZES.map(size => ({
       value: size,
       label: size === DEFAULT_TEXT_SIZE ? t('settings.textSizeDefault', { percent: size }) : `${size}%`,
@@ -827,10 +785,6 @@ export class Settings {
       value: size,
       label: size === DEFAULT_INTERFACE_SIZE ? t('settings.textSizeDefault', { percent: size }) : `${size}%`,
     }));
-    const parentalSupported = parentalPinSupported();
-    const parentalStatus = t(ParentalControlService.enabled
-      ? 'parental.statusOn'
-      : 'parental.statusOff');
 
     this.container.innerHTML = String(html`
       <div class="settings-view">
@@ -854,6 +808,10 @@ export class Settings {
                     ${dropdown('app-language', languageOptions(), localePreference)}
                     <div class="settings-item-hint">${t('settings.languageHint')}</div>
                   </div>
+                  <h3 class="settings-section-title settings-general-time-title">${t('settings.timeFormat')}</h3>
+                  <div class="settings-item">
+                    ${toggleGroup('time-format', [{ value: '12h', label: t('settings.timeFormat12') }, { value: '24h', label: t('settings.timeFormat24') }], StorageService.getTimeFormat())}
+                  </div>
                 </div>
 
                 ${platform.lanSetup ? html`<div class="settings-section settings-general-device">
@@ -861,28 +819,6 @@ export class Settings {
                   <div class="source-box setup-box-info device-setup-card"
                        id="setup-info">${t('settings.checkingSetup')}</div>
                 </div>` : ''}
-              </div>
-              <div class="settings-section">
-                <h3 class="settings-section-title">${t('settings.timeFormat')}</h3>
-                <div class="settings-item">
-                  ${toggleGroup('time-format', [{ value: '12h', label: t('settings.timeFormat12') }, { value: '24h', label: t('settings.timeFormat24') }], StorageService.getTimeFormat())}
-                </div>
-              </div>
-              <div class="settings-section">
-                <h3 class="settings-section-title parental-entry-title">${t('settings.parentalControls')}<span
-                    class="parental-entry-status ${ParentalControlService.enabled ? 'is-on' : ''}">${
-                    raw(LOCK_ICON)}${parentalStatus}</span></h3>
-                <div class="settings-item settings-item--action">
-                  <button class="btn ${ParentalControlService.configured
-                    ? 'btn-secondary'
-                    : 'btn-primary'}" ${parentalSupported ? raw('data-focusable') : raw('disabled')}
-                    id="manage-parental-controls">
-                    ${t(ParentalControlService.configured ? 'parental.manage' : 'parental.turnOn')}
-                  </button>
-                  <div class="settings-item-hint">${t(parentalSupported
-                    ? 'parental.settingsHint'
-                    : 'parental.unavailable')}</div>
-                </div>
               </div>
             </div>
 
@@ -948,7 +884,6 @@ export class Settings {
 
               <div class="settings-section" id="channel-customization-settings">
                 <h3 class="settings-section-title">${t('settings.channels')}</h3>
-                ${this.channelHealthPanel()}
                 <div class="settings-item settings-item--action">
                   <div class="settings-item-title">${t('settings.editChannelList')}</div>
                   <button class="btn btn-secondary" data-focusable id="edit-channel-list"
@@ -1021,11 +956,6 @@ export class Settings {
                   </div>
                 </div>
                 <div class="settings-item">
-                  <div class="settings-item-title">${t('settings.overlayGlass')}</div>
-                  ${toggleGroup('overlay-style', overlayStyles, overlayStyle)}
-                  <div class="settings-item-hint">${t('settings.overlayHint')}</div>
-                </div>
-                <div class="settings-item">
                   <div class="settings-item-title">${t('settings.interfaceSize')}</div>
                   ${dropdown('interface-size', interfaceSizes, interfaceSize)}
                   <div class="settings-item-hint">${t('settings.interfaceSizeHint')}</div>
@@ -1033,20 +963,6 @@ export class Settings {
                 <div class="settings-item">
                   <div class="settings-item-title">${t('settings.textSize')}</div>
                   ${dropdown('text-size', textSizes, textSize)}
-                </div>
-              </div>
-            </div>
-
-            <div class="settings-category ${this.pageClass('playback')}" id="settings-playback" data-settings-category="playback">
-              <div class="settings-section">
-                <h3 class="settings-section-title">${t('settings.playback')}</h3>
-                <div class="settings-item">
-                  <div class="settings-item-title">${t('settings.channelCycleMode')}</div>
-                  ${toggleGroup('channel-cycle-mode', [
-                    { value: 'global', label: t('settings.channelCycleGlobal') },
-                    { value: 'active', label: t('settings.channelCycleActive') },
-                  ], channelCycleMode)}
-                  <div class="settings-item-hint">${t('settings.channelCycleModeHint')}</div>
                 </div>
               </div>
             </div>
@@ -1614,7 +1530,7 @@ export class Settings {
     } else if (el.id === 'add-playlist') {
       withPrivacyConsent(() => this.addPlaylistEntry());
     } else if (el.classList.contains('remove-playlist')) {
-      this.authorizeSourceRemoval(this.sourceId(el), () => this.removePlaylistEntry(el));
+      this.removePlaylistEntry(el);
     } else if (el.id === 'add-epg-source') {
       this.addManualEpgSource();
     } else if (el.classList.contains('remove-epg-source')) {
@@ -1628,19 +1544,15 @@ export class Settings {
     } else if (el.id === 'add-xtream') {
       withPrivacyConsent(() => this.addXtreamEntry());
     } else if (el.classList.contains('remove-xtream')) {
-      this.authorizeSourceRemoval(this.sourceId(el), () => this.removeXtreamEntry(el));
+      this.removeXtreamEntry(el);
     } else if (el.classList.contains('check-xtream')) {
       void this.checkXtreamAccount(el);
     } else if (el.classList.contains('xtream-live-categories')) {
       this.openLiveCategories(el);
     } else if (el.classList.contains('source-toggle')) {
-      if (el.dataset.enabled === 'true') {
-        this.authorizeSourceRemoval(this.sourceId(el), () => this.toggleSource(el), true);
-      } else {
-        this.toggleSource(el);
-      }
+      this.toggleSource(el);
     } else if (el.classList.contains('remove-upload')) {
-      this.authorizeSourceRemoval(this.sourceId(el), () => void this.removeUpload(el.dataset.url!));
+      void this.removeUpload(el.dataset.url!);
     } else if (el.hasAttribute('data-dropdown-trigger')) {
       this.toggleDropdown(el.closest<HTMLElement>('.dropdown'));
     } else if (el.classList.contains('dropdown-option')) {
@@ -1682,25 +1594,10 @@ export class Settings {
       this.reloadPending = false;
       this.left = true;
       this.onSave(reload ? 'reload-edit-channels' : 'edit-channels');
-    } else if (el.id === 'check-channel-health') {
-      if (!this.healthController) {
-        const check = this.startChannelHealthCheck();
-        this.healthCheckPromise = check;
-        const clearHealthCheckPromise = () => {
-          if (this.healthCheckPromise === check) this.healthCheckPromise = null;
-        };
-        void check.then(clearHealthCheckPromise, clearHealthCheckPromise);
-      }
-    } else if (el.id === 'pause-channel-health') {
-      this.toggleChannelHealthPause();
-    } else if (el.id === 'cancel-channel-health') {
-      this.cancelChannelHealthCheck();
     } else if (el.id === 'manage-reminders') {
       this.onManageReminders();
-    } else if (el.id === 'manage-parental-controls') {
-      this.onManageParentalControls();
     } else if (el.id === 'reset-customization') {
-      this.authorizeLiveEditing(t('settings.resetCustomization'), () => this.confirmResetCustomization());
+      this.confirmResetCustomization();
     } else if (el.id === 'clear-recently-watched') {
       this.confirmationPrompt.show({
         title: t('settings.clearRecentTitle'),
@@ -1746,14 +1643,13 @@ export class Settings {
     }
   }
 
-  // The channels Settings opened before: the guide sources they bring, the
-  // health check, and new sources wait for them, each showing so in place.
+  // The channels Settings opened before: the guide sources they bring and
+  // new sources wait for them, each showing so in place.
   setChannelsLoading(loading: boolean): void {
     if (this.channelsLoading === loading) return;
     this.channelsLoading = loading;
     if (this.container.querySelector('.epg-offset-editor')) {
       this.refreshEpgOffsetEditor(this.manualEpgSourcesFromEditor(), this.currentEpgOffsetSource());
-      this.updateChannelHealthPanel();
       const reminders = $('.reminders-item', this.container);
       if (reminders) morph(reminders, this.reminderItem());
     }
@@ -1786,136 +1682,6 @@ export class Settings {
   private channelsLoadingHint(): Safe {
     return html`<div class="settings-item-hint settings-channels-loading" role="status">${
       t('app.loadingChannels')}</div>`;
-  }
-
-  private channelHealthPanel(): Safe {
-    if (this.channelsLoading) {
-      return html`
-        <div class="settings-item settings-item--action channel-health-panel">
-          <div class="settings-item-title">${t('settings.channelHealth')}</div>
-          ${this.channelsLoadingHint()}
-        </div>`;
-    }
-    const channels = PlaylistService.allChannels;
-    const summary = ChannelHealthService.getSummary(channels);
-    return html`
-      <div class="settings-item settings-item--action channel-health-panel">
-        <div class="settings-item-title">${t('settings.channelHealth')}</div>
-        ${this.healthController
-          ? html`
-            <div class="channel-health-actions">
-              <button class="btn btn-secondary" data-key="pause-channel-health"
-                      data-focusable id="pause-channel-health">
-                ${this.healthPaused
-                  ? t('common.continue')
-                  : t('common.pause')}
-              </button>
-              <button class="btn btn-danger" data-key="cancel-channel-health"
-                      data-focusable id="cancel-channel-health">${t('common.cancel')}</button>
-            </div>
-          `
-          : html`
-            <button class="btn btn-secondary" data-key="check-channel-health"
-                    data-focusable id="check-channel-health">
-              ${t('settings.checkChannelHealth')}
-            </button>
-          `}
-        ${this.healthProgress ? html`
-          <div class="channel-health-progress" aria-live="polite">
-            <div class="channel-health-progress-track">
-              <div class="channel-health-progress-fill"
-                   style="width:${this.healthProgress.total
-                     ? Math.round(this.healthProgress.completed / this.healthProgress.total * 100)
-                     : 0}%"></div>
-            </div>
-            <span>${t('settings.channelHealthProgress', {
-              completed: this.healthProgress.completed,
-              total: this.healthProgress.total,
-            })}</span>
-          </div>
-        ` : ''}
-        <div class="channel-health-summary">
-          <span class="channel-health-status healthy">${t('channel.healthHealthy')}: ${summary.healthy}</span>
-          <span class="channel-health-status suspect">${t('channel.healthSuspect')}: ${summary.suspect}</span>
-          <span class="channel-health-status unavailable">${t('channel.healthUnavailable')}: ${summary.unavailable}</span>
-          <span>${t('settings.channelHealthUnknown')}: ${summary.unknown}</span>
-        </div>
-        <div class="settings-item-hint">${t('settings.channelHealthHint')}</div>
-      </div>
-    `;
-  }
-
-  private updateChannelHealthPanel(): void {
-    const panel = $('.channel-health-panel', this.container);
-    if (panel) morph(panel, this.channelHealthPanel());
-  }
-
-  private toggleChannelHealthPause(): void {
-    if (!this.healthController) return;
-    this.healthPaused = !this.healthPaused;
-    if (!this.healthPaused) {
-      this.healthResume?.();
-      this.healthResume = null;
-    }
-    this.updateChannelHealthPanel();
-  }
-
-  private cancelChannelHealthCheck(): void {
-    this.healthController?.abort();
-    this.healthPaused = false;
-    this.healthResume?.();
-    this.healthResume = null;
-  }
-
-  private waitWhileChannelHealthPaused(): Promise<void> {
-    if (!this.healthPaused) return Promise.resolve();
-    return new Promise(resolve => {
-      this.healthResume = resolve;
-    });
-  }
-
-  private async startChannelHealthCheck(): Promise<void> {
-    const channels = PlaylistService.allChannels;
-    if (!channels.length) {
-      showToast(t('settings.channelHealthEmpty'));
-      return;
-    }
-    const controller = new AbortController();
-    this.healthController = controller;
-    this.healthPaused = false;
-    this.healthProgress = {
-      ...ChannelHealthService.getSummary(channels),
-      completed: 0,
-    };
-    this.updateChannelHealthPanel();
-    try {
-      await ChannelHealthService.checkAll(channels, {
-        signal: controller.signal,
-        waitWhilePaused: () => this.waitWhileChannelHealthPaused(),
-        onProgress: progress => {
-          if (this.healthController !== controller) return;
-          this.healthProgress = progress;
-          this.updateChannelHealthPanel();
-        },
-      });
-      if (!controller.signal.aborted) showToast(t('settings.channelHealthComplete'));
-    } catch (err) {
-      log.error(
-        'Channel health check failed',
-        'event=channel.health.check.failed',
-        err,
-      );
-      showToast(t('settings.channelHealthFailed'));
-    } finally {
-      if (this.healthController === controller) {
-        this.healthController = null;
-        this.healthPaused = false;
-        this.healthResume = null;
-        this.healthProgress = null;
-        this.updateChannelHealthPanel();
-        this.onChannelsChanged();
-      }
-    }
   }
 
   private async resetApp(): Promise<void> {
@@ -1976,7 +1742,6 @@ export class Settings {
         <span>${t('settings.epg')} <strong>${formatBytes(usage.categories.epg.bytes)}</strong></span>
         <span>${t('settings.moviesSeriesMediaData')} <strong>${formatBytes(usage.categories.catalog.bytes)}</strong></span>
         <span>${t('settings.onlineSubtitles')} <strong>${formatBytes(usage.categories.subtitle.bytes)}</strong></span>
-        <span>${t('settings.channelHealth')} <strong>${formatBytes(usage.categories.health.bytes)}</strong></span>
         <span>${t('settings.searchIndex')} <strong>${formatBytes(usage.categories.search.bytes)}</strong></span>
       </div>
     `);
@@ -1984,15 +1749,7 @@ export class Settings {
 
   private async clearCache(): Promise<void> {
     try {
-      const activeCheck = this.healthCheckPromise;
-      if (activeCheck) {
-        this.cancelChannelHealthCheck();
-        await activeCheck;
-      }
       await clearAllCachedData();
-      ChannelHealthService.reset();
-      this.updateChannelHealthPanel();
-      this.onChannelsChanged();
       await this.loadCacheUsage();
       showToast(t('settings.cacheCleared'));
     } catch (err) {
@@ -2744,10 +2501,6 @@ export class Settings {
     );
   }
 
-  private sourceId(el: HTMLElement): string {
-    return el.closest<HTMLElement>('[data-source-entry]')?.dataset.id ?? '';
-  }
-
   private removePlaylistEntry(removeBtn: HTMLElement): void {
     const entries = $('#playlist-entries', this.container);
     if (!entries) return;
@@ -3256,7 +3009,7 @@ export class Settings {
     const sourceByChannel: Record<string, string> = {};
     const legacySources = new Map<string, string>();
     const ambiguousLegacyKeys = new Set<string>();
-    for (const channel of PlaylistService.getUnconcealedChannels()) {
+    for (const channel of PlaylistService.getCustomizedChannels()) {
       const sourceUrl = EpgService.getSourceUrl(channel);
       if (!sourceUrl) continue;
       sourceByChannel[channelKey(channel)] = sourceUrl;
@@ -3295,11 +3048,6 @@ export class Settings {
   }
 
   private savePreferences(): void {
-    const channelCycleBtn = $('#channel-cycle-mode .toggle-option.active', this.container);
-    if (channelCycleBtn?.dataset.value) {
-      StorageService.setChannelCycleMode(channelCycleBtn.dataset.value as ChannelCycleMode);
-    }
-
     this.saveShowHidden();
 
     const tzModeBtn = $('#tz-mode .toggle-option.active', this.container);
@@ -3307,9 +3055,6 @@ export class Settings {
     const timeFormatBtn = $('#time-format .toggle-option.active', this.container);
     if (timeFormatBtn?.dataset.value) StorageService.setTimeFormat(timeFormatBtn.dataset.value as TimeFormat);
     StorageService.setTheme(this.selectedTheme);
-
-    const overlayBtn = $('#overlay-style .toggle-option.active', this.container);
-    if (overlayBtn?.dataset.value) StorageService.setOverlayStyle(overlayBtn.dataset.value as OverlayStyle);
 
     const textSize = ($('#text-size', this.container) as HTMLElement | null)?.dataset.value;
     if (textSize) StorageService.setTextSize(textSize as TextSize);

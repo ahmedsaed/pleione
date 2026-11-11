@@ -218,15 +218,6 @@ async function clickAt(target: Locator): Promise<void> {
   });
 }
 
-/** End a PIN session from Home's Lock now. */
-export async function lockNow(page: Page): Promise<void> {
-  await enterTab(page, 'home');
-  const lock = page.locator('#view-home [data-lock-now]');
-  await expect(lock).toHaveText('Lock now');
-  await clickAt(lock);
-  await expect(page.locator('[data-lock-now]')).toHaveCount(0);
-}
-
 // Both channel rows have a fixed height because their lists are virtualized, so
 // their two text lines overflow into the neighbouring row instead of growing it.
 // Returns the row's inner height and the height its text actually needs, adding
@@ -326,7 +317,7 @@ function installRingAudit(recordNone: boolean): void {
   const w = window as unknown as { __ringAudit?: (entry: string) => void; __ringPending?: number };
   w.__ringPending = 0;
   const PROMPTS = '.confirmation-prompt, .catchup-resume-prompt, .reminder-prompt, '
-    + '.parental-pin-prompt, .live-category-picker';
+    + '.live-category-picker';
   const visible = (el: Element): boolean => {
     const box = el.getBoundingClientRect();
     if (box.width === 0 || box.height === 0) return false;
@@ -358,7 +349,7 @@ function installRingAudit(recordNone: boolean): void {
     const prompts = Array.from(document.querySelectorAll(PROMPTS))
       .filter((el) => !el.classList.contains('hidden') && visible(el));
     const shown = ['view-channels', 'view-player', 'player-sidebar', 'player-menu', 'subtitle-search',
-      'subtitle-offset', 'view-settings', 'view-parental-controls', 'view-reminders',
+      'subtitle-offset', 'view-settings', 'view-reminders',
       'view-movies', 'view-series', 'view-search'].filter((id) => {
       const el = document.getElementById(id);
       return !!el && visible(el);

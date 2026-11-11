@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Channel, VodPlayback } from '../types';
 
-const { pipeline, tracks, osd, playlist, health } = vi.hoisted(() => ({
+const { pipeline, tracks, osd, playlist } = vi.hoisted(() => ({
   pipeline: {
     load: vi.fn(), destroy: vi.fn(), setVideoElement: vi.fn(),
     currentLoadToken: vi.fn(() => 1), videoLabel: vi.fn(() => 'video'),
@@ -21,10 +21,6 @@ const { pipeline, tracks, osd, playlist, health } = vi.hoisted(() => ({
     getByIndex: vi.fn(), indexOf: vi.fn(), resolveChannelKey: vi.fn(),
     getByGroup: vi.fn(), channels: [] as Channel[],
   },
-  health: {
-    recordPlaybackFailure: vi.fn().mockResolvedValue(undefined),
-    recordPlaybackSuccess: vi.fn().mockResolvedValue(false),
-  },
 }));
 
 vi.mock('./player-pipeline', () => ({
@@ -37,7 +33,6 @@ vi.mock('./player-osd', () => ({
   PlayerOsd: vi.fn(function () { return osd; }),
 }));
 vi.mock('../services/playlist-service', () => ({ PlaylistService: playlist }));
-vi.mock('../services/channel-health', () => ({ ChannelHealthService: health }));
 vi.mock('../services/epg-service', () => ({
   EpgService: { findChannelId: () => null, getNowPlaying: () => null },
 }));
@@ -45,7 +40,6 @@ vi.mock('../services/storage-service', () => ({
   StorageService: {
     setCatchupProgress: vi.fn(), setResume: vi.fn(),
     touchRecentlyWatchedLive: vi.fn(),
-    getChannelCycleMode: vi.fn(() => 'global'),
     getLiveReconnectAttempts: vi.fn(() => 3),
   },
 }));
@@ -130,10 +124,9 @@ beforeEach(() => {
     return { channel, channelIndex: playlist.channels.indexOf(channel) };
   });
   playlist.getByGroup.mockReturnValue(playlist.channels);
-  vi.mocked(StorageService.getChannelCycleMode).mockReturnValue('global');
   onStateChanged = vi.fn();
   canResume = vi.fn(() => true);
-  player = new Player(container, vi.fn(), vi.fn(), () => true, vi.fn(), onStateChanged, canResume);
+  player = new Player(container, vi.fn(), vi.fn(), () => true, onStateChanged, canResume);
   listenerRegistrations = vi.spyOn(document, 'addEventListener');
   player.init(video);
 });
@@ -209,7 +202,6 @@ describe('Player live preview', () => {
     expect(player.getCurrentIndex()).toBe(1);
     expect(pipeline.load).not.toHaveBeenCalled();
     expect(onStateChanged).toHaveBeenCalledOnce();
-    vi.mocked(StorageService.getChannelCycleMode).mockReturnValue('active');
     player.channelUp();
     expect(player.getCurrentChannel()).toBe(other);
     expect(player.getCurrentIndex()).toBe(0);
@@ -230,46 +222,6 @@ describe('Player live preview', () => {
     expect(player.getCurrentIndex()).toBe(0);
     expect(pipeline.load).toHaveBeenCalledOnce();
     expect(pipeline.load).toHaveBeenCalledWith(replacement.url, replacement.extras, undefined);
-  });
-
-  it('retunes a refreshed URL without asking for the PIN again', () => {
-    const authorize = vi.fn((_channel: Channel, action: () => void) => { action(); return true; });
-    player.stop();
-    player = new Player(
-      container, vi.fn(), vi.fn(), () => true, vi.fn(), onStateChanged, canResume, authorize,
-    );
-    player.init(document.querySelector('video')!);
-    const oldChannel = { ...channels[0], url: `${channels[0].url}?token=old` };
-    playlist.channels = [oldChannel];
-    player.play(0);
-    playlist.channels = [{ ...oldChannel, url: `${channels[0].url}?token=new` }];
-    authorize.mockClear();
-    pipeline.load.mockClear();
-
-    player.syncCurrentIndex();
-
-    expect(authorize).not.toHaveBeenCalled();
-    expect(pipeline.load).toHaveBeenCalledOnce();
-  });
-
-  it('asks for the PIN on resume only in full screen, not in the list preview', () => {
-    const authorize = vi.fn((_channel: Channel, action: () => void) => { action(); return true; });
-    player.stop();
-    player = new Player(
-      container, vi.fn(), vi.fn(), () => true, vi.fn(), onStateChanged, canResume, authorize,
-    );
-    player.init(document.querySelector('video')!);
-    player.play(0);
-    playing();
-    player.suspend();
-    player.resume();
-    expect(authorize).toHaveBeenLastCalledWith(channels[0], expect.any(Function), false, true);
-
-    player.enterLivePreview();
-    playing();
-    player.suspend();
-    player.resume();
-    expect(authorize).toHaveBeenLastCalledWith(channels[0], expect.any(Function), true, false);
   });
 
   it('restores live audio when expanding without touching playback state', () => {
@@ -391,12 +343,10 @@ describe('Player live preview', () => {
       emit('playing');
       const snapshot = player.getLivePlaybackSnapshot();
       onStateChanged.mockClear();
-      health.recordPlaybackFailure.mockClear();
       video.muted = false;
       emit(event, video);
       expect(player.getLivePlaybackSnapshot()).toEqual(snapshot);
       expect(onStateChanged).not.toHaveBeenCalled();
-      expect(health.recordPlaybackFailure).not.toHaveBeenCalled();
     },
   );
 

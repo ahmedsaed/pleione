@@ -166,9 +166,20 @@
   min-width: 0;
 }
 
-.settings-general-language,
-.settings-general-device {
+/* Language and Time format share a column, as wide alone as beside phone
+   setup, which takes the rest of the row; at a large Interface size the
+   column gives way so the QR code keeps its full size. */
+.settings-general-language {
+  flex: 0 1 640px;
+}
+
+.settings-general-row > .settings-general-device {
   flex: 1 1 0;
+  min-width: calc(360px + 72px);
+}
+
+.settings-general-time-title {
+  margin-top: 40px;
 }
 
 .settings-row {
@@ -353,11 +364,6 @@
   display: block;
   width: 26px;
   height: 26px;
-}
-
-#manage-parental-controls:disabled {
-  cursor: default;
-  opacity: 0.38;
 }
 
 .manual-epg-source-head .move-epg-earlier:disabled,
@@ -669,26 +675,23 @@
 }
 
 .device-setup-card {
-  min-height: 214px;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
   justify-content: flex-start;
   gap: 24px;
   padding: 0;
   background: transparent;
   border: 0;
-  text-align: left;
 }
 
 .device-setup-card .setup-qr {
   flex: 0 0 auto;
-  width: 188px;
-  height: 188px;
+  width: 360px;
+  height: 360px;
 }
 
 .device-setup-card .setup-instructions {
-  max-width: 560px;
-  font-size: 20px;
+  max-width: 640px;
+  font-size: 22px;
 }
 
 .device-setup-card .setup-url {
@@ -774,83 +777,6 @@
 
 .settings-item--action .btn {
   min-width: 288px;
-}
-
-.parental-entry-title {
-  display: flex;
-  align-items: center;
-}
-
-/* A pill so the smaller status reads as centered against the 30px title. */
-.parental-entry-status {
-  display: flex;
-  align-items: center;
-  margin-left: 20px;
-  padding: 4px 14px 4px 10px;
-  border-radius: 999px;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-size: 20px;
-}
-
-.parental-entry-status.is-on {
-  background: rgb(var(--warning-rgb) / 0.15);
-  color: var(--text-primary);
-}
-
-.parental-entry-status svg {
-  width: 20px;
-  height: 20px;
-  margin-right: 6px;
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 1.8;
-}
-
-.parental-entry-status.is-on svg {
-  stroke: var(--warning);
-}
-
-.channel-health-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.channel-health-actions .btn {
-  min-width: 180px;
-}
-
-.channel-health-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 24px;
-  margin-top: 14px;
-  color: var(--text-muted);
-  font-size: 20px;
-}
-
-.channel-health-progress {
-  display: flex;
-  max-width: 640px;
-  align-items: center;
-  gap: 16px;
-  margin-top: 14px;
-  color: var(--text-secondary);
-  font-size: 20px;
-}
-
-.channel-health-progress-track {
-  height: 8px;
-  overflow: hidden;
-  flex: 1;
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-}
-
-.channel-health-progress-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 160ms ease;
 }
 
 .settings-maintenance {

@@ -64,9 +64,8 @@ reading direction: back and chevrons (`.rtl-mirror` on the SVG,
 **Stays as it is:** media playback (§7): the player's seek and time rows
 and its transport, previous/next included; media logos, clocks, and other
 icons that do not point along the row; numbers, times, ranges, channel numbers, and episode
-codes keep their own reading order; the password field, the parental PIN
-slots, the typed channel number, and the setup page's pairing code read left
-to right as digits do; the `<video>` element's box.
+codes keep their own reading order; the password field, the typed channel
+number, and the setup page's pairing code read left to right as digits do; the `<video>` element's box.
 
 **Text.** `html[dir="rtl"] body * { unicode-bidi: plaintext }` gives every
 text block the direction of its first strong character, so a Latin channel
@@ -204,5 +203,5 @@ tape-direction glyphs. An earlier build of this branch followed that.
   webOS 4-6 engines should be checked once.
 - `unicode-bidi: plaintext` must fall back to left to right for text with no
   letters (times, ranges) on Chromium 53, as it does today; the typed
-  channel number and PIN slots set `direction: ltr` regardless.
+  channel number sets `direction: ltr` regardless.
 - The `LG Smart UI` font's Arabic shaping and the mirrored glyph widths.

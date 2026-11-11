@@ -17,7 +17,6 @@ import {
   SERIES_ICON,
   SETTINGS_ICON,
   SOURCES_ICON,
-  UNLOCK_ICON,
 } from './icons';
 import { firstRunIntro, phoneSetupPanel } from './first-run';
 import type { ConnectionIssue } from '../services/connection-check';
@@ -33,7 +32,6 @@ export interface HomeHandlers {
   onOpenSection: (section: Section, via: 'key' | 'pointer') => void;
   onPlayNumber: (number: number) => void;
   onSelectAccount: (accountId: string) => void;
-  onLockNow: () => void;
   onBack: () => void;
   onAddSource: (kind: AddCard, via: 'key' | 'pointer') => void;
   onRetryConnection: () => void;
@@ -75,7 +73,6 @@ export class Home {
   private hasXtream = false;
   private account: PlaylistEntry | null = null;
   private accounts: PlaylistEntry[] = [];
-  private lockShown = false;
   private switcher: AccountSwitcher | null = null;
   // Live, then the side rows as a grid that repeats a spanning card.
   private grid: Card[][] = [];
@@ -124,10 +121,6 @@ export class Home {
     this.hasXtream = hasXtream;
     this.accounts = accounts;
     this.account = account;
-  }
-
-  setParentalSession(active: boolean): void {
-    this.lockShown = active;
   }
 
   // No source at all: the first-run screen replaces the bento.
@@ -246,11 +239,6 @@ export class Home {
           <img class="home-logo" src="largeIcon.png" alt="">
           <span class="home-title">${CONFIG.APP_NAME}</span>
         </span>
-        ${this.lockShown ? html`
-          <button class="home-lock" data-focusable data-key="lock-now" data-lock-now>
-            ${raw(UNLOCK_ICON)}<span>${t('parental.lockNow')}</span>
-          </button>
-        ` : ''}
         <span class="home-clock" data-key="clock">${formatTime(new Date())}</span>
         <div class="home-account ${this.accounts.length ? '' : 'hidden'}"
              ${raw(this.accounts.length ? 'data-focusable' : '')} data-key="account"
@@ -432,7 +420,6 @@ export class Home {
 
   private headerKeys(): string[] {
     const keys: string[] = [];
-    if (this.lockShown) keys.push('lock-now');
     if (this.accounts.length) keys.push('account');
     return keys;
   }
@@ -477,8 +464,6 @@ export class Home {
       if (this.issue) this.handlers.onEditAccount(this.issue, via);
     } else if (key === 'account') {
       this.switcher?.openMenu(via);
-    } else if (key === 'lock-now') {
-      this.handlers.onLockNow();
     } else if (el.dataset.section) {
       this.handlers.onOpenSection(el.dataset.section as Section, via);
     }

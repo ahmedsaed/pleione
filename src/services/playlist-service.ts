@@ -58,7 +58,6 @@ import {
   normalizeLiveCategoryFilter,
   type XtreamGroupNameFilter,
 } from '../utils/xtream-category-filter';
-import { liveParentalRequest, ParentalControlService } from './parental-control';
 
 const log = createLogger('Playlist');
 
@@ -157,9 +156,8 @@ class PlaylistServiceImpl {
   allChannels: Channel[] = [];
   /** Visible channels in effective (customized) order. Everything else reads this. */
   channels: Channel[] = [];
-  // Customized channels before parental concealment; the EPG keeps covering
-  // concealed channels so an unlock does not force a guide refetch.
-  private unconcealedChannels: Channel[] = [];
+  // Customized channels of every source, before the picked-source filter.
+  private customizedChannels: Channel[] = [];
   // Each `channels` entry's index in `allChannels`.
   private channelSourceIndices = new Uint32Array(0);
   groups: string[] = [];
@@ -281,7 +279,7 @@ class PlaylistServiceImpl {
     this.refreshTimestamp = null;
     this.allChannels = [];
     this.channels = [];
-    this.unconcealedChannels = [];
+    this.customizedChannels = [];
     this.channelSourceIndices = new Uint32Array(0);
     this.groups = [];
     this.groupsRevision++;
@@ -758,26 +756,24 @@ class PlaylistServiceImpl {
   applyCustomization(): void {
     const includeHidden = this.includeHidden || StorageService.getShowHiddenChannels();
     const sourceIndices = new Uint32Array(this.allChannels.length);
-    this.unconcealedChannels = ChannelCustomizationService.applyTo(
+    this.customizedChannels = ChannelCustomizationService.applyTo(
       this.allChannels,
       includeHidden,
       sourceIndices,
     );
-    const concealing = ParentalControlService.concealing;
     const source = this.allSources ? null : this.activeSourceId;
-    if (concealing || source) {
+    if (source) {
       const visible: Channel[] = [];
-      for (let i = 0; i < this.unconcealedChannels.length; i++) {
-        const channel = this.unconcealedChannels[i];
-        if (source && !channel.playlistIds.includes(source)) continue;
-        if (concealing && ParentalControlService.isConcealed(liveParentalRequest(channel))) continue;
+      for (let i = 0; i < this.customizedChannels.length; i++) {
+        const channel = this.customizedChannels[i];
+        if (!channel.playlistIds.includes(source)) continue;
         // Compacts in place: the write index never passes the read index.
         sourceIndices[visible.length] = sourceIndices[i];
         visible.push(channel);
       }
       this.channels = visible;
     } else {
-      this.channels = this.unconcealedChannels;
+      this.channels = this.customizedChannels;
     }
     this.channelSourceIndices = sourceIndices.subarray(0, this.channels.length);
     this.buildDerivedIndexes();
@@ -805,15 +801,15 @@ class PlaylistServiceImpl {
    */
   getEpgEligibleChannels(): Channel[] {
     if (!this.includeHidden && !StorageService.getShowHiddenChannels()) {
-      return this.unconcealedChannels;
+      return this.customizedChannels;
     }
     return ChannelCustomizationService.applyTo(this.allChannels, false);
   }
 
-  // Parental "hide" mode drops locked channels from `channels`; stored data
-  // keyed to them (reminders, custom order) must still resolve.
-  getUnconcealedChannels(): Channel[] {
-    return this.unconcealedChannels;
+  // `channels` holds only the picked source; stored data keyed to the others
+  // (reminders, custom order) must still resolve.
+  getCustomizedChannels(): Channel[] {
+    return this.customizedChannels;
   }
 
   /** The source the account picker shows; `channels` holds only its channels. */
@@ -842,7 +838,7 @@ class PlaylistServiceImpl {
     return !!source && this.failedSourceIds.has(source) && this.channels.length === 0;
   }
 
-  /** The parental manager reviews every source, whichever is picked. */
+  /** Show every enabled source's channels, whichever is picked. */
   setAllSources(all: boolean): void {
     if (this.allSources === all) return;
     this.allSources = all;
@@ -909,7 +905,7 @@ class PlaylistServiceImpl {
       }
     }
     // A group whose channels are all on another source is not this source's.
-    const elsewhere = new Set(this.unconcealedChannels.map(ch => ch.group));
+    const elsewhere = new Set(this.customizedChannels.map(ch => ch.group));
     for (const key of ChannelCustomizationService.customGroups) {
       const label = ChannelCustomizationService.groupLabel(key);
       if (!groupSet.has(label) && elsewhere.has(label)) continue;

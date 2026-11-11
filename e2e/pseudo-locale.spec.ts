@@ -52,7 +52,7 @@ test('keeps pseudo-localized Settings controls within their boxes', async ({ pag
   await expect(page.locator('#view-settings')).toBeVisible();
 
   // Each category is its own page, and a hidden one measures nothing.
-  for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
+  for (const category of ['general', 'sources', 'guide', 'appearance', 'subtitles', 'advanced', 'data']) {
     await page.locator(`[data-settings-target="${category}"]`).click();
     await expect(page.locator(`#settings-${category}`)).toBeVisible();
     expect(await textOverflow(page, [

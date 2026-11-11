@@ -133,6 +133,11 @@ test('the store package, without the LAN service, offers no phone setup and star
   await enterTab(page, 'settings');
   await expect(page.locator('#view-settings')).toBeVisible();
   await expect(page.locator('#setup-info')).toHaveCount(0);
+  // Language and Time format keep their column's width rather than stretch.
+  await page.locator('[data-settings-target="general"]').click();
+  const card = page.locator('.settings-general-language');
+  await expect(card.locator('#time-format')).toBeVisible();
+  expect(Math.round((await card.boundingBox())!.width)).toBe(640);
   expect((await tizenRecord(page)).launches).toEqual([]);
 });
 

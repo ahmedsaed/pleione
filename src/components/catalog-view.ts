@@ -14,7 +14,6 @@ import { InputMode } from '../navigation/input-mode';
 import type { NavWheelDetail } from '../navigation/key-handler';
 import { html, raw, Safe, withInstantScroll } from '../utils/dom';
 import { inlineStart, isRtl, scrollFromLeft, setScrollFromLeft, nameDir } from '../utils/direction';
-import { categoryLockBadge, lockBadge } from './parental-badge';
 import {
   SORT_ASCENDING_ICON, SORT_DESCENDING_ICON, SEE_ALL_ICON, CATEGORIES_ICON, CHECK_ICON, PLUS_ICON, STAR_ICON,
 } from './icons';
@@ -27,12 +26,6 @@ import { tmdbProfileUrl, type TmdbPerson } from '../services/tmdb';
 import { dropdown, toggleDropdown, closeDropdown, commitDropdownOption } from './dropdown';
 import { morph } from '../utils/morph';
 import { StorageService } from '../services/storage-service';
-import {
-  catalogParentalRequest,
-  isResumeConcealed,
-  isWatchlistConcealed,
-  ParentalControlService,
-} from '../services/parental-control';
 import { CONFIG } from '../config';
 import { formatNumber, getLocale, t, tp } from '../i18n';
 import { VirtualGrid } from '../utils/virtual-grid';
@@ -401,7 +394,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
   protected abstract itemPoster(item: I): string;
   protected abstract itemCategoryId(item: I): string;
   protected abstract itemCount(count: number): string;
-  protected abstract readonly parentalKind: 'vod' | 'series';
+  protected abstract readonly catalogKind: 'vod' | 'series';
   protected abstract openDetail(item: I): Promise<void>;
   protected abstract renderDetail(restoreFocus?: boolean): void;
   protected abstract clearDetail(): void;                 // drop detail state on deep-link back
@@ -844,7 +837,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     this.browseLoadFailed = false;
     this.itemsByCategory = {};
     this.serverItemsByCategory = {};
-    this.sort = StorageService.getCatalogSort(this.parentalKind);
+    this.sort = StorageService.getCatalogSort(this.catalogKind);
     this.resetBrowseRailOffsets = false;
     this.hero = null;
     this.gridCategory = null;
@@ -856,15 +849,11 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     try {
       const categories = await this.loadCategories(account, signal);
       if (signal.aborted || this.account?.id !== account.id) return;
-      this.categories = categories.filter(category => !ParentalControlService.isCategoryConcealed({
-        kind: this.parentalKind === 'vod' ? 'vod-category' : 'series-category',
-        accountId: account.id,
-        categoryId: category.id,
-      }));
+      this.categories = categories;
       const railCats = this.categories.slice(0, CONFIG.XTREAM.RAIL_CATEGORIES);
       // Settle each rail on its own: one failing category must not blank the rest.
       const loaded = await Promise.all(
-        railCats.map((c) => this.loadVisibleItems(account, c.id, signal).then(
+        railCats.map((c) => this.loadItems(account, c.id, signal).then(
           (items): I[] | null => items,
           (err: unknown): null => {
             if (!signal.aborted) {
@@ -872,7 +861,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
                 'Catalog rail load failed',
                 'event=xtream.view.load.failed',
                 'operation=rail',
-                `mode=${this.parentalKind}`,
+                `mode=${this.catalogKind}`,
                 err,
               );
             }
@@ -893,7 +882,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
         log.warn(
           'Catalog rails partially loaded',
           'event=xtream.view.rails.partial',
-          `mode=${this.parentalKind}`,
+          `mode=${this.catalogKind}`,
           `kept=${String(groups.length)}`,
           `total=${String(railCats.length)}`,
         );
@@ -972,7 +961,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       'Catalog browse reloading',
       'event=xtream.view.reload',
       'operation=browse',
-      `mode=${this.parentalKind}`,
+      `mode=${this.catalogKind}`,
       `reason=${this.browseStale ? 'stale' : 'account'}`,
     );
     void this.open(account);
@@ -1542,25 +1531,6 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     this.scrollRails(rails, offsets[next], false);
   }
 
-  // Concealed titles are dropped at load, so every rail, grid, and hero built
-  // from these lists stays free of them without per-render checks.
-  private async loadVisibleItems(
-    account: PlaylistEntry,
-    categoryId: string,
-    signal: AbortSignal,
-  ): Promise<I[]> {
-    const items = await this.loadItems(account, categoryId, signal);
-    if (!ParentalControlService.concealing) return items;
-    return items.filter(item => !ParentalControlService.isConcealed(
-      catalogParentalRequest(this.parentalKind, {
-        accountId: account.id,
-        categoryId: this.itemCategoryId(item) || categoryId,
-        name: this.itemName(item),
-        id: this.itemId(item),
-      }),
-    ));
-  }
-
   private setCategoryItems(categoryId: string, items: I[]): void {
     this.serverItemsByCategory[categoryId] = items;
     this.itemsByCategory[categoryId] = sortCatalogItems(
@@ -1582,7 +1552,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
 
   private applySort(sort: CatalogSortPreference, direction?: CatalogSortDirection): void {
     const changed = sort.by !== this.sort.by || sort.direction !== this.sort.direction;
-    const applied = changed && StorageService.setCatalogSort(this.parentalKind, sort);
+    const applied = changed && StorageService.setCatalogSort(this.catalogKind, sort);
     if (applied) {
       this.sort = sort;
       Object.keys(this.serverItemsByCategory).forEach(id => {
@@ -1606,12 +1576,11 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
 
   private visibleResume(accountId: string): ResumeEntry[] {
     return StorageService.getResumeList(accountId)
-      .filter(entry => entry.kind === this.resumeKind && !isResumeConcealed(entry));
+      .filter(entry => entry.kind === this.resumeKind);
   }
 
   protected visibleWatchlist(kind: WatchlistKind): WatchlistEntry[] {
-    return StorageService.getWatchlist(this.account!.id, kind)
-      .filter(entry => !isWatchlistConcealed(entry));
+    return StorageService.getWatchlist(this.account!.id, kind);
   }
 
   protected findItem(categoryId: string, id: string): I | null {
@@ -1640,7 +1609,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     if (!this.itemsByCategory[categoryId]) {
       this.renderLoading('grid');
       try {
-        const items = await this.loadVisibleItems(
+        const items = await this.loadItems(
           account,
           categoryId,
           signal,
@@ -1653,7 +1622,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
           'Catalog category load failed',
           'event=xtream.view.load.failed',
           'operation=category',
-          `mode=${this.parentalKind}`,
+          `mode=${this.catalogKind}`,
           err,
         );
       }
@@ -1664,7 +1633,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
           'Catalog category load superseded',
           'event=xtream.view.load.superseded',
           'operation=category',
-          `mode=${this.parentalKind}`,
+          `mode=${this.catalogKind}`,
           `reason=${this.mode !== 'grid' ? 'left' : 'replaced'}`,
         );
         return;
@@ -1807,7 +1776,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     if (!account || !categoryId || this.itemsByCategory[categoryId]
         || !this.categories.some(category => category.id === categoryId)) return false;
     try {
-      const items = await this.loadVisibleItems(account, categoryId, signal);
+      const items = await this.loadItems(account, categoryId, signal);
       if (signal.aborted || this.account?.id !== account.id) return false;
       this.setCategoryItems(categoryId, items);
       return true;
@@ -1975,25 +1944,6 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       : html`<div class="catalog-poster catalog-poster-empty">${name.charAt(0)}</div>`;
   }
 
-  protected itemLockBadge(categoryId: string, id: string): Safe {
-    return raw(lockBadge(ParentalControlService.lockState(
-      catalogParentalRequest(this.parentalKind, {
-        accountId: this.account?.id ?? '',
-        categoryId,
-        name: '',
-        id,
-      }),
-    )));
-  }
-
-  // Lock badges follow the unlock session without changing what is listed.
-  refreshLocks(): void {
-    if (!this.layer().querySelector('.catalog-view')) return;
-    if (this.mode === 'browse') this.renderBrowse(false);
-    else if (this.mode === 'categories') this.renderCategoryGrid(false);
-    else if (this.mode === 'grid') this.renderGrid(false);
-  }
-
   // `longPress`: a Continue Watching tile, whose held OK opens its menu.
   protected tile(item: I, overlay: Safe | '' = '', longPress = false): Safe {
     const id = this.itemId(item);
@@ -2001,8 +1951,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     return html`
       <div class="catalog-tile" data-focusable data-key="i:${cat}:${id}"
            data-item-id="${id}" data-category-id="${cat}" ${raw(longPress ? 'data-long-press' : '')}>
-        <div class="catalog-poster-wrap">${this.posterCell(this.itemName(item), this.itemPoster(item))}${
-          this.itemLockBadge(cat, id)}${overlay}</div>
+        <div class="catalog-poster-wrap">${this.posterCell(this.itemName(item), this.itemPoster(item))}${overlay}</div>
         <div class="catalog-tile-name" dir="${nameDir()}">${this.itemName(item)}</div>
       </div>
     `;
@@ -2018,7 +1967,6 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
         <div class="catalog-tile catalog-see-all" data-focusable data-key="all:${id}"
              data-category-id="${id}">
           <div class="catalog-poster-wrap catalog-see-all-card">
-            ${raw(categoryLockBadge(this.parentalKind, this.account!.id, id))}
             ${raw(SEE_ALL_ICON)}
             <div class="catalog-see-all-label">${t('catalog.seeAll')}</div>
             <div class="catalog-see-all-count">${this.itemCount(total)}</div>
@@ -2274,9 +2222,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       <div class="catalog-rail catalog-pill-rail" data-key="rail:categories" data-rail-key="categories">
         <div class="catalog-rail-track catalog-pill-track" data-edge-scroll>
           ${categories.slice(0, limit).map(c => html`
-            <div class="pill-chip catalog-pill" data-focusable data-key="c:${c.id}" data-category-id="${c.id}">${
-              raw(categoryLockBadge(this.parentalKind, this.account!.id, c.id))
-            }<span class="pill-chip-label" dir="${nameDir()}">${c.name}</span></div>
+            <div class="pill-chip catalog-pill" data-focusable data-key="c:${c.id}" data-category-id="${c.id}"><span class="pill-chip-label" dir="${nameDir()}">${c.name}</span></div>
           `)}
           ${categories.length > limit ? html`
             <div class="pill-chip catalog-pill" data-focusable data-key="all-categories"
@@ -2299,13 +2245,12 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
   // loaded it: counting the rest would mean loading them.
   private categoryChip(category: C, index: number, left: number, top: number): Safe {
     const items = this.itemsByCategory[category.id];
-    const lock = categoryLockBadge(this.parentalKind, this.account!.id, category.id);
     return html`
       <div class="catalog-category-cell" data-key="category-cell:${category.id}" data-category-index="${index}"
            style="${inlineStart()}:${left}px;top:${top}px">
-        <div class="catalog-cat${items ? ' catalog-cat-counted' : ''}${lock ? ' catalog-cat-locked' : ''}"
+        <div class="catalog-cat${items ? ' catalog-cat-counted' : ''}"
              data-focusable data-key="c:${category.id}" data-category-id="${category.id}">
-          ${raw(lock)}<div class="catalog-cat-name" dir="${nameDir()}">${category.name}</div>
+          <div class="catalog-cat-name" dir="${nameDir()}">${category.name}</div>
           ${items ? html`<div class="catalog-cat-count">${this.itemCount(items.length)}</div>` : ''}
         </div>
       </div>

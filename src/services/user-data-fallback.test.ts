@@ -95,10 +95,9 @@ describe('user-data localStorage fallback', () => {
     expect(mergeFallbackRecords('channel-state', []).map(item => item.key)).toEqual(['a']);
   });
 
-  it('caps the total by evicting the oldest, never the parental lock or boot keys', () => {
+  it('caps the total by evicting the oldest, never the boot keys', () => {
     localStorage.setItem('iptv_playlists', '[{"id":"p1","url":"http://host/a"}]');
     localStorage.setItem('iptv_locale', '"system"');
-    applyFallbackChanges('parental-control', [{ key: 'config', value: { enabled: true } }], []);
     const big = 'x'.repeat(10 * 1024);
     const count = Math.ceil(FALLBACK_TOTAL_CHARS / big.length) + 20;
     for (let i = 0; i < count; i++) {
@@ -109,9 +108,6 @@ describe('user-data localStorage fallback', () => {
     const kept = mergeFallbackRecords('channel-state', []).map(item => item.key);
     expect(kept).toContain(`audio:ch${count - 1}`);
     expect(kept).not.toContain('audio:ch0');
-    expect(mergeFallbackRecords('parental-control', [])).toEqual([
-      { key: 'config', value: { enabled: true } },
-    ]);
     expect(localStorage.getItem('iptv_playlists')).toBe('[{"id":"p1","url":"http://host/a"}]');
     expect(localStorage.getItem('iptv_locale')).toBe('"system"');
   });

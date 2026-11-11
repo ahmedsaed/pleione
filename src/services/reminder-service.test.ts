@@ -4,13 +4,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const { state, playlistMock } = vi.hoisted(() => {
   const state = {
     channels: [] as Array<{ url: string; name: string }>,
-    concealed: [] as Array<{ url: string; name: string }>,
+    otherSources: [] as Array<{ url: string; name: string }>,
     activeSourceId: null as string | null,
     followed: [] as string[],
   };
   return { state, playlistMock: {
     get channels() { return state.channels; },
-    getUnconcealedChannels: () => [...state.channels, ...state.concealed],
+    getCustomizedChannels: () => [...state.channels, ...state.otherSources],
     get activeSourceId() { return state.activeSourceId; },
     showSourceOf: (channel: { name: string }) => { state.followed.push(channel.name); },
   } };
@@ -26,7 +26,6 @@ import { StorageService } from './storage-service';
 import { channelKey, legacyChannelKey } from '../utils/channel';
 import { CONFIG } from '../config';
 import { setLocale } from '../i18n';
-import { ParentalControlService } from './parental-control';
 
 const chan = (url: string, name: string, playlistIds: string[] = []) => ({
   id: '', name, logo: '', group: '', url, extras: null,
@@ -38,7 +37,7 @@ const keyA = channelKey(chan('http://host/a', 'A') as never);
 beforeEach(() => {
   localStorage.clear();
   state.channels = [chan('http://host/a', 'A'), chan('http://host/b', 'B')] as never[];
-  state.concealed = [];
+  state.otherSources = [];
 });
 
 const rem = (over = {}) => ({ channelKey: keyA, channelName: 'A', title: 'Alpha', startMs: 1000, stopMs: 2000, ...over });
@@ -120,56 +119,18 @@ describe('ReminderService store', () => {
     expect(ReminderService.list()).toHaveLength(0);
   });
 
-  it('keeps reminders for channels concealed by parental controls', () => {
-    ReminderService.add(rem({ startMs: 6000, stopMs: 9000 }));
-    state.concealed = state.channels.filter(ch => ch.name === 'A');
-    state.channels = state.channels.filter(ch => ch.name !== 'A');
-
-    ReminderService.prune(5000);
-
-    expect(ReminderService.list()).toHaveLength(1);
-    expect(ReminderService.listManageable(5000)).toHaveLength(0);
-  });
-
   it('keeps a reminder on another source manageable, and tunes it by following its source', () => {
     ReminderService.add(rem({ startMs: 6000, stopMs: 9000 }));
-    state.concealed = state.channels.filter(ch => ch.name === 'A')
+    state.otherSources = state.channels.filter(ch => ch.name === 'A')
       .map(ch => ({ ...ch, playlistIds: ['other'] }));
     state.channels = state.channels.filter(ch => ch.name !== 'A');
     state.activeSourceId = 'picked';
     state.followed = [];
 
     expect(ReminderService.listManageable(5000)).toHaveLength(1);
-    expect(ReminderService.concealedChannel(keyA)).toBeNull();
     ReminderService.tuneIndex(keyA);
     expect(state.followed).toEqual(['A']);
     state.activeSourceId = null;
-  });
-
-  it('keeps a concealed channel on another source concealed', () => {
-    ReminderService.add(rem({ startMs: 6000, stopMs: 9000 }));
-    state.concealed = state.channels.filter(ch => ch.name === 'A')
-      .map(ch => ({ ...ch, playlistIds: ['other'] }));
-    state.channels = state.channels.filter(ch => ch.name !== 'A');
-    state.activeSourceId = 'picked';
-    const concealed = vi.spyOn(ParentalControlService, 'isConcealed').mockReturnValue(true);
-    state.followed = [];
-
-    expect(ReminderService.listManageable(5000)).toHaveLength(0);
-    expect(ReminderService.concealedChannel(keyA)?.name).toBe('A');
-    ReminderService.tuneIndex(keyA);
-    expect(state.followed).toEqual([]);
-    concealed.mockRestore();
-    state.activeSourceId = null;
-  });
-
-  it('still prompts for an on-air reminder whose channel is concealed', () => {
-    ReminderService.add(rem({ startMs: 1000, stopMs: 3000 }));
-    state.concealed = state.channels.filter(ch => ch.name === 'A');
-    state.channels = state.channels.filter(ch => ch.name !== 'A');
-
-    expect(ReminderService.dueNow(2000).map(r => r.channelKey)).toEqual([keyA]);
-    expect(ReminderService.concealedChannel(keyA)?.name).toBe('A');
   });
 
   it('lists manageable reminders in start order and excludes dormant ones', () => {
@@ -341,40 +302,6 @@ describe('ReminderService scheduling', () => {
     expect((a.callback as { method: string }).method).toBe('luna://com.webos.notification/createToast');
     expect((a.callback as { params: { message: string } }).params.message)
       .toBe('A - Alpha is now live — open the app to watch');
-  });
-
-  it('names no channel or program in notifications that hide mode conceals', () => {
-    const request = mockLuna();
-    const concealed = vi.spyOn(ParentalControlService, 'concealedWhenLocked').mockReturnValue(true);
-    try {
-      const startMs = new Date(2030, 0, 2, 15, 4, 5).getTime();
-      ReminderService.add(rem({ startMs, stopMs: startMs + 60_000, title: 'Alpha' }));
-      const params = () => {
-        const [, opts] = request.mock.calls[request.mock.calls.length - 1];
-        const activity = (opts as { parameters: { activity: Record<string, unknown> } })
-          .parameters.activity;
-        return (activity.callback as { params: Record<string, unknown> }).params;
-      };
-      expect(params().message).toBe('A locked program is now live — open the app to watch');
-
-      ReminderService.setDevMode(true);
-      ReminderService.reschedulePending(startMs - 1000);
-      expect(params()).toMatchObject({
-        title: '',
-        channelName: '',
-        alertMessage: 'A locked program is now live. Watch now?',
-      });
-
-      // Only a change in concealment reschedules, restoring the real names.
-      const calls = request.mock.calls.length;
-      ReminderService.refreshParentalCopy(startMs - 1000);
-      expect(request.mock.calls.length).toBe(calls);
-      concealed.mockReturnValue(false);
-      ReminderService.refreshParentalCopy(startMs - 1000);
-      expect(params().alertMessage).toBe('A — Alpha is now live. Watch now?');
-    } finally {
-      concealed.mockRestore();
-    }
   });
 
   it('schedules translated retail copy in the active locale', () => {

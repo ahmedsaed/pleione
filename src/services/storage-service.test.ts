@@ -216,20 +216,6 @@ describe('StorageService', () => {
     expect(StorageService.getAnimationMode()).toBe('reduced');
   });
 
-  it('reports each source change with the list it replaced', () => {
-    StorageService.setPlaylists([{ id: 'p1', name: 'P1', url: 'http://host/a' }]);
-    const handler = vi.fn();
-    StorageService.setPlaylistsReplacedHandler(handler);
-    StorageService.setPlaylists([{ id: 'p1', name: 'P1', url: 'http://host/a' }]);
-    expect(handler).not.toHaveBeenCalled();
-    StorageService.setPlaylists([{ id: 'p1', name: 'P1', url: 'http://host/b' }]);
-    expect(handler).toHaveBeenCalledWith(
-      [{ id: 'p1', name: 'P1', url: 'http://host/a' }],
-      [{ id: 'p1', name: 'P1', url: 'http://host/b' }],
-    );
-    StorageService.setPlaylistsReplacedHandler(() => {});
-  });
-
   it('clears all local storage when resetting the app', () => {
     StorageService.set('theme', 'light');
     localStorage.setItem('unrelated', 'value');
@@ -309,14 +295,41 @@ describe('StorageService', () => {
 
   it('defaults the theme to midnight and round-trips a selection', () => {
     expect(StorageService.getTheme()).toBe('midnight');
-    StorageService.setTheme('arctic');
-    expect(StorageService.getTheme()).toBe('arctic');
+    StorageService.setTheme('emerald');
+    expect(StorageService.getTheme()).toBe('emerald');
   });
 
-  it('defaults the overlay style to dark and round-trips a selection', () => {
-    expect(StorageService.getOverlayStyle()).toBe('dark');
-    StorageService.setOverlayStyle('frosted');
-    expect(StorageService.getOverlayStyle()).toBe('frosted');
+  it.each([
+    ['amethyst', 'midnight'],
+    ['plum-night', 'midnight'],
+    ['pastel-mocha', 'midnight'],
+    ['neon-night', 'midnight'],
+    ['cobalt-slate', 'midnight'],
+    ['arctic', 'midnight'],
+    ['ocean-dark', 'midnight'],
+    ['vintage-amber', 'ember'],
+    ['pastel-latte', 'daylight'],
+  ])('moves the retired theme %s to %s and saves it', (retired, kept) => {
+    StorageService.set('theme', retired);
+    expect(StorageService.getTheme()).toBe(kept);
+    expect(localStorage.getItem('iptv_theme')).toBe(JSON.stringify(kept));
+  });
+
+  it('keeps every kept theme as saved', () => {
+    for (const id of ['midnight', 'ember', 'emerald', 'burgundy', 'daylight', 'paper-light']) {
+      StorageService.setTheme(id);
+      expect(StorageService.getTheme()).toBe(id);
+    }
+  });
+
+  it('drops the retired overlay style and channel cycle settings', () => {
+    StorageService.set('overlay_style', 'frosted');
+    StorageService.set('channel_cycle_mode', 'global');
+    StorageService.set('theme', 'ember');
+    StorageService.pruneRetiredSettings();
+    expect(localStorage.getItem('iptv_overlay_style')).toBeNull();
+    expect(localStorage.getItem('iptv_channel_cycle_mode')).toBeNull();
+    expect(localStorage.getItem('iptv_theme')).toBe('"ember"');
   });
 
   it('defaults to the system language and round-trips a locale preference', () => {
@@ -1312,14 +1325,6 @@ describe('StorageService channel customization store', () => {
   it('ignores a record written by another version', () => {
     StorageService.setChannelCustomization({ ...record(), version: 99 });
     expect(StorageService.getChannelCustomization()).toBeNull();
-  });
-
-  it('defaults Channel Up/Down to the current group and keeps a stored choice', () => {
-    expect(StorageService.getChannelCycleMode()).toBe('active');
-    localStorage.setItem('iptv_channel_cycle_mode', JSON.stringify('global'));
-    expect(StorageService.getChannelCycleMode()).toBe('global');
-    StorageService.setChannelCycleMode('active');
-    expect(StorageService.getChannelCycleMode()).toBe('active');
   });
 
   it('round-trips the show-hidden toggle', () => {

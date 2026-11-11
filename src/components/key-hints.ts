@@ -3,7 +3,7 @@ import { t } from '../i18n';
 import { BACK_ICON } from './icons';
 
 // Footer remote-key hints (`.edit-hints`) shared by the channel editor, the
-// Live preview list, and the parental manager. `attrs` carries each caller's
+// Live preview list, the Guide, and the Live categories picker. `attrs` carries each caller's
 // own data-* hooks so its handlers and tests keep their selectors.
 type HintAttrs = Record<string, string>;
 

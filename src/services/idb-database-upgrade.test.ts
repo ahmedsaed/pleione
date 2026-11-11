@@ -1,37 +1,40 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import {
   CACHE_META_STORE,
   CACHE_STORES,
   cacheKeyPath,
-  openPersistenceDb,
   PLAYLIST_STORE,
   requestResult,
   SEARCH_INDEX_STORE,
   USER_DATA_STORES,
   USER_META_STORE,
 } from './idb-database';
-import { DB_NAME } from './idb-schema';
+import { DB_NAME, DB_VERSION } from './idb-schema';
 
-// The v6 layout: every store except the search index cache.
-function createV6(): Promise<void> {
+const HEALTH_STORE = 'channel-health-cache';
+
+// An older layout: the cache stores of that version plus every user store.
+function createOld(
+  version: number,
+  cacheStores: readonly string[],
+  seed: (tx: IDBTransaction) => void,
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 6);
+    const req = indexedDB.open(DB_NAME, version);
     req.onupgradeneeded = () => {
       const db = req.result;
-      for (const name of CACHE_STORES) {
-        if (name === SEARCH_INDEX_STORE) continue;
-        const store = db.createObjectStore(name, { keyPath: cacheKeyPath(name) });
+      for (const name of cacheStores) {
+        const keyPath = name === HEALTH_STORE ? 'key' : cacheKeyPath(name as typeof CACHE_STORES[number]);
+        const store = db.createObjectStore(name, { keyPath });
         store.createIndex('expiresAt', 'expiresAt');
         store.createIndex('lastAccessedAt', 'lastAccessedAt');
       }
       db.createObjectStore(CACHE_META_STORE, { keyPath: 'category' });
       for (const name of USER_DATA_STORES) db.createObjectStore(name, { keyPath: 'key' });
       db.createObjectStore(USER_META_STORE, { keyPath: 'key' });
-      const tx = req.transaction!;
-      tx.objectStore(PLAYLIST_STORE).put({ key: 'combined', timestamp: 1, data: { channels: [] } });
-      tx.objectStore('favorites').put({ key: 'ch1' });
-      tx.objectStore(CACHE_META_STORE).put({ category: 'total', bytes: 10, entries: 1 });
+      seed(req.transaction!);
     };
     req.onsuccess = () => {
       req.result.close();
@@ -41,12 +44,27 @@ function createV6(): Promise<void> {
   });
 }
 
-describe('persistence database upgrade to v7', () => {
-  it('adds the search index cache and keeps existing records', async () => {
-    await createV6();
+async function openFresh(): Promise<IDBDatabase> {
+  vi.resetModules();
+  const { openPersistenceDb } = await import('./idb-database');
+  return (await openPersistenceDb())!;
+}
 
-    const db = (await openPersistenceDb())!;
-    expect(db.version).toBe(7);
+beforeEach(() => {
+  globalThis.indexedDB = new IDBFactory();
+});
+
+describe('persistence database upgrade', () => {
+  it('adds the search index cache from v6 and keeps existing records', async () => {
+    const v6Stores = [...CACHE_STORES.filter(name => name !== SEARCH_INDEX_STORE), HEALTH_STORE];
+    await createOld(6, v6Stores, (tx) => {
+      tx.objectStore(PLAYLIST_STORE).put({ key: 'combined', timestamp: 1, data: { channels: [] } });
+      tx.objectStore('favorites').put({ key: 'ch1' });
+      tx.objectStore(CACHE_META_STORE).put({ category: 'epg', bytes: 10, entries: 1 });
+    });
+
+    const db = await openFresh();
+    expect(db.version).toBe(8);
     expect(db.objectStoreNames.contains(SEARCH_INDEX_STORE)).toBe(true);
     const tx = db.transaction([SEARCH_INDEX_STORE, PLAYLIST_STORE, 'favorites', CACHE_META_STORE]);
     const search = tx.objectStore(SEARCH_INDEX_STORE);
@@ -55,6 +73,40 @@ describe('persistence database upgrade to v7', () => {
     expect(await requestResult(tx.objectStore(PLAYLIST_STORE).get('combined')))
       .toMatchObject({ timestamp: 1 });
     expect(await requestResult(tx.objectStore('favorites').get('ch1'))).toEqual({ key: 'ch1' });
+    expect(await requestResult(tx.objectStore(CACHE_META_STORE).get('epg')))
+      .toMatchObject({ bytes: 10, entries: 1 });
+  });
+
+  it('drops the channel health cache and its accounting from v7', async () => {
+    await createOld(7, [...CACHE_STORES, HEALTH_STORE], (tx) => {
+      tx.objectStore(HEALTH_STORE).put({ key: 'ch1', data: { status: 'suspect' } });
+      tx.objectStore('favorites').put({ key: 'ch1' });
+      const meta = tx.objectStore(CACHE_META_STORE);
+      meta.put({ category: 'health', bytes: 40, entries: 1 });
+      meta.put({ category: 'epg', bytes: 10, entries: 1 });
+      meta.put({ category: 'total', bytes: 50, entries: 2 });
+    });
+
+    const db = await openFresh();
+    expect(db.version).toBe(8);
+    expect(db.objectStoreNames.contains(HEALTH_STORE)).toBe(false);
+    const tx = db.transaction(['favorites', CACHE_META_STORE]);
+    const meta = tx.objectStore(CACHE_META_STORE);
+    expect(await requestResult(meta.get('health'))).toBeUndefined();
+    // The missing total makes the cache accounting rebuild on first use.
+    expect(await requestResult(meta.get('total'))).toBeUndefined();
+    expect(await requestResult(meta.get('epg'))).toMatchObject({ bytes: 10 });
+    expect(await requestResult(tx.objectStore('favorites').get('ch1'))).toEqual({ key: 'ch1' });
+  });
+
+  it('keeps the accounting when there is no health cache to drop', async () => {
+    await createOld(7, CACHE_STORES, (tx) => {
+      tx.objectStore(CACHE_META_STORE).put({ category: 'total', bytes: 10, entries: 1 });
+    });
+
+    const db = await openFresh();
+    expect(db.version).toBe(8);
+    const tx = db.transaction(CACHE_META_STORE);
     expect(await requestResult(tx.objectStore(CACHE_META_STORE).get('total')))
       .toMatchObject({ bytes: 10, entries: 1 });
   });

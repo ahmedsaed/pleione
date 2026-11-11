@@ -10,7 +10,7 @@ downloaded data that can be recreated.
 | --- | --- | --- | --- |
 | Setup and preferences | Playlist and EPG sources, Xtream account details, theme, language, text size, time zone, active account and channel | Small app-private browser storage | No |
 | Personal data | Favorites, reminders, channel order and names, hidden channels, Watchlist, Recently Watched, playback progress, audio and subtitle choices | App-private database on the TV | No |
-| Downloaded cache | Parsed playlists, program guides, movie and series catalogs, media metadata, downloaded subtitles, channel health results | App-private database on the TV | Yes |
+| Downloaded cache | Parsed playlists, program guides, movie and series catalogs, media metadata, downloaded subtitles | App-private database on the TV | Yes |
 | LAN-uploaded playlists | Original M3U files uploaded from another device | Private storage owned by the bundled upload service | No |
 
 ## Implementation architecture
@@ -25,7 +25,7 @@ flowchart LR
     UI["UI components"]
     Storage["StorageService"]
     UserData["idb-user-data"]
-    Producers["Cache producers<br/>Playlist / EPG / Catalog<br/>Media / Subtitles / Channel health"]
+    Producers["Cache producers<br/>Playlist / EPG / Catalog<br/>Media / Subtitles"]
     Cache["idb-cache<br/>TTL / LRU / budgets"]
     Database["idb-database<br/>schema / transactions"]
     Reminders["ReminderService"]
@@ -45,7 +45,7 @@ flowchart LR
   subgraph IDB["IndexedDB: iptv"]
     direction TB
     UserStores["User stores<br/>favorites / reminders / channel state<br/>watchlist / progress / history / subtitle picks"]
-    CacheStores["Cache stores<br/>playlist / EPG / catalog / stream MIME<br/>subtitles / channel health / search index / metadata"]
+    CacheStores["Cache stores<br/>playlist / EPG / catalog / stream MIME<br/>subtitles / search index / metadata"]
   end
 
   Activity["Activity Manager<br/>reminder schedules"]
@@ -89,7 +89,6 @@ This is the complete active key inventory:
 | `iptv_xtream_output_formats` | `Record<string, {account, formats}>` | Per account id, the output formats its last accepted sign-in allowed, and the `<base URL>\|<username>` they came from; read by the Auto live output | Small derived state |
 | `iptv_catalog_sort_vod`, `iptv_catalog_sort_series` | `{by, direction}` | Movies and Series sort field (`default`, `name`, `added`, `rating`, `year`) and direction | Preference |
 | `iptv_show_hidden_channels` | `boolean` | Whether normal lists reveal hidden channels in a dimmed state | Preference |
-| `iptv_channel_cycle_mode` | `global \| active` | Whether Channel Up/Down cycles the whole list or stays in the group, Favorites, or playlist a channel was tuned from; default `active` | Preference |
 | `iptv_live_reconnect_attempts` | `number` | Live channel reconnection limit (0–5; default 3) | Preference |
 | `iptv_player_osd_timeout_ms` | `number` | How long the player controls stay up: 3000, 5000, 8000, 10000, or 12000 ms; default 5000 | Preference |
 | `iptv_number_entry_osd_timeout_ms` | `number` | How long the number-entry overlay stays up after a digit: 1200, 1800, 2500, 3000, or 3500 ms; default 1200 | Preference |
@@ -101,13 +100,11 @@ This is the complete active key inventory:
 | `iptv_text_size` | `string` | Selected text-scale id | Preference |
 | `iptv_interface_size` | `90 \| 100 \| 110 \| 120 \| 130` | Whole-interface scale in percent | Preference |
 | `iptv_animation_mode` | `essential \| reduced \| full` | Animation profile; defaults to immediate navigation scrolling, while Essential disables costly motion for older TVs | Preference |
-| `iptv_overlay_style` | `dark \| frosted` | Player OSD/sidebar/picker glass style | Preference |
 | `iptv_tz_mode` | `device \| feed` | Which time zone displays EPG times | Preference |
 | `iptv_epg_tz_offset` | `number \| null` | Last known feed offset in minutes east of UTC | Small derived state |
 | `iptv_epg_offsets` | `Record<string, number>` | User time correction in minutes, keyed by EPG source URL | Preference |
 | `iptv_online_subtitles` | `OnlineSubtitleConfig` | Preferred language; SubDL and Assrt API keys; OpenSubtitles API key, username, password, access token, and token timestamp | Configuration and credentials |
 | `iptv_tmdb_api_key` | `string` | The user's own TMDB v3 API key or v4 read access token for cast photos; empty means the app never contacts TMDB | Configuration and credentials |
-| `iptv_parental_throttle` | `{failures, lockouts, blockedUntil}` | Wrong-PIN count and lockout end, kept here so restarting the app cannot reset the retry delay | Security state |
 | `iptv_log_level` | `string` | Optional runtime logger threshold used by diagnostics | Developer preference |
 | `iptv_fb_<store>` | `{r, d}` | Personal records kept while IndexedDB refuses writes, one key per user-data store (see [When IndexedDB refuses writes](#when-indexeddb-refuses-writes)) | Personal data fallback |
 
@@ -125,6 +122,17 @@ successful save.
 
 The database is named `iptv`. webOS already isolates IndexedDB by application
 origin, so object-store names do not repeat the `iptv_` prefix.
+
+A store a removed feature used is listed in `RETIRED_STORES`
+(`idb-database.ts`), and the next schema upgrade deletes it wherever it still
+exists: version 8 drops `parental-control`. Its localStorage keys
+(`iptv_parental_control`, `iptv_parental_throttle`, and the
+`iptv_fb_parental-control` fallback) go at the start of every
+`StorageService.init()`, through `RETIRED_KEYS` (`storage-service.ts`).
+
+Version 8 deletes the `channel-health-cache` store left by the removed channel
+health check, with its `health` accounting row; it also drops the `total`
+row, so the cache accounting is rebuilt on first use.
 
 #### User-data stores
 
@@ -169,9 +177,8 @@ eviction algorithm.
 | `catalog-cache` | `key` | `expiresAt`, `lastAccessedAt` | Xtream categories, VOD/series lists and details, and media-container probes |
 | `stream-mime-cache` | `key` | `expiresAt`, `lastAccessedAt` | Normalized provider route mapped to detected MIME and probe time; accounted and evicted in the `catalog` category |
 | `subtitle-cache` | `key` | `expiresAt`, `lastAccessedAt` | Provider/result key and downloaded SRT, WebVTT, ASS, or SSA text |
-| `channel-health-cache` | `key` | `expiresAt`, `lastAccessedAt` | Per-channel healthy, suspect, or unavailable status from the latest stream check |
 | `search-index-cache` | `key` | `expiresAt`, `lastAccessedAt` | Folded Search text of one playlist, guide, or catalog cache record, keyed by source store, source key, source timestamp, and index format; one string plus `Uint32Array` offsets. Written by the app worker after the page reserves room; clearing a source store removes its indexes |
-| `cache-meta` | `category` | None | `{bytes, entries, updatedAt}` for `playlist`, `epg`, `catalog`, `subtitle`, `health`, `search`, and `total` |
+| `cache-meta` | `category` | None | `{bytes, entries, updatedAt}` for `playlist`, `epg`, `catalog`, `subtitle`, `search`, and `total` |
 
 Known `catalog-cache` key families are:
 
@@ -200,7 +207,7 @@ Cache payloads are normalized to a shared envelope:
 
 ```ts
 interface CacheFields {
-  cacheCategory: 'playlist' | 'epg' | 'catalog' | 'subtitle' | 'health';
+  cacheCategory: 'playlist' | 'epg' | 'catalog' | 'subtitle' | 'search';
   createdAt: number;
   updatedAt: number;
   lastAccessedAt: number;
@@ -233,7 +240,6 @@ invalidates a structurally valid but now unrelated parsed playlist.
 | Media probe | No expiry | Stored in the catalog category and still subject to LRU/budget cleanup |
 | Stream MIME probe | 7 days | Expired reads become misses; records participate in catalog LRU and accounting |
 | Downloaded subtitle | 30 days | An expired read becomes a miss and deletes the record |
-| Channel health result | 30 days | Expired results are discarded; a new health check replaces results for checked channels |
 | Search index | 7 days | Used only while its source record's key, timestamp, and the index format still match; otherwise rebuilt from the source record. Built ahead of Search while the UI is idle after the channels load and after each playlist, guide, catalog, or account change |
 
 Reads update `lastAccessedAt` in a best-effort follow-up transaction. Failure to
@@ -275,7 +281,7 @@ attributes; the guide comes from the account's `xmltv.php`.
 
 Per-channel personal data is keyed by stream URL, and a standard panel's
 `get.php` URL is the one the API path builds, so favorites, hidden and renamed
-channels, history, playback choices, and parental channel locks carry over.
+channels, history, and playback choices carry over.
 A panel whose `get.php` spells the URL another way (its own host from
 `server_info`, no `/live/` or extension, or raw credentials) has that data
 moved to the new key once, by matching every such spelling of each loaded
@@ -340,7 +346,6 @@ breakdown:
 - Program guide
 - Catalog and media metadata
 - Subtitles
-- Channel health results
 - Search index
 
 The second number is a **soft cache budget**, not reserved or currently used
@@ -423,7 +428,7 @@ Personal records share the origin quota with the cache. When webOS rejects a
 personal-data write, or the exit-time snapshot retry, with a quota error, the
 app clears whole cache stores until the freed space reaches 4 MiB, in this
 order: Search indexes (always), catalog and media metadata, program guides,
-subtitles, channel health results, stream MIME types, and finally parsed
+subtitles, stream MIME types, and finally parsed
 playlists. It then retries the write once and logs
 `persistence.user.quota.evicted` with the outcome. If the retry is
 rejected for quota too, IndexedDB is treated as read-only for the session
@@ -455,8 +460,8 @@ already holds. From then on:
 
   All fallback keys together hold at most 1 Mi characters (2 MiB as UTF-16,
   of Chromium's 5 Mi-character localStorage). Past that, the oldest records
-  across stores go first, but never a deletion marker or the
-  parental-control record, and the write is reported as failed. A single
+  across stores go first, but never a deletion marker, and the write is
+  reported as failed. A single
   record over half the budget is refused outright and the other records stay.
   A failed fallback write logs `persistence.user.fallback.write.failed` once
   per session with its `reason` (`evicted`, `too_large`, or `full`) and
@@ -466,8 +471,8 @@ already holds. From then on:
   Fallback writes never evict any other key. Older localStorage data
   moved into the fallback at startup is never capped and never evicts
   anything: if it does not fit, its legacy keys stay for a later launch.
-- **Caches** (playlists, guides, catalogs, subtitles, stream MIME types,
-  channel health) are kept in memory for the session only, up to 32 MiB of
+- **Caches** (playlists, guides, catalogs, subtitles, and stream MIME
+  types) are kept in memory for the session only, up to 32 MiB of
   counted size, and Search indexes are not stored. They never use
   localStorage.
 - No save-failure message is shown while the fallback holds every write.
@@ -489,8 +494,7 @@ behavior among the records known to the cache manager.
 
 ### Clear Cache
 
-**Clear Cache** removes downloaded and processed data, including cached channel
-health results. It keeps:
+**Clear Cache** removes downloaded and processed data. It keeps:
 
 - Accounts and source settings
 - App preferences

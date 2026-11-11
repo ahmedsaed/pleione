@@ -4,7 +4,6 @@ import type {
   CatchupInfo,
   Channel,
   ChannelGroupId,
-  ChannelHealthStatus,
   ChannelScope,
   NumberEvent,
 } from '../types';
@@ -20,7 +19,6 @@ import { PlaylistService } from '../services/playlist-service';
 import { EpgService } from '../services/epg-service';
 import { StorageService } from '../services/storage-service';
 import { RecentlyWatchedService, type RecentlyWatchedItem } from '../services/recently-watched';
-import { ChannelHealthService } from '../services/channel-health';
 import {
   CLOCK_ICON,
   FOLDER_ICON,
@@ -32,7 +30,6 @@ import {
 } from './icons';
 import { okHint } from './key-hints';
 import { liveRowSchedule } from './live-row';
-import { channelLockBadge, liveGroupLockBadge } from './parental-badge';
 import { showToast } from './toast';
 import { getLocale, t, type SupportedLocale } from '../i18n';
 import { ChannelListEditor } from './channel-list-editor';
@@ -79,7 +76,6 @@ export interface ChannelListOptions {
   onRetry?: () => void;
   // The group the list shows changed, by key or pointer.
   onScopeChange?: () => void;
-  authorizeEdit?: (proceed: () => void) => void;
 }
 
 export class ChannelList {
@@ -140,7 +136,6 @@ export class ChannelList {
   private groupEntriesRevision = -1;
   private groupEntriesLocale: SupportedLocale | null = null;
 
-  private authorizeEdit: (proceed: () => void) => void;
   constructor(
     container: HTMLElement,
     options: ChannelListOptions,
@@ -151,7 +146,6 @@ export class ChannelList {
       onEpgMappingChanged = () => {},
       onEpgOffsetChanged = () => {},
       onEnterManagement = () => {},
-      authorizeEdit = proceed => proceed(),
       guideMode = () => false,
       onRowFocus = () => {},
       onCount = () => {},
@@ -163,7 +157,6 @@ export class ChannelList {
     this.onCount = onCount;
     this.onRetry = onRetry;
     this.onScopeChange = onScopeChange;
-    this.authorizeEdit = authorizeEdit;
     this.container = container;
     this.onChannelSelect = onChannelSelect;
     this.onChannelsChanged = onChannelsChanged;
@@ -589,7 +582,7 @@ export class ChannelList {
   }
 
   enterEditMode(group: ChannelGroupId = this.currentGroup): void {
-    this.authorizeEdit(() => this.editor.enterEditMode(group));
+    this.editor.enterEditMode(group);
   }
 
   exitEditMode(): void {
@@ -771,8 +764,7 @@ export class ChannelList {
         <span class="group-icon">${raw(groupLineIcon(g.builtin))}</span>
         ${renaming
           ? html`<input class="edit-text-input" type="text" value="${this.editor.renameValue(g.label)}">`
-          : html`<span class="group-name" dir="${nameDir()}">${
-              raw(liveGroupLockBadge(g.id, ''))}${g.label}</span>`}
+          : html`<span class="group-name" dir="${nameDir()}">${g.label}</span>`}
         <span class="group-count">${count}</span>
       </div>
     `;
@@ -956,7 +948,7 @@ export class ChannelList {
           <div class="live-row-top">
             ${row.renaming
               ? html`<input class="edit-text-input" type="text" value="${this.editor.renameValue(ch.name)}">`
-              : html`<div class="channel-name" dir="${nameDir()}">${raw(channelLockBadge(ch))}${ch.name}</div>`}
+              : html`<div class="channel-name" dir="${nameDir()}">${ch.name}</div>`}
             <span class="live-row-badges">
               ${watching ? html`<span class="live-badge-icon live-badge-watching"
                   title="${t('player.now')}">${raw(NOW_PLAYING_ICON)}</span>` : ''}
@@ -976,7 +968,6 @@ export class ChannelList {
             <div class="live-row-next"><time>${formatTime(schedule.next.start)}</time><span dir="${nameDir()}">${schedule.next.title}</span></div>` : ''}
         </div>
         ${this.editor.renderChannelEditStatus(ch)}
-        ${this.renderHealth(ch)}
       </div>
     `;
   }
@@ -1037,12 +1028,11 @@ export class ChannelList {
           <div class="channel-number">${item.channelIndex + 1}</div>
           ${this.renderLogo(item.channel)}
           <div class="channel-info">
-            <div class="channel-name" dir="${nameDir()}">${raw(channelLockBadge(item.channel))}${
+            <div class="channel-name" dir="${nameDir()}">${
               isFav ? raw(favoriteIcon(true)) : ''
             }${item.channel.name}</div>
             ${nowPlaying ? html`<div class="channel-now" dir="${nameDir()}">${nowPlaying.title}</div>` : ''}
           </div>
-          ${this.renderHealth(item.channel)}
           <div class="recent-kind-badge live">${t('common.live')}</div>
           ${isPlaying ? raw('<div class="playing-indicator">&#9654;</div>') : ''}
         </div>
@@ -1063,7 +1053,7 @@ export class ChannelList {
         <div class="channel-number">${item.channelIndex + 1}</div>
         ${this.renderLogo(item.channel)}
         <div class="channel-info">
-          <div class="channel-name" dir="${nameDir()}">${raw(channelLockBadge(item.channel))}${
+          <div class="channel-name" dir="${nameDir()}">${
             isFav ? raw(favoriteIcon(true)) : ''
           }${item.progress.title ?? ''}</div>
           <div class="channel-now">${t('channel.resumeAt', {
@@ -1090,20 +1080,6 @@ export class ChannelList {
       <div class="channel-logo-wrap">
         ${logo}
       </div>
-    `;
-  }
-
-  private renderHealth(ch: Channel): Safe | string {
-    const status = ChannelHealthService.getRecord(ch)?.status;
-    if (!status) return '';
-    const labels: Record<ChannelHealthStatus, string> = {
-      healthy: t('channel.healthHealthy'),
-      suspect: t('channel.healthSuspect'),
-      unavailable: t('channel.healthUnavailable'),
-    };
-    return html`
-      <span class="channel-health-status channel-health-dot ${status}" title="${labels[status]}"
-            aria-label="${labels[status]}"></span>
     `;
   }
 

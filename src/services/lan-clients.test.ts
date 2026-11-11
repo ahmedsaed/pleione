@@ -66,12 +66,6 @@ vi.mock('../utils/fetch-helper', () => ({ fetchWithTimeout: fetchWithTimeoutMock
 vi.mock('../services/reminder-service', () => ({
   ReminderService: { backfillSourceIds: vi.fn() },
 }));
-const guardedSourceIds = vi.hoisted(() => new Set<string>());
-vi.mock('../services/parental-control', () => ({
-  ParentalControlService: {
-    guardsSourceRemoval: (id: string) => guardedSourceIds.has(id),
-  },
-}));
 
 import { setServicePort } from './service-http';
 import { SetupClient } from './setup-client';
@@ -642,35 +636,6 @@ describe('SetupClient.applyPendingActions', () => {
         enabled: false,
       },
     ]);
-  });
-
-  it('leaves a parental-locked source in place when the phone removes or turns it off', async () => {
-    const locked = { id: 'p1', name: 'Alpha', url: 'http://host/a.m3u', source: 'url' };
-    const other = { id: 'p2', name: 'Bravo', url: 'http://host/b.m3u', source: 'url' };
-    storageMock.playlists = [locked, other];
-    guardedSourceIds.add('p1');
-    fetchWithTimeoutMock
-      .mockResolvedValueOnce(jsonResponse([
-        { id: 30, type: 'remove-source', sourceId: 'p1' },
-        { id: 31, type: 'set-source-enabled', sourceId: 'p1', enabled: false },
-        { id: 32, type: 'set-source-enabled', sourceId: 'p2', enabled: false },
-      ]))
-      .mockResolvedValue(jsonResponse({ updated: true }));
-
-    try {
-      await expect(SetupClient.applyPendingActions()).resolves.toBe(true);
-    } finally {
-      guardedSourceIds.clear();
-    }
-
-    expect(storageMock.setPlaylists).toHaveBeenCalledWith([
-      locked,
-      { ...other, enabled: false },
-    ]);
-    const acknowledged = fetchWithTimeoutMock.mock.calls
-      .map(call => String(call[0]))
-      .filter(url => url.indexOf('/setup-actions/') >= 0);
-    expect(acknowledged.length).toBe(3);
   });
 
   it('updates and clears online subtitle credentials without returning secrets', async () => {

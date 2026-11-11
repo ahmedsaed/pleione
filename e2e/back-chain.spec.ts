@@ -112,23 +112,6 @@ test('Reminders: Back returns to Settings, then Home', async ({ page }) => {
   await expectHomeThenExit(page, 'settings');
 });
 
-test('Parental controls: Back returns to Settings, then Home', async ({ page }) => {
-  await boot(page);
-  await enterTab(page, 'settings');
-  await page.locator('#manage-parental-controls').click();
-  const prompt = page.locator('.parental-pin-prompt');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(prompt.locator('h2')).toContainText('Confirm');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(page.locator('#view-parental-controls')).toBeVisible();
-  // The keys go back to the remote before Back.
-  await page.keyboard.press('ArrowDown');
-  await back(page);
-  await expect(page.locator('#view-settings')).toBeVisible();
-  await back(page);
-  await expectHomeThenExit(page, 'settings');
-});
-
 test('Movies and Series: Back from a detail steps to browse, then Home', async ({ page }) => {
   await boot(page);
   for (const [section, tile] of [['movies', '10'], ['series', '20']] as const) {

@@ -27,7 +27,6 @@ export const Tier = {
   overlay: 10,  // dropdowns and player overlays
   bar: 20,      // the search box
   prompt: 30,   // modal prompts
-  critical: 40, // the parental PIN, which must outrank a prompt that a timer raises
 } as const;
 type RepairReason = 'two_rings' | 'outside_owner' | 'unresolved' | 'clipped' | 'detached';
 

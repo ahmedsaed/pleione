@@ -10,7 +10,6 @@ import { serviceBase, serviceUrl } from './service-http';
 import { StorageService } from './storage-service';
 import { uploadIdFromUrl } from './upload-client';
 import { ReminderService } from './reminder-service';
-import { ParentalControlService } from './parental-control';
 import type { OnlineSubtitleConfig } from './subtitle-search/types';
 
 const log = createLogger('Setup');
@@ -281,12 +280,6 @@ class SetupClientImpl {
         epgActionIds.push(action.id);
       } else if (action.type === 'remove-source' &&
           typeof action.sourceId === 'string') {
-        if (ParentalControlService.guardsSourceRemoval(action.sourceId)) {
-          log.warn('Ignoring removal of a parental-locked source', 'event=parental.phone.refused',
-            'op=remove-source', `action=${action.id}`, `source=${encodeURIComponent(action.sourceId)}`);
-          playlistActionIds.push(action.id);
-          continue;
-        }
         playlists = playlists.filter(item =>
           item.source === 'upload' || item.id !== action.sourceId);
         playlistActionIds.push(action.id);
@@ -294,11 +287,7 @@ class SetupClientImpl {
           typeof action.sourceId === 'string' &&
           typeof action.enabled === 'boolean') {
         const existing = playlists.findIndex(item => item.id === action.sourceId);
-        if (existing >= 0 && !action.enabled &&
-            ParentalControlService.guardsSourceRemoval(action.sourceId)) {
-          log.warn('Ignoring turning off a parental-locked source', 'event=parental.phone.refused',
-            'op=set-source-enabled', `action=${action.id}`, `source=${encodeURIComponent(action.sourceId)}`);
-        } else if (existing >= 0) {
+        if (existing >= 0) {
           const updated = { ...playlists[existing] };
           if (action.enabled) delete updated.enabled;
           else updated.enabled = false;

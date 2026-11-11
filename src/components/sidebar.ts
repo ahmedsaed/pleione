@@ -4,7 +4,6 @@ import type {
   CatchupInfo,
   Channel,
   ChannelGroupId,
-  ChannelHealthStatus,
   ChannelScope,
 } from '../types';
 import { PlaylistService } from '../services/playlist-service';
@@ -19,14 +18,12 @@ import { formatPosition } from '../utils/time';
 import { getLocale, t, type SupportedLocale } from '../i18n';
 import { groupIcon } from './group-icon';
 import { CHEVRON_LEFT_ICON } from './icons';
-import { channelLockBadge, liveGroupLockBadge } from './parental-badge';
 import { showToast } from './toast';
 import { VirtualList } from '../utils/virtual-list';
 import { VirtualScrollGuard } from '../utils/virtual-scroll';
 import { WorkerListSearch } from '../workers/list-search-client';
 import { isIndexRetryPending } from '../workers/index-retry';
 import { createLogger } from '../utils/logger';
-import { ChannelHealthService } from '../services/channel-health';
 import { Focus, type FocusScope, type Via } from '../navigation/focus-scope';
 import { InputMode } from '../navigation/input-mode';
 import { uiPx } from '../utils/ui-scale';
@@ -810,8 +807,7 @@ export class Sidebar {
                  data-hover-target
                  style="top:${this.groupVirtualizer.getItemOffset(i)}px">
               <span class="sidebar-group-icon">${raw(groupIcon(item.label, item.builtin))}</span>
-              <span class="sidebar-group-name" dir="${nameDir()}">${
-                raw(liveGroupLockBadge(item.id, ''))}${item.label}</span>
+              <span class="sidebar-group-name" dir="${nameDir()}">${item.label}</span>
               <span class="sidebar-group-count">${item.count}</span>
             </div>
           `;
@@ -858,12 +854,12 @@ export class Sidebar {
                 <span class="ch-num">${globalIdx + 1}</span>
                 ${this.renderLogo(ch)}
                 <div class="ch-info">
-                  <span class="ch-name" dir="${textDir}">${raw(channelLockBadge(ch))}<span class="ch-name-text">${title}</span></span>
+                  <span class="ch-name" dir="${textDir}"><span class="ch-name-text">${title}</span></span>
                   ${subtitle ? html`<span class="ch-now" dir="${textDir}"><span class="ch-now-text">${subtitle}</span></span>` : ''}
                 </div>
                 ${catchup
                   ? html`<span class="sidebar-recent-kind">${t('common.catchup')}</span>`
-                  : this.renderHealthDot(ch)}
+                  : ''}
               </div>
             `;
           })}
@@ -913,20 +909,6 @@ export class Sidebar {
       `;
     }
     return html`<div class="ch-logo-wrap" data-logo-src="${ch.logo}"></div>`;
-  }
-
-  private renderHealthDot(ch: Channel): Safe | string {
-    const status = ChannelHealthService.getRecord(ch)?.status;
-    if (!status) return '';
-    const labels: Record<ChannelHealthStatus, string> = {
-      healthy: t('channel.healthHealthy'),
-      suspect: t('channel.healthSuspect'),
-      unavailable: t('channel.healthUnavailable'),
-    };
-    return html`
-      <span class="channel-health-status channel-health-dot ${status}" title="${labels[status]}"
-            aria-label="${labels[status]}"></span>
-    `;
   }
 
   private preloadLogo(src: string): Promise<boolean> {

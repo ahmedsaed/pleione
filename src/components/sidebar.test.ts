@@ -4,7 +4,7 @@ import type { Channel } from '../types';
 import type { RecentlyWatchedItem } from '../services/recently-watched';
 import { CONFIG } from '../config';
 
-const { channels, epgMock, recentMock, toastMock, healthMock, workerMock } = vi.hoisted(() => {
+const { channels, epgMock, recentMock, toastMock, workerMock } = vi.hoisted(() => {
   function makeChannel(over: Partial<Channel>): Channel {
     return {
       id: '', name: '', logo: '', group: '', url: '', extras: null,
@@ -26,13 +26,6 @@ const { channels, epgMock, recentMock, toastMock, healthMock, workerMock } = vi.
       catchupInfo: vi.fn(),
     },
     toastMock: vi.fn(),
-    healthMock: {
-      records: {} as Record<string, 'healthy' | 'suspect' | 'unavailable'>,
-      getRecord: vi.fn((channel: Channel) => {
-        const status = healthMock.records[channel.id];
-        return status ? { status } : null;
-      }),
-    },
     workerMock: { failIndexes: false },
   };
 });
@@ -67,7 +60,6 @@ vi.mock('../services/epg-service', () => ({
 }));
 
 vi.mock('../services/recently-watched', () => ({ RecentlyWatchedService: recentMock }));
-vi.mock('../services/channel-health', () => ({ ChannelHealthService: healthMock }));
 vi.mock('./toast', () => ({ showToast: toastMock }));
 vi.mock('../workers/app-worker-client', async () => {
   const { ScopedSearchIndex } = await import('../workers/scoped-search-index');
@@ -119,7 +111,6 @@ beforeEach(() => {
   recentMock.catchupInfo.mockReset();
   epgMock.nowPlaying = null;
   toastMock.mockClear();
-  healthMock.records = {};
   workerMock.failIndexes = false;
   sidebar = new Sidebar(container, getCurrentIndex, onSelect, getCurrentCatchupStart);
   Focus.install();
@@ -176,17 +167,6 @@ describe('Sidebar', () => {
       expect(el.classList.contains('hidden')).toBe(false);
       expect(el.classList.contains('visible')).toBe(true);
       expect(el.classList.contains('channels-only')).toBe(true);
-    });
-
-    it('shows channel health as a dot without consuming label space', () => {
-      healthMock.records.b = 'suspect';
-
-      sidebar.show();
-
-      const dot = items()[1].querySelector('.channel-health-dot');
-      expect(dot?.classList).toContain('suspect');
-      expect(dot?.textContent).toBe('');
-      expect(dot?.getAttribute('aria-label')).toBe('Suspect');
     });
 
     it('OK on the search box gives it the caret at the end', () => {
@@ -911,7 +891,7 @@ describe('Sidebar', () => {
       expect(sidebar.visible).toBe(false);
     });
 
-    it('does not show live health on a recent Catch-up row', () => {
+    it('labels a recent Catch-up row as Catch-up', () => {
       recentMock.items = [{
         kind: 'catchup',
         channel: channels[0],
@@ -928,14 +908,12 @@ describe('Sidebar', () => {
           completed: false,
         },
       }];
-      healthMock.records.a = 'healthy';
       sidebar.refresh();
       sidebar.handleAction('left');
       groupItems()[2].dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
       const row = items()[0];
       expect(row.querySelector('.sidebar-recent-kind')).not.toBeNull();
-      expect(row.querySelector('.channel-health-dot')).toBeNull();
     });
 
     it('marks only the exact recent playback as playing', () => {

@@ -1,11 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-const { healthMock, playlistMock } = vi.hoisted(() => ({
-  healthMock: {
-    recordPlaybackFailure: vi.fn().mockResolvedValue(undefined),
-    recordPlaybackSuccess: vi.fn().mockResolvedValue(false),
-  },
+const { playlistMock } = vi.hoisted(() => ({
   playlistMock: {
     channels: [] as unknown[],
     getByIndex: vi.fn(),
@@ -16,7 +12,6 @@ const { healthMock, playlistMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('../services/playlist-service', () => ({ PlaylistService: playlistMock }));
-vi.mock('../services/channel-health', () => ({ ChannelHealthService: healthMock }));
 vi.mock('../services/epg-service', () => ({
   EpgService: { findChannelId: () => null, getNowPlaying: () => null, getUpcoming: () => [] },
 }));
@@ -30,7 +25,6 @@ vi.mock('../services/storage-service', () => ({
     setCatchupProgress: vi.fn(), getCatchupProgress: vi.fn(), clearCatchupProgress: vi.fn(),
     touchRecentlyWatchedLive: vi.fn(),
     getSubtitleOffset: vi.fn(() => 0), setSubtitleOffset: vi.fn(),
-    getChannelCycleMode: vi.fn(() => 'global'),
     getLiveReconnectAttempts: vi.fn(() => 3),
     getPlayerOsdTimeoutMs: vi.fn(() => 5000),
     getPlaylists: vi.fn(() => [{
@@ -66,7 +60,6 @@ import { probeMedia } from '../services/media-probe';
 import { CONFIG } from '../config';
 import { platform } from '../platform';
 import { channelKey, legacyChannelKey } from '../utils/channel';
-import { ParentalControlService } from '../services/parental-control';
 import { VodSubtitles } from '../services/vod-subtitles';
 import { HlsSubtitles } from '../services/hls-subtitles';
 import { DashSubtitles } from '../services/dash-subtitles';
@@ -226,7 +219,6 @@ let container: HTMLElement;
 let player: Player;
 let video: HTMLVideoElement;
 let allowAutoRevealOsd: boolean;
-let onHealthChanged: ReturnType<typeof vi.fn>;
 
 // The desktop path probes the stream's Content-Type before routing; stub it so
 // tests stay offline and deterministic (HLS → hls.js fallback sets video.src).
@@ -248,18 +240,13 @@ beforeEach(() => {
   playlistMock.indexOf.mockReturnValue(0);
   playlistMock.resolveChannelKey.mockReturnValue({ channel: CHANNEL, channelIndex: 0 });
   playlistMock.getByGroup.mockReturnValue([]);
-  healthMock.recordPlaybackFailure.mockClear();
-  healthMock.recordPlaybackSuccess.mockReset();
-  healthMock.recordPlaybackSuccess.mockResolvedValue(false);
   vi.mocked(probeMedia).mockResolvedValue(null);
   allowAutoRevealOsd = true;
-  onHealthChanged = vi.fn();
   player = new Player(
     container,
     vi.fn(),
     undefined,
     () => allowAutoRevealOsd,
-    onHealthChanged,
   );
   video = fakeVideo(120);
   player.init(video);
@@ -277,67 +264,6 @@ const bar = () => container.querySelector('.osd-progress-bar') as HTMLElement;
 // follows another key.
 const remoteKeys = () => { setInputMode('keys'); setInputMode('keys'); };
 const elapsed = () => container.querySelector('.osd-time-current')!.textContent;
-
-describe('Player authorization gates', () => {
-  it('defers live playback until the authorizer runs the action', () => {
-    let deferred: (() => void) | null = null;
-    const authorize = vi.fn((_channel, action: () => void) => {
-      deferred = action;
-      return false;
-    });
-    player = new Player(
-      container,
-      vi.fn(),
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      authorize,
-    );
-    player.init(video);
-
-    player.play(0);
-
-    expect(authorize).toHaveBeenCalledWith(CHANNEL, expect.any(Function), false);
-    expect(player.getCurrentChannel()).toBeNull();
-    expect(deferred).not.toBeNull();
-    (deferred as unknown as () => void)();
-    expect(player.getCurrentChannel()).toBe(CHANNEL);
-  });
-
-  it('asks again before resuming a live channel after the app was hidden', () => {
-    let allowed = true;
-    let deferred: (() => void) | null = null;
-    const onBack = vi.fn();
-    const authorize = vi.fn((_channel, action: () => void) => {
-      if (allowed) { action(); return true; }
-      deferred = action;
-      return false;
-    });
-    player = new Player(
-      container, onBack, undefined, undefined, undefined, undefined, undefined, authorize,
-    );
-    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
-    HTMLMediaElement.prototype.pause = vi.fn();
-    HTMLMediaElement.prototype.load = vi.fn();
-    const el = document.createElement('video');
-    Object.defineProperty(el, 'paused', { get: () => false, configurable: true });
-    container.appendChild(el);
-    player.init(el);
-    player.play(0);
-    player.suspend();
-    allowed = false;
-
-    player.resume();
-
-    expect(onBack).toHaveBeenCalledTimes(1);
-    expect(authorize).toHaveBeenCalledTimes(2);
-    expect(container.classList.contains('hidden')).toBe(true);
-    (deferred as unknown as () => void)();
-    expect(container.classList.contains('hidden')).toBe(false);
-  });
-});
 
 describe('Player pointer OSD reveal', () => {
   it('does not reveal a hidden OSD while a player overlay is open', () => {
@@ -811,11 +737,9 @@ describe('Player live playback', () => {
     player.play(0);
     await flush();
     playlistMock.getByIndex.mockClear();
-    healthMock.recordPlaybackFailure.mockClear();
 
     vi.advanceTimersByTime(CONFIG.PLAYER.STARTUP_TIMEOUT);
 
-    expect(healthMock.recordPlaybackFailure).not.toHaveBeenCalled();
     expect(playlistMock.getByIndex).not.toHaveBeenCalled();
   });
 
@@ -826,12 +750,10 @@ describe('Player live playback', () => {
     await flush();
     video.dispatchEvent(new Event('loadstart'));
     playlistMock.getByIndex.mockClear();
-    healthMock.recordPlaybackFailure.mockClear();
 
     vi.advanceTimersByTime(CONFIG.PLAYER.STARTUP_TIMEOUT * 2);
 
     expect(playlistMock.getByIndex).not.toHaveBeenCalled();
-    expect(healthMock.recordPlaybackFailure).not.toHaveBeenCalled();
   });
 
   it('detects a stalled initial load even while autoplay has not unpaused the video', async () => {
@@ -886,7 +808,6 @@ describe('Player live playback', () => {
 
     for (let i = 0; i < 20; i++) video.dispatchEvent(new Event('error'));
     await flush();
-    expect(healthMock.recordPlaybackFailure).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1999);
     expect(container.querySelector('video')).toBe(video);
     vi.advanceTimersByTime(1);
@@ -905,18 +826,13 @@ describe('Player live playback', () => {
     vi.advanceTimersByTime(2000);
     const third = container.querySelector('video')!;
     expect(third).not.toBe(second);
-    expect(healthMock.recordPlaybackFailure).not.toHaveBeenCalled();
+    expect(playlistMock.getByIndex).not.toHaveBeenCalled();
 
     third.dispatchEvent(new Event('error'));
     vi.advanceTimersByTime(2000);
 
     expect(playlistMock.getByIndex).toHaveBeenCalledTimes(1);
     expect(playlistMock.getByIndex).toHaveBeenCalledWith(1);
-    expect(healthMock.recordPlaybackFailure).toHaveBeenCalledOnce();
-    expect(healthMock.recordPlaybackFailure)
-      .toHaveBeenCalledWith(CHANNEL, 'playback_error');
-    await flush();
-    expect(onHealthChanged).toHaveBeenCalledOnce();
   });
 
   it('cancels a pending reconnect if the original live stream resumes', async () => {
@@ -927,7 +843,6 @@ describe('Player live playback', () => {
     video.dispatchEvent(new Event('playing'));
     vi.advanceTimersByTime(3000);
     expect(container.querySelector('video')).toBeNull();
-    expect(healthMock.recordPlaybackFailure).not.toHaveBeenCalled();
     expect(container.querySelector('#player-osd')?.textContent).not.toContain('Reconnecting');
   });
 
@@ -936,16 +851,19 @@ describe('Player live playback', () => {
     vi.mocked(StorageService.getLiveReconnectAttempts).mockReturnValueOnce(0);
     player.play(0);
     await flush();
+    playlistMock.getByIndex.mockClear();
     video.dispatchEvent(new Event('error'));
     vi.advanceTimersByTime(2000);
-    expect(healthMock.recordPlaybackFailure).toHaveBeenCalledWith(CHANNEL, 'playback_error');
+    expect(playlistMock.getByIndex).toHaveBeenCalledWith(1);
     expect(container.querySelector('video')).toBeNull();
 
     player.play(0);
     Object.defineProperty(video, 'error', { configurable: true, value: { code: 4, message: '' } });
-    healthMock.recordPlaybackFailure.mockClear();
+    playlistMock.getByIndex.mockClear();
     video.dispatchEvent(new Event('error'));
-    expect(healthMock.recordPlaybackFailure).toHaveBeenCalledOnce();
+    expect(container.querySelector('#player-osd')?.textContent).toContain('Playback error');
+    vi.advanceTimersByTime(2000);
+    expect(playlistMock.getByIndex).toHaveBeenCalledWith(1);
   });
 
   it('cancels a pending reconnect when the user changes channel or stops', async () => {
@@ -961,7 +879,7 @@ describe('Player live playback', () => {
     video.dispatchEvent(new Event('error'));
     player.stop();
     vi.advanceTimersByTime(3000);
-    expect(healthMock.recordPlaybackFailure).not.toHaveBeenCalled();
+    expect(playlistMock.getByIndex).not.toHaveBeenCalled();
   });
 
   it('starts the OSD hide timer when startup playback begins', async () => {
@@ -975,20 +893,6 @@ describe('Player live playback', () => {
     vi.advanceTimersByTime(CONFIG.PLAYER.DEFAULT_PLAYER_OSD_TIMEOUT_MS);
 
     expect((container.querySelector('#player-osd') as HTMLElement).style.display).toBe('none');
-  });
-
-  it('refreshes health UI only when passive success updates a tracked channel', async () => {
-    healthMock.recordPlaybackSuccess.mockResolvedValueOnce(false);
-    player.play(0);
-    video.dispatchEvent(new Event('playing'));
-    await flush();
-    expect(onHealthChanged).not.toHaveBeenCalled();
-
-    healthMock.recordPlaybackSuccess.mockResolvedValueOnce(true);
-    player.play(0);
-    video.dispatchEvent(new Event('playing'));
-    await flush();
-    expect(onHealthChanged).toHaveBeenCalledOnce();
   });
 });
 
@@ -1328,67 +1232,8 @@ describe('Player VOD mode', () => {
   });
   afterEach(() => { container.remove(); vi.restoreAllMocks(); });
 
-  it('defers VOD playback until the authorizer runs the action', () => {
-    let deferred: (() => void) | null = null;
-    const authorize = vi.fn((_item, action: () => void) => {
-      deferred = action;
-      return false;
-    });
-    player = new Player(
-      container,
-      () => {},
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      authorize,
-    );
-    player.init(fakeVideo(3600));
-
-    player.playVod(req());
-
-    expect(player.isVod()).toBe(false);
-    expect(deferred).not.toBeNull();
-    (deferred as unknown as () => void)();
-    expect(player.isVod()).toBe(true);
-  });
-
-  it('asks again before resuming a VOD after the app was hidden', () => {
-    let allowed = true;
-    let deferred: (() => void) | null = null;
-    const authorize = vi.fn((_item, action: () => void) => {
-      if (allowed) { action(); return true; }
-      deferred = action;
-      return false;
-    });
-    player = new Player(
-      container, () => {}, undefined, undefined, undefined, undefined, undefined, undefined, authorize,
-    );
-    const v = fakeVideo(3600);
-    player.init(v);
-    const r = req();
-    player.playVod(r);
-    v.currentTime = 42;
-    player.suspend();
-    allowed = false;
-
-    player.resume();
-
-    expect(r.onBack).toHaveBeenCalledTimes(1);
-    expect(player.isVod()).toBe(false);
-    expect(authorize).toHaveBeenLastCalledWith(
-      expect.objectContaining({ itemId: '10', resumeSecs: 42 }), expect.any(Function));
-    (deferred as unknown as () => void)();
-    expect(player.isVod()).toBe(true);
-  });
-
-  it('keeps an allowed VOD playing when the app returns', () => {
-    const authorize = vi.fn((_item, action: () => void) => { action(); return true; });
-    player = new Player(
-      container, () => {}, undefined, undefined, undefined, undefined, undefined, undefined, authorize,
-    );
+  it('keeps a VOD playing when the app returns', () => {
+    player = new Player(container, () => {});
     player.init(fakeVideo(3600));
     const r = req();
     player.playVod(r);
@@ -1689,74 +1534,6 @@ describe('Player VOD mode', () => {
 
     await vi.advanceTimersByTimeAsync(10_000);
     expect(probeMedia).toHaveBeenCalledWith(next.url, 'x1|media_probe|vod|11');
-  });
-
-  it('leaves the player while a locked next item waits for the PIN', () => {
-    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
-    HTMLMediaElement.prototype.pause = vi.fn();
-    HTMLMediaElement.prototype.load = vi.fn();
-    let locked = false;
-    let deferred: (() => void) | null = null;
-    const authorize = vi.fn((_item, action: () => void) => {
-      if (!locked) { action(); return true; }
-      deferred = action;
-      return false;
-    });
-    player = new Player(
-      container, () => {}, undefined, undefined, undefined, undefined, undefined, undefined, authorize,
-    );
-    const video = document.createElement('video');
-    Object.defineProperty(video, 'duration', { value: 1800, configurable: true });
-    container.appendChild(video);
-    player.init(video);
-    const next = {
-      url: 'http://host:8080/movie/u/p/11.mp4', title: 'Movie Two',
-      poster: '', accountId: 'x1', itemId: '11', kind: 'vod' as const, subtitles: [],
-    };
-    const r = req({ watchlistQueue: [next] });
-    player.playVod(r);
-    video.dispatchEvent(new Event('ended'));
-    vi.mocked(r.onBack).mockClear();
-    locked = true;
-
-    player.handleAction('select');
-
-    expect(r.onBack).toHaveBeenCalledTimes(1);
-    expect(player.isVod()).toBe(false);
-    (deferred as unknown as () => void)();
-    expect(player.isVod()).toBe(true);
-  });
-
-  it('continues to the next episode of an unlocked series without the PIN', () => {
-    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
-    HTMLMediaElement.prototype.pause = vi.fn();
-    HTMLMediaElement.prototype.load = vi.fn();
-    let locked = false;
-    const authorize = vi.fn((_item, action: () => void) => {
-      if (!locked) { action(); return true; }
-      return false;
-    });
-    player = new Player(
-      container, () => {}, undefined, undefined, undefined, undefined, undefined, undefined, authorize,
-    );
-    const video = document.createElement('video');
-    Object.defineProperty(video, 'duration', { value: 1800, configurable: true });
-    container.appendChild(video);
-    player.init(video);
-    const series = { kind: 'episode' as const, categoryId: 'c1', parentalItemId: 's1' };
-    const next = {
-      url: 'http://host:8080/series/u/p/e2.mp4', title: 'Series One — S1E2',
-      poster: '', accountId: 'x1', itemId: 'e2', subtitles: [], ...series,
-    };
-    player.playVod(req({ itemId: 'e1', episodeQueue: [next], ...series }));
-    video.dispatchEvent(new Event('ended'));
-    locked = true;
-    authorize.mockClear();
-
-    player.handleAction('select');
-
-    expect(authorize).not.toHaveBeenCalled();
-    expect(player.isVod()).toBe(true);
   });
 
   it('counts down and automatically starts the next episode', async () => {
@@ -2454,13 +2231,9 @@ describe('Player channel_up/channel_down view scope', () => {
     playlistMock.getByIndex.mockImplementation((i: number) => GLOBAL[i] ?? null);
     playlistMock.indexOf.mockImplementation((ch: unknown) => GLOBAL.indexOf(ch as never));
     playlistMock.getByGroup.mockImplementation(() => favorites);
-    // These tests exercise scoped stepping, which only applies when the
-    // user opted into it — settings.channelCycleMode: 'active'.
-    vi.mocked(StorageService.getChannelCycleMode).mockReturnValue('active');
   });
   afterEach(() => {
     playlistMock.channels = [];
-    vi.mocked(StorageService.getChannelCycleMode).mockReturnValue('global');
   });
 
   it('steps within the launch scope, skipping channels outside it', () => {
@@ -2469,25 +2242,6 @@ describe('Player channel_up/channel_down view scope', () => {
     expect(player.getCurrentChannel()).toBe(FAV_B); // not OTHER, which sits between them globally
     player.channelUp();
     expect(player.getCurrentChannel()).toBe(FAV_C);
-  });
-
-  it('passes over parental-locked channels in both directions', () => {
-    vi.mocked(StorageService.getChannelCycleMode).mockReturnValue('global');
-    const decision = vi.spyOn(ParentalControlService, 'decision').mockImplementation(request =>
-      request.target.kind === 'live-channel' && request.target.channelKey === channelKey(OTHER as never)
-        ? { allowed: false, concealed: false, reason: 'item' }
-        : { allowed: true });
-    const enabled = vi.spyOn(ParentalControlService, 'enabled', 'get').mockReturnValue(true);
-    try {
-      player.play(0); // FAV_A
-      player.channelUp();
-      expect(player.getCurrentChannel()).toBe(FAV_B);
-      player.channelDown();
-      expect(player.getCurrentChannel()).toBe(FAV_A);
-    } finally {
-      decision.mockRestore();
-      enabled.mockRestore();
-    }
   });
 
   it('wraps at the end of the scope instead of spilling into the full list', () => {
@@ -2561,24 +2315,17 @@ describe('Player channel_up/channel_down view scope', () => {
     player.channelUp(); // -> FAV_B, global index 2
     expect(player.getCurrentIndex()).toBe(2);
   });
-
-  it('ignores an active launch scope when settings.channelCycleMode is global (the default)', () => {
-    vi.mocked(StorageService.getChannelCycleMode).mockReturnValue('global');
-    player.play(0, undefined, { group: 'builtin:favorites' }); // FAV_A, scope tracked either way
-    player.channelUp();
-    expect(player.getCurrentChannel()).toBe(OTHER); // full-list neighbor, not FAV_B
-  });
 });
 
 describe('Player controls', () => {
   type QueueItem = {
     url: string; title: string; poster: string; accountId: string; itemId: string;
-    kind: 'episode'; subtitles: never[]; categoryId: string; parentalItemId: string;
+    kind: 'episode'; subtitles: never[]; categoryId: string;
   };
   const episode = (n: number): QueueItem => ({
     url: `http://host/series/e${n}.mp4`, title: `Series One — S1E${n}`, poster: '',
     accountId: 'x1', itemId: `e${n}`, kind: 'episode', subtitles: [],
-    categoryId: 'c1', parentalItemId: 's1',
+    categoryId: 'c1',
   });
   const movie = (over = {}) => ({
     url: 'http://host/movie/10.mp4', title: 'Movie One', poster: '', accountId: 'x1', itemId: '10',
@@ -2941,22 +2688,6 @@ describe('Player controls', () => {
       expect(controls()).toEqual(['previous', 'playpause', 'next:disabled']);
     });
 
-    it('asks for the PIN before switching to an episode another rule locks', () => {
-      const authorize = vi.fn(() => false);
-      player = new Player(
-        container, () => {}, undefined, undefined, undefined, undefined, undefined, undefined, authorize,
-      );
-      onBack = vi.fn();
-      video = realVideo();
-      player.init(video);
-      const next = { ...episode(2), parentalItemId: 's2' };
-      authorize.mockImplementationOnce(((_item: unknown, action: () => void) => { action(); return true; }) as never);
-      player.playVod({ ...episode(1), resumeSecs: 0, onBack, episodeQueue: [next] });
-      (player as unknown as { onDockControl(c: string): void }).onDockControl('next');
-      expect(authorize).toHaveBeenCalledTimes(2);
-      expect(onBack).toHaveBeenCalledOnce();
-    });
-
     it('carries the episodes before into the resume point and the up-next item', async () => {
       play(1);
       video.currentTime = 300;
@@ -2983,7 +2714,7 @@ describe('Player controls', () => {
       isFavorite = false;
       toggleFavorite = vi.fn(() => { isFavorite = !isFavorite; });
       player = new Player(
-        container, vi.fn(), undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        container, vi.fn(), undefined, undefined, undefined, undefined, undefined, undefined,
         { isFavorite: () => isFavorite, toggleFavorite },
       );
       player.init(video);

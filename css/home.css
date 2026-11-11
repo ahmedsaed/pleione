@@ -302,12 +302,10 @@ html[data-animation="essential"] .home-card {
 /* Light themes: dark header text over the pale backdrop; the cards keep their
    colors, and their ring, like the posters', takes the theme's focus color. */
 html[data-theme="daylight"],
-html[data-theme="pastel-latte"],
 html[data-theme="paper-light"] {
   --card-ring: var(--focus-ring);
 }
 html[data-theme="daylight"] .home-view,
-html[data-theme="pastel-latte"] .home-view,
 html[data-theme="paper-light"] .home-view {
   color: var(--text-primary);
 }
@@ -559,7 +557,6 @@ html[data-theme="paper-light"] .home-view {
 }
 
 html[data-theme="daylight"] .home-setup,
-html[data-theme="pastel-latte"] .home-setup,
 html[data-theme="paper-light"] .home-setup {
   background: rgba(255, 255, 255, 0.6);
   border-color: rgba(0, 0, 0, 0.08);

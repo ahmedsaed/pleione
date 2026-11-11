@@ -15,9 +15,6 @@ export const FALLBACK_TOTAL_CHARS = 1024 * 1024;
 // A record this large would push most others out, so it is refused.
 export const FALLBACK_RECORD_MAX_CHARS = FALLBACK_TOTAL_CHARS / 2;
 
-// Never evicted for room: losing it would lift the parental lock.
-const PINNED_STORE: UserDataStore = 'parental-control';
-
 // `evicted`: the write kept, but older records were dropped for room.
 export type FallbackWriteResult = 'ok' | 'evicted' | 'too_large' | 'full';
 
@@ -107,7 +104,7 @@ function loadStates(changed: UserDataStore, next: FallbackState): Record<UserDat
   return states;
 }
 
-// Drops the oldest unpinned records across every store until `limit`
+// Drops the oldest records across every store until `limit`
 // characters remain; returns the stores it changed.
 function evictOldest(
   states: Record<UserDataStore, FallbackState>,
@@ -120,7 +117,7 @@ function evictOldest(
   if (total <= limit) return [];
   const entries: FallbackEntry[] = [];
   for (const store of USER_DATA_STORES) {
-    if (store !== PINNED_STORE) entries.push(...recordEntries(store, states[store]));
+    entries.push(...recordEntries(store, states[store]));
   }
   entries.sort((a, b) => a.t - b.t);
   const touched: UserDataStore[] = [];

@@ -20,7 +20,7 @@ import { nameDir } from '../utils/direction';
 export class Movies extends CatalogView<VodCategory, VodItem> {
   protected get kicker(): string { return t('common.movies'); }
   protected readonly resumeKind: ResumeKind = 'vod';
-  protected readonly parentalKind = 'vod' as const;
+  protected readonly catalogKind = 'vod' as const;
   protected scopeName(): string { return 'movies'; }
   protected get emptyMessage(): string { return t('catalog.noMovies'); }
   protected get loadFailedMessage(): string { return t('catalog.loadMoviesFailed'); }
@@ -137,8 +137,7 @@ export class Movies extends CatalogView<VodCategory, VodItem> {
       <div class="catalog-tile" data-focusable data-key="w:${vod.streamId}"
            data-item-id="${vod.streamId}" data-category-id="${vod.categoryId}"
            data-watchlist-item="${vod.streamId}">
-        <div class="catalog-poster-wrap">${this.posterCell(vod.name, vod.poster)}${
-          this.itemLockBadge(vod.categoryId, vod.streamId)}</div>
+        <div class="catalog-poster-wrap">${this.posterCell(vod.name, vod.poster)}</div>
         <div class="catalog-tile-name" dir="${nameDir()}">${vod.name}</div>
       </div>
     `;

@@ -11,7 +11,6 @@ const {
   storageMock,
   recentMock,
   toastMock,
-  healthMock,
 } = vi.hoisted(() => {
   const mk = (o: Partial<Channel>): Channel => ({
     id: '', name: '', logo: '', group: '', url: '', extras: null,
@@ -66,13 +65,6 @@ const {
       catchupInfo: vi.fn(),
     },
     toastMock: { showToast: vi.fn() },
-    healthMock: {
-      records: {} as Record<string, 'healthy' | 'suspect' | 'unavailable'>,
-      getRecord: vi.fn((channel: Channel) => {
-        const status = healthMock.records[channel.url];
-        return status ? { status } : null;
-      }),
-    },
   };
 });
 
@@ -81,7 +73,6 @@ vi.mock('../services/epg-service', () => ({ EpgService: epgMock }));
 vi.mock('../services/storage-service', () => ({ StorageService: storageMock }));
 vi.mock('../services/recently-watched', () => ({ RecentlyWatchedService: recentMock }));
 vi.mock('./toast', () => ({ showToast: toastMock.showToast }));
-vi.mock('../services/channel-health', () => ({ ChannelHealthService: healthMock }));
 
 import { ChannelList } from './channel-list';
 import { Focus, Tier, type FocusScope } from '../navigation/focus-scope';
@@ -167,7 +158,6 @@ beforeEach(() => {
   recentMock.getItems.mockClear();
   recentMock.catchupInfo.mockReset();
   toastMock.showToast.mockClear();
-  healthMock.records = {};
   storageMock.toggleFavorite.mockClear();
   storageMock.setFavorites.mockClear();
   storageMock.setChannelCustomization.mockClear();
@@ -264,17 +254,6 @@ describe('ChannelList.render', () => {
     expect(container.querySelector('.channel-count')).toBeNull();
     expect(channelItems()).toHaveLength(3);
     expect(container.textContent).toContain('Alpha');
-  });
-
-  it('renders persisted channel health status', () => {
-    healthMock.records['http://host/a'] = 'suspect';
-    list.render();
-
-    const dot = channelItems()[0].querySelector('.channel-health-dot');
-    expect(dot?.textContent).toBe('');
-    expect(dot?.getAttribute('aria-label')).toBe('Suspect');
-    expect(dot?.classList)
-      .toContain('suspect');
   });
 
   it('renders normal channel and group content without editor inputs', () => {
@@ -836,24 +815,6 @@ describe('ChannelList interaction', () => {
       { group: 'builtin:recently-watched', playlist: undefined },
       'expand-current',
     );
-  });
-
-  it('places recent live health before the Live badge', () => {
-    recentMock.items = [{
-      kind: 'live',
-      channel: data.channels[1],
-      channelIndex: 1,
-      updatedAt: 1000,
-    }];
-    healthMock.records[data.channels[1].url] = 'suspect';
-    list.render();
-    hover(container.querySelector<HTMLElement>('[data-group="builtin:recently-watched"]')!);
-    list.handleAction('select');
-
-    const row = channelItems()[0];
-    const dot = row.querySelector('.channel-health-dot');
-    const badge = row.querySelector('.recent-kind-badge');
-    expect(dot?.nextElementSibling).toBe(badge);
   });
 
   it('selecting a recent Catch-up row resumes directly', async () => {

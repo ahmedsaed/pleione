@@ -10,7 +10,7 @@ vi.mock('./luna', () => ({
   }),
 }));
 vi.mock('./playlist-service', () => ({
-  PlaylistService: { channels: [], getUnconcealedChannels: () => [] },
+  PlaylistService: { channels: [], getCustomizedChannels: () => [] },
 }));
 vi.mock('./idb-cache', async importOriginal => ({
   ...await importOriginal<typeof import('./idb-cache')>(),

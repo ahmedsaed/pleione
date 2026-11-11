@@ -90,7 +90,7 @@ for (const size of SIZES) {
 
     await enterTab(page, 'settings');
     await expect(page.locator('#view-settings')).toBeVisible();
-    for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
+    for (const category of ['general', 'sources', 'guide', 'appearance', 'subtitles', 'advanced', 'data']) {
       await page.locator(`[data-settings-target="${category}"]`).click();
       await page.waitForTimeout(150);
       // Settings scrolls its categories; only its frame must fit.
@@ -265,7 +265,7 @@ test('at the largest sizes Settings keeps its content inside the panels', async 
     await pressKeys(page, 406);
     await expect(page.locator('#view-settings')).toBeVisible();
 
-    for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
+    for (const category of ['general', 'sources', 'guide', 'appearance', 'subtitles', 'advanced', 'data']) {
       await page.locator(`[data-settings-target="${category}"]`).evaluate(el => (el as HTMLElement).click());
       const scroll = page.locator('.settings-scroll');
       const sideways = await scroll.evaluate(el => el.scrollWidth - el.clientWidth);

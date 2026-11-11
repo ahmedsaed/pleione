@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Browser } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
@@ -7,7 +7,6 @@ import {
   assertGroupBenchmarkScale,
   assertColdLoadBenchmark,
   assertM3USearchBenchmark,
-  assertParentalBenchmark,
   assertPointerBenchmark,
   assertStartupHoverBenchmark,
   assertRetainedMemory,
@@ -30,7 +29,6 @@ import {
   rebuildBenchmarkDatabase,
   runGroupBenchmark,
   runM3USearchBenchmark,
-  runParentalBenchmark,
   measureXMLTVPipelineComparison,
   measureXMLTVCatalogBenchmark,
   runRawParserBenchmarks,
@@ -231,9 +229,6 @@ test('records 50,000-item application benchmarks', async ({
       heapUsed: async () => (await cdp.send('Runtime.getHeapUsage')).usedSize,
     });
     assertXMLTVCatalogBenchmark(parsers.xmltvCatalog);
-    const parental = await runDesktopParentalBenchmark(page);
-    assertParentalBenchmark(parental, SCALE);
-    suites.parental = parental;
     await page.evaluate(installM3USearchFixture);
     await page.reload();
     await expect(page.locator('#view-channels')).toBeVisible();
@@ -329,26 +324,6 @@ test('records 50,000-item application benchmarks', async ({
     });
   }
 });
-
-// The PIN is set through the UI, and parental controls are turned off again
-// afterwards so the later suites run without them. The TV uses runParental
-// in tv-runner.mjs, which restores the device's own record.
-async function runDesktopParentalBenchmark(page: Page) {
-  await page.locator('.tab-bar-item[data-section="settings"]').click();
-  await page.locator('#manage-parental-controls').click();
-  const prompt = page.locator('.parental-pin-prompt');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(prompt.locator('h2')).toContainText('Confirm');
-  await prompt.locator('.parental-pin-input').fill('1234');
-  await expect(page.locator('#view-parental-controls')).toBeVisible();
-  const report = await page.evaluate(runParentalBenchmark, { keySamples: KEY_SAMPLES });
-  await page.locator('[data-parental-tab="options"]').click();
-  const power = page.locator('#view-parental-controls .source-toggle');
-  await power.click();
-  await expect(power).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('[data-parental-back]').click();
-  return report;
-}
 
 async function runDesktopLargePlaylistBenchmark(
   browser: Browser,

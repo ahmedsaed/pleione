@@ -93,7 +93,7 @@ test('text and focus targets meet the TV minimums on every main screen', async (
 
   await enterTab(page, 'settings');
   await expect(page.locator('#view-settings')).toBeVisible();
-  for (const category of ['general', 'sources', 'guide', 'appearance', 'playback', 'subtitles', 'advanced', 'data']) {
+  for (const category of ['general', 'sources', 'guide', 'appearance', 'subtitles', 'advanced', 'data']) {
     await page.locator(`[data-settings-target="${category}"]`).click();
     await page.waitForTimeout(150);
     expect(await undersized(page), `Settings ${category}`).toEqual(none);

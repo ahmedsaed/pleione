@@ -16,7 +16,6 @@ import { CatchupResumePrompt } from './catchup-resume-prompt';
 import { activateProgram } from './guide-actions';
 import { bellIcon, NAV_HORIZONTAL_ICON, NOW_PLAYING_ICON, REPLAY_ICON } from './icons';
 import { backKey, okHint } from './key-hints';
-import { channelLockBadge } from './parental-badge';
 import { t } from '../i18n';
 import {
   GUIDE_SPAN_MS,
@@ -269,7 +268,7 @@ export class LiveGuide {
           <span class="channel-logo-wrap">${channel.logo
             ? html`<img class="channel-logo" src="${channel.logo}" alt="">`
             : html`<span class="channel-logo-placeholder">${channel.name.charAt(0)}</span>`}</span>
-          <span class="guide-name" dir="${nameDir()}">${raw(channelLockBadge(channel))}${channel.name}</span>
+          <span class="guide-name" dir="${nameDir()}">${channel.name}</span>
           ${index === this.options.watching()
             ? html`<span class="live-badge-icon live-badge-watching">${raw(NOW_PLAYING_ICON)}</span>` : ''}
         </div>

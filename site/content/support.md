@@ -12,8 +12,6 @@ Pleione is made by one developer at Merope, in the open. Here is the fastest way
 - **The guide is empty or off by an hour?** Add a guide in **Settings › Program Guide**, or use
   **EPG time correction** there.
 - **Movies and Series are missing?** They need an Xtream account; M3U playlists have Live only.
-- **Forgot the parental PIN?** It cannot be recovered: **Settings › Data Management › Reset App**
-  removes it, along with your sources and other data.
 
 ## Report a bug or ask for a feature
 

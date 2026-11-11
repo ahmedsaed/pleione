@@ -49,7 +49,6 @@ MAKE IT YOURS
 • 12 languages: English, Arabic, German, Spanish, French, Italian, Polish, Portuguese (Brazil), Russian, Turkish, Ukrainian and Simplified Chinese
 • Interface size from 90% to 130%, text size from 80% to 150%
 • Light and dark color themes
-• Parental controls with a PIN
 
 SET UP FROM YOUR PHONE
 Scan the QR code in Settings, enter the pairing code, and type your account details on your phone instead of the remote. It works on your home network, only while Pleione is open.

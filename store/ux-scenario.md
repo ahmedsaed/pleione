@@ -166,46 +166,20 @@ sources save on **Back**. **Back** closes an open list first, then goes Home.
 
 1. **General**: **Language** (System, or one of the app's 12 languages; in **العربية**
    (Arabic) the whole interface is laid out right to left, while the player's seek bar and
-   playback buttons keep their usual left-to-right order); **Set up with your phone
-   or computer** with the QR code, address and pairing code; **Parental controls** (section 7a).
+   playback buttons keep their usual left-to-right order) and **Time format** (12-hour or
+   24-hour); **Set up with your phone or computer** with the QR code, address and pairing code.
 2. **Sources**: **Xtream Accounts** (with **Check**), **Playlists**, **Uploaded Playlists**, and
-   **Channels** with **Edit Channel List**, **Show hidden channels**, **Reset Customization**
-   and **Check Channel Health**.
+   **Channels** with **Edit Channel List**, **Show hidden channels** and **Reset Customization**.
 3. **Program Guide**: manual XMLTV sources, **Program guide time zone**, **EPG time correction**,
    and **Manage Reminders** with the reminder set in section 3.
-4. **Appearance**: **Theme** (the app recolors at once), **Player overlay style**, **Interface
-   size** and **Text size**.
-5. **Playback**: **Channel Up/Down** (Global or Active).
-6. **Online Subtitles**: **Preferred subtitle language** and the user's own keys for SubDL, Assrt
+4. **Appearance**: **Theme** (the app recolors at once), **Interface size** and **Text size**.
+5. **Online Services**: **Preferred subtitle language** and the user's own keys for SubDL, Assrt
    and OpenSubtitles; **Cast photos** with an optional TMDB key. With no keys, nothing is
    contacted and **Search online…** does not appear in the player.
-7. **Advanced**: **Animation mode**, reconnect attempts, on-screen display timeouts and refresh
+6. **Advanced**: **Animation mode**, reconnect attempts, on-screen display timeouts and refresh
    intervals.
-8. **Data Management**: clear **Recently Watched**, **Continue Watching** and **Watchlist**,
+7. **Data Management**: clear **Recently Watched**, **Continue Watching** and **Watchlist**,
    **Clear Cache**, **Reset App**, and the app version.
-
-### 7a. Parental controls (checklist row 23)
-
-Parental controls lock live groups and channels, and movie and series categories and titles,
-behind a four-digit PIN. The test content is not adult content; the locks work on any group.
-
-1. **Settings › General › Parental controls**: select **Turn on**. Enter a PIN (for example
-   `1234`) with the number keys, then enter it again to confirm. The parental controls manager
-   opens.
-2. Under **What to lock**, select **Group 2** and press **OK**: it shows **Locked**. Movie and
-   series categories are listed and locked the same way.
-3. Open **Options**: set **Ask for PIN again** to **Every time**. **Locked content in lists**
-   offers **Show with a lock** (default) or **Hide**.
-4. Press **Back** to Settings and **Back** again to Home, then open **Live**. **Group 2** and its
-   channels show a lock. Press **OK** on one of its channels: "Enter PIN to open" appears and
-   nothing plays.
-5. Enter a wrong PIN: "Incorrect PIN. Try again." Repeated wrong PINs lock the prompt for a
-   while. Enter `1234`: the channel plays.
-6. With **Ask for PIN again** on a time limit, Home shows **Lock now** at the top while content
-   is unlocked; selecting it locks everything again at once.
-7. To turn parental controls off: **Settings › General › Parental controls › Manage**, enter the
-   PIN, then on **Options** turn off **Use parental controls**. A forgotten PIN can only be
-   cleared with **Reset App** (which also removes the sources).
 
 ## 8. Setup from a phone
 

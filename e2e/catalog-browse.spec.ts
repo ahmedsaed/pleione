@@ -179,7 +179,7 @@ for (const section of ['movies', 'series'] as const) {
       expect(long.plotBottom).toBeGreaterThan(short.plotBottom);
       expect(long.plotBottom).toBeLessThanOrEqual(long.heroBottom);
       await page.keyboard.press('ArrowLeft');
-      await expect(layer.locator('.catalog-hero-art')).toHaveAttribute('style', /b101\.png/);
+      await expect(layer.locator('.catalog-hero-art')).toHaveAttribute('data-art', /b101\.png/);
     }
 
     for (let n = 1; n <= 3; n++) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { html, raw, Safe } from './dom';
+import { cssUrl, html, raw, Safe } from './dom';
 
 describe('html escaping helper', () => {
   it('escapes HTML special characters in interpolated values', () => {
@@ -38,5 +38,15 @@ describe('html escaping helper', () => {
 
   it('returns a Safe instance', () => {
     expect(html`<p>x</p>`).toBeInstanceOf(Safe);
+  });
+});
+
+describe('cssUrl', () => {
+  it('percent-encodes every character that could leave a CSS url string', () => {
+    expect(cssUrl(`http://host/a b'"()\\\n.jpg`)).toBe('http://host/a%20b%27%22%28%29%5C%0A.jpg');
+  });
+
+  it('leaves an ordinary URL alone', () => {
+    expect(cssUrl('http://host/a/p1.jpg?x=1&y=2')).toBe('http://host/a/p1.jpg?x=1&y=2');
   });
 });

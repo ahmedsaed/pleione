@@ -124,6 +124,18 @@ export function raw(value: string): Safe {
   return new Safe(value);
 }
 
+/**
+ * An untrusted URL for a CSS `url('…')` string inside an `html` style
+ * attribute. The attribute's entities are decoded before CSS parses it, so
+ * percent-encode every character that could end the string or the url().
+ * encodeURIComponent leaves `'`, `(`, and `)` as they are.
+ */
+export function cssUrl(url: string): string {
+  return url.replace(/["'()\\\s]/g, c => (/['()]/.test(c)
+    ? `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+    : encodeURIComponent(c)));
+}
+
 function esc(value: unknown): string {
   if (value instanceof Safe) return value.value;
   if (Array.isArray(value)) return value.map(esc).join('');

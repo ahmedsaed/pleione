@@ -36,6 +36,7 @@ import {
   type CatalogSort, type CatalogSortDirection, type CatalogSortItem, type CatalogSortPreference,
 } from '../utils/catalog-sort';
 import { uiPx, uiTextPx } from '../utils/ui-scale';
+import { paintArt } from '../utils/art-layer';
 
 const log = createLogger('Catalog');
 
@@ -1381,17 +1382,8 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     const details = subject.item ? this.heroDetails(subject.item) : {};
     const year = details.year && details.year > 0 ? String(details.year) : '';
     const meta = [details.genre ?? '', year].filter(part => !!part);
-    // A backdrop that is only the poster again would crop like one.
-    const backdrop = details.backdrop ?? '';
-    const poster = details.poster || subject.poster;
-    const wide = !!backdrop && backdrop !== poster;
-    // An artwork URL sits inside a CSS url('…') string, where the html
-    // escaper's entity encoding is decoded before CSS parses it; percent-encode
-    // the characters that could break out of the string.
-    const bg = (wide ? backdrop : poster).replace(/["'()\\\s]/g, encodeURIComponent);
     return html`
-      ${bg ? html`<div class="catalog-hero-art${wide ? '' : ' catalog-hero-art-soft'}"
-                       style="background-image: url('${bg}')"></div>` : ''}
+      ${this.artMarkup('catalog-hero-art', details.backdrop ?? '', details.poster || subject.poster)}
       <div class="catalog-hero-scrim"></div>
       <div class="catalog-hero-body">
         <h1 class="catalog-hero-title" dir="${nameDir()}">${subject.name}</h1>
@@ -1405,6 +1397,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     const hero = this.layers.browse.querySelector<HTMLElement>('.catalog-hero');
     if (!hero) return;
     morph(hero, this.heroMarkup());
+    paintArt(hero);
     this.fitHeroText();
   }
 
@@ -1650,11 +1643,19 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
   // The detail's hero: backdrop (or the softened poster), title, meta line,
   // description, and actions in fixed boxes, the poster on the right, and
   // the rows below in a rail area that snaps a row at a time.
+  // A backdrop that is only the poster again would crop like one, so a
+  // poster alone becomes a soft wash. art-layer.ts loads either and fades it
+  // in after the morph.
+  private artMarkup(cls: string, backdrop: string, poster: string): Safe {
+    const sharp = !!backdrop && backdrop !== poster;
+    const url = sharp ? backdrop : poster;
+    if (!url) return html``;
+    return html`<div class="${cls}${sharp ? '' : ` ${cls}-soft`}" data-art="${url}"
+                     ${raw(sharp ? '' : 'data-art-soft')} data-morph-preserve></div>`;
+  }
+
   protected detailPage(page: DetailPage): Safe {
     this.detailText = page.plot ? { title: page.name, text: page.plot } : null;
-    const wide = !!page.backdrop && page.backdrop !== page.poster;
-    // Percent-encoded like the browse hero's, for the CSS url('…') string.
-    const bg = (wide ? page.backdrop : page.poster).replace(/["'()\\\s]/g, encodeURIComponent);
     const parts: Safe[] = [];
     [page.year, page.runtime, page.genre].forEach((part) => {
       if (part) parts.push(html`<span class="detail-meta-part">${part}</span>`);
@@ -1668,8 +1669,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     return html`
       <div class="catalog-view catalog-detail ${this.scopeName()}-detail" data-key="detail:${page.id}" data-nav-container>
         <div class="detail-backdrop">
-          ${bg ? html`<div class="detail-art${wide ? '' : ' detail-art-soft'}"
-                           style="background-image: url('${bg}')"></div>` : ''}
+          ${this.artMarkup('detail-art', page.backdrop, page.poster)}
           <div class="detail-scrim"></div>
         </div>
         <div class="detail-hero">
@@ -2065,6 +2065,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
           `}
       </div>
     `);
+    paintArt(browse);
     const rails = browse.querySelector<HTMLElement>('.catalog-rails');
     if (rails) this.fitRails(rails);
     this.fitHeroText();

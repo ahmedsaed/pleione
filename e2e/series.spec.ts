@@ -80,14 +80,17 @@ test('Continue Watching updates the hero from saved episodes by pointer and remo
   const second = view.locator('[data-resume-episode="e2"]');
   await first.hover();
   await expect(view.locator('.catalog-hero-title')).toHaveText('Episode 1');
-  await expect(hero).toHaveCSS('background-image', /\/hero\/1\.svg/);
+  await expect(hero).toHaveAttribute('data-art', /\/hero\/1\.svg/);
+  await expect(hero.locator('.art-layer-in')).toHaveAttribute('data-art-shown', /\/hero\/1\.svg/);
   await second.hover();
   await expect(view.locator('.catalog-hero-title')).toHaveText('Episode 2');
-  await expect(hero).toHaveCSS('background-image', /\/hero\/2\.svg/);
+  await expect(hero).toHaveAttribute('data-art', /\/hero\/2\.svg/);
+  await expect(hero.locator('.art-layer-in')).toHaveAttribute('data-art-shown', /\/hero\/2\.svg/);
   await page.keyboard.press('ArrowLeft');
   await expect(first).toHaveClass(/focused/);
   await expect(view.locator('.catalog-hero-title')).toHaveText('Episode 1');
-  await expect(hero).toHaveCSS('background-image', /\/hero\/1\.svg/);
+  await expect(hero).toHaveAttribute('data-art', /\/hero\/1\.svg/);
+  await expect(hero.locator('.art-layer-in')).toHaveAttribute('data-art-shown', /\/hero\/1\.svg/);
   expect(details).toEqual([]);
 });
 

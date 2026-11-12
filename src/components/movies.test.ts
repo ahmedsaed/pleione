@@ -45,6 +45,10 @@ import { FocusRing } from '../navigation/focus-ring';
 import { VirtualGrid } from '../utils/virtual-grid';
 import { CONFIG } from '../config';
 
+// The image the art loads: a backdrop, or the poster a soft wash paints.
+const artSrc = (el: HTMLElement | null | undefined): string => el?.getAttribute('data-art') ?? '';
+
+
 const account: PlaylistEntry = {
   id: 'x1', name: 'X', url: 'http://host:8080', source: 'xtream', xtream: { username: 'u', password: 'p' },
 };
@@ -495,14 +499,14 @@ describe('Movies browse + grid', () => {
     container.querySelector('.catalog-tile[data-item-id="11"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     expect(title()).toBe('Movie Two');
-    expect(art().style.backgroundImage).toContain('p2.jpg');
+    expect(artSrc(art())).toContain('p2.jpg');
     // Without a backdrop the poster is softened into a wash.
     expect(art().classList.contains('catalog-hero-art-soft')).toBe(true);
 
     container.querySelector('.catalog-tile[data-item-id="10"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     expect(title()).toBe('Movie One');
-    expect(art().style.backgroundImage).toContain('p1.jpg');
+    expect(artSrc(art())).toContain('p1.jpg');
   });
 
   describe('hero details', () => {
@@ -543,7 +547,7 @@ describe('Movies browse + grid', () => {
         expect(container.querySelector('.catalog-hero-meta')?.textContent).toBe('Genre 2  ·  2002');
         expect(container.querySelector('.catalog-hero-plot')?.textContent).toBe('Plot 2');
         const art = container.querySelector<HTMLElement>('.catalog-hero-art')!;
-        expect(art.style.backgroundImage).toContain('b2.jpg');
+        expect(artSrc(art)).toContain('b2.jpg');
         expect(art.classList.contains('catalog-hero-art-soft')).toBe(false);
         // Resting again on a title already shown asks nothing more.
         hover('13');

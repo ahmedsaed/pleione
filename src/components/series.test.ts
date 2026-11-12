@@ -39,6 +39,10 @@ import { Series } from './series';
 import { setLocale } from '../i18n';
 import { Focus } from '../navigation/focus-scope';
 
+// The image the art loads: a backdrop, or the poster a soft wash paints.
+const artSrc = (el: HTMLElement | null | undefined): string => el?.getAttribute('data-art') ?? '';
+
+
 const account: PlaylistEntry = {
   id: 'x1', name: 'X', url: 'http://host:8080', source: 'xtream', xtream: { username: 'u', password: 'p' },
 };
@@ -249,7 +253,7 @@ describe('Series browse + grid', () => {
     container.querySelector('.catalog-tile[data-item-id="s2"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     expect(title()).toBe('Series Two');
-    expect(art().style.backgroundImage).toContain('a2.jpg');
+    expect(artSrc(art())).toContain('a2.jpg');
     expect(art().classList.contains('catalog-hero-art-soft')).toBe(true);
     expect(container.querySelector('.catalog-hero-meta')?.textContent).toBe('');
     expect(container.querySelector('.catalog-hero-plot')).toBeNull();
@@ -257,7 +261,7 @@ describe('Series browse + grid', () => {
     container.querySelector('.catalog-tile[data-item-id="s1"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     expect(title()).toBe('Series One');
-    expect(art().style.backgroundImage).toContain('b1.jpg');
+    expect(artSrc(art())).toContain('b1.jpg');
     expect(art().classList.contains('catalog-hero-art-soft')).toBe(false);
     expect(container.querySelector('.catalog-hero-meta')?.textContent).toBe('Genre 1  ·  2001');
     expect(container.querySelector('.catalog-hero-plot')?.textContent).toBe('Plot 1');
@@ -275,9 +279,18 @@ describe('Series browse + grid', () => {
     expect(hero.querySelector('img, b')).toBeNull();
     expect(hero.querySelector('.catalog-hero-title')?.textContent).toBe('<img src=x onerror=alert(1)>');
     expect(hero.querySelector('.catalog-hero-plot')?.textContent).toBe('<b>bold</b>');
-    const bg = hero.querySelector<HTMLElement>('.catalog-hero-art')!.style.backgroundImage;
-    expect(bg).not.toContain("')");
-    expect(bg).not.toContain('evil\'');
+    // The URL stays an attribute value; art-layer.ts escapes it for CSS.
+    const art = hero.querySelector<HTMLElement>('.catalog-hero-art')!;
+    expect(art.hasAttribute('style')).toBe(false);
+    expect(art.getAttribute('data-art')).toBe(hostile.poster);
+  });
+
+  it('keeps an untrusted backdrop URL out of the hero markup', async () => {
+    const backdrop = "http://host/b.jpg') ; background: url('http://host/evil";
+    await openWith([{ id: '1', name: 'Cat A' }], [{ ...series('s1', 'Series One'), backdrop }]);
+    const art = container.querySelector<HTMLElement>('.catalog-hero-art')!;
+    expect(art.hasAttribute('style')).toBe(false);
+    expect(art.getAttribute('data-art')).toBe(backdrop);
   });
 
   it('shows a Continue rail from the episode resume list and resumes an episode directly', async () => {
@@ -309,13 +322,13 @@ describe('Series browse + grid', () => {
       container.querySelector<HTMLElement>(`[data-resume-episode="e${n}"]`)!
         .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
       expect(container.querySelector('.catalog-hero-title')?.textContent).toBe(`Episode ${n}`);
-      expect(hero.querySelector<HTMLElement>('.catalog-hero-art')!.style.backgroundImage).toContain(`episode${n}.jpg`);
+      expect(artSrc(hero.querySelector<HTMLElement>('.catalog-hero-art'))).toContain(`episode${n}.jpg`);
     }
     if (withCategory) {
       container.querySelector<HTMLElement>('[data-item-id="s1"]')!
         .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
       expect(container.querySelector('.catalog-hero-title')?.textContent).toBe('Series One');
-      expect(hero.querySelector<HTMLElement>('.catalog-hero-art')!.style.backgroundImage).toContain('catalog.jpg');
+      expect(artSrc(hero.querySelector<HTMLElement>('.catalog-hero-art'))).toContain('catalog.jpg');
     }
     expect(catalogMock.loadSeriesInfo).not.toHaveBeenCalled();
   });
@@ -491,7 +504,7 @@ describe('Series browse + grid', () => {
       '[data-resume-episode="e2"] .catalog-poster')?.getAttribute('src');
     const hover = () => container.querySelector<HTMLElement>('[data-resume-episode="e2"]')!
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
-    const art = () => container.querySelector<HTMLElement>('.catalog-hero-art')?.style.backgroundImage ?? '';
+    const art = () => artSrc(container.querySelector<HTMLElement>('.catalog-hero-art'));
 
     it('takes the poster and details of a series from a category past the rails', async () => {
       useResume([next({ poster: 'http://host/still.jpg' })]);

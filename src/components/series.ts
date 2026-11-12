@@ -1,5 +1,5 @@
 import type { Action, PlaylistEntry, SeriesCategory, SeriesItem, SeriesInfo, Episode, ResumeEntry, ResumeKind, VodQueueItem, WatchlistEntry } from '../types';
-import { html, Safe } from '../utils/dom';
+import { cssUrl, html, Safe } from '../utils/dom';
 import { inlineStart, scrollStart, nameDir } from '../utils/direction';
 import { morph } from '../utils/morph';
 import { StorageService } from '../services/storage-service';
@@ -17,6 +17,7 @@ import { formatPosition } from '../utils/time';
 import { loadTmdbCredits, matchTmdbPeople, type TmdbPerson } from '../services/tmdb';
 import { CONFIG } from '../config';
 import { composeEpisodeLabel, episodeCodeOf, episodeLabelOf, episodeTitle, seriesNameOf } from '../utils/episode-label';
+import { paintArt } from '../utils/art-layer';
 
 // An episode card's width plus the gap after it, as in catalog-view.css.
 const EPISODE_STRIDE = 428;
@@ -517,8 +518,7 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
     const mins = ep.durationSecs >= 60 ? t('catalog.minutes', { count: Math.floor(ep.durationSecs / 60) }) : '';
     const still = ep.poster && !art.covers.includes(ep.poster) && !this.failedStills.has(ep.poster)
       ? ep.poster : '';
-    // Percent-encoded like the hero's, for the CSS url('…') string.
-    const bg = art.url.replace(/["'()\\\s]/g, encodeURIComponent);
+    const bg = cssUrl(art.url);
     return html`
       <div class="episode-card" data-focusable data-key="ep:${ep.id}" data-episode-id="${ep.id}">
         <div class="episode-thumb${still ? '' : ' episode-thumb-fallback'}">
@@ -638,6 +638,7 @@ export class Series extends CatalogView<SeriesCategory, SeriesItem> {
         this.moreLikeThisRail(series.categoryId, series.seriesId, info?.genre || series.genre || ''),
       ],
     }));
+    paintArt(this.layer('detail'));
     const rendered = this.episodeTrack();
     if (rendered) {
       this.scrollGuard.syncOffset(rendered, 'horizontal', this.episodeVirtualizer.scrollOffset,

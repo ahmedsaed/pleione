@@ -62,16 +62,33 @@
 .catalog-hero-art {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-size: cover;
-  background-position: center 25%;
   will-change: transform;
 }
-/* A poster stands in for a missing backdrop: blurred into a wash of its
-   colors, and scaled so the blur's soft edges stay off screen. */
+/* A poster stands in for a missing backdrop as a soft wash of its colors:
+   a tiny canvas the GPU stretches over the art (src/utils/art-layer.ts).
+   A CSS blur here cost webOS 4 about 80 MB of compositor memory. */
 .catalog-hero-art-soft {
-  filter: blur(40px);
-  transform: scale(1.2);
   opacity: 0.7;
+}
+/* The backdrop or wash, faded in once it has loaded so a slow image never
+   pops in; ART_FADE_MS in art-layer.ts matches the duration. */
+.art-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center 25%;
+  object-fit: cover;
+  /* The wash is already cropped at 25%; cropping again would ride high. */
+  object-position: center;
+  opacity: 0;
+  transition: opacity 260ms ease-out;
+}
+.art-layer.art-layer-in {
+  opacity: 1;
 }
 .catalog-hero-scrim {
   position: absolute;
@@ -294,14 +311,9 @@ html[data-animation="reduced"] .catalog-tile { transition: transform var(--trans
 .detail-art {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-size: cover;
-  background-position: center 25%;
 }
-/* A poster stands in for a missing backdrop, softened into a wash of its
-   colors as on the browse hero. */
+/* A poster stands in for a missing backdrop as on the browse hero. */
 .detail-art-soft {
-  filter: blur(40px);
-  transform: scale(1.2);
   opacity: 0.7;
 }
 .detail-scrim {

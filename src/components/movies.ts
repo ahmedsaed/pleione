@@ -13,6 +13,7 @@ import { showToast } from './toast';
 import { t, tp } from '../i18n';
 import { CONFIG } from '../config';
 import { nameDir } from '../utils/direction';
+import { paintArt } from '../utils/art-layer';
 
 // The Movies section: browse (Continue rail + per-category rails + an "all
 // categories" drill-in) → per-category poster grid → a detail screen with
@@ -334,6 +335,7 @@ export class Movies extends CatalogView<VodCategory, VodItem> {
         this.moreLikeThisRail(vod.categoryId, vod.streamId, info?.genre ?? ''),
       ],
     }));
+    paintArt(this.layer('detail'));
     this.settleDetailLayout();
     this.settleDetailFocus();
   }

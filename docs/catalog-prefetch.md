@@ -15,9 +15,9 @@ IndexedDB is read-only. Nothing here is implemented yet.
   `CONFIG.XTREAM.CATALOG_LOAD_BUDGET_MS` (60 s) and saves a cursor, so the
   next run resumes where it stopped. Nothing starts this fetch until
   Search asks for it.
-- On webOS 4 with less than 1 GiB free, Chromium 53 refuses every
-  IndexedDB write, so all of these caches are memory-only there and a
-  cold start downloads and parses everything again.
+- On low-storage webOS 4 sets, IndexedDB write failures (a few MiB in, on
+  the set tested below) leave these caches memory-only, so a cold start
+  downloads and parses everything again.
 
 ## Part B: background prewarm
 
@@ -49,7 +49,7 @@ Does not depend on device checks.
 
 Waits for device checks.
 
-When IndexedDB is read-only, send cache records to the bundled service,
+When IndexedDB refuses a cache write, send cache records to the bundled service,
 which stores them as ordinary files under a size cap (about 64 MB,
 least recently used first out) and serves them back over the keyed
 loopback HTTP route at startup.
@@ -61,6 +61,50 @@ Checks to run on real TVs before building it:
 - How long an 8–20 MB catalog takes to read back and parse on webOS 4.
 - How much free storage the low-storage sets really have, to settle the
   size cap.
+
+### Device results: LG 55UK6300PVB, 2026-11-12
+
+webOS 4 (platform 05.50.70), Chrome 53, 864 MB RAM, developer-mode
+install. Each test used a synthetic Xtream VOD list of about 350 bytes
+per title.
+
+**Storage.** `/media/internal` and the developer app directory share one
+550 MB eMMC partition with **257 MB free**.
+
+**IndexedDB fills after about 3 MiB.** The temporary-storage quota
+reads 18.7 MB and usage reads 0 (the 1 GiB system reserve in
+[storage-and-data.md](storage-and-data.md#when-indexeddb-refuses-writes)).
+A fresh test database took a 100 KB write and then three 1 MiB writes
+before the fourth failed with `QuotaExceededError`. That doc reports
+that every write fails, even 10 bytes, so the failure point varies
+within a session. Either way, the app's `catalog-cache`,
+`playlist-cache`, `epg-cache` and `search-index-cache` were all empty on
+this TV, and user data had already moved to the `iptv_fb_*`
+localStorage fallback.
+
+**The service can write to `/media/internal`.** The developer-mode
+service (its own uid, not the SSH user) created
+`/media/internal/iptv-uploads`. The SSH shell sees that mount as
+read-only, so the test has to run in the service. A Content Store
+install is still unverified until the store build is live.
+
+**Read-back is cheap; parsing is the cost.**
+
+| Size | Titles | Flash write | Flash read (warm) | `JSON.parse`, Chrome 53 | `JSON.parse`, Node 0.12 |
+| --- | --- | --- | --- | --- | --- |
+| 8.3 MB | 25,000 | 247 ms | 107 ms | 481 ms | 532 ms |
+| 20.3 MB | 61,000 | 510 ms | 359 ms | 1,264 ms | 1,442 ms |
+
+What follows for the design:
+
+- The service stores and serves raw bytes and never parses them; the
+  page parses once.
+- Store one file per category, as `xtream-catalog` already keys it, so
+  a cold start parses only what Browse shows first. Read the whole
+  catalog back only when Search needs it.
+- Size cap: 64 MB would be a quarter of this set's free space. Use
+  `min(64 MB, free / 8)` measured when the service starts (about 32 MB
+  here), and stop writing while less than 100 MB is free.
 
 ## Open questions
 

@@ -6,7 +6,7 @@ test.use({ startOn: 'live' });
 type Section = 'movies' | 'series';
 
 // Eight categories of 25 titles: rails end in See all, and a pill for each
-// category leads the six preloaded rails.
+// category leads the preloaded rails.
 const categoryList = (count: number) => Array.from({ length: count }, (_, i) => ({
   category_id: String(i + 1), category_name: `Category ${i + 1}`,
 }));
@@ -370,7 +370,7 @@ test('an All categories chip holds a two-line name at text size 150', async ({ p
   await openAllCategories(page);
   const chips = page.locator('#view-movies .catalog-layer-categories .catalog-cat');
   // A counted chip (a preloaded rail) and a name-only one.
-  for (const id of ['1', '7']) {
+  for (const id of ['1', '11']) {
     const box = await chips.and(page.locator(`[data-category-id="${id}"]`)).evaluate((el) => {
       const name = el.querySelector<HTMLElement>('.catalog-cat-name')!;
       // A name long enough to wrap to two lines at this size.
@@ -381,8 +381,8 @@ test('an All categories chip holds a two-line name at text size 150', async ({ p
         textTop: Math.min(...text.map(r => r.top)), textBottom: Math.max(...text.map(r => r.bottom)),
         top: own.top, bottom: own.bottom };
     });
-    // Two lines for the name alone; one beside a count.
-    expect(box.lines).toBe(id === '1' ? 1 : 2);
+    // Two lines for the name, with a count or without.
+    expect(box.lines).toBe(2);
     expect(box.textTop).toBeGreaterThanOrEqual(box.top);
     expect(box.textBottom).toBeLessThanOrEqual(box.bottom);
   }
@@ -583,7 +583,7 @@ async function openAllCategories(page: Page): Promise<void> {
     await page.keyboard.press('ArrowUp');
   }
   for (let i = 0; i < 12 && !(await all.evaluate(el => el.classList.contains('focused'))); i++) {
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowLeft');
   }
   await expect(all).toHaveClass(/\bfocused\b/);
   await page.keyboard.press('Enter');
@@ -699,9 +699,9 @@ test('All categories lists every category in a grid, and Back walks out through 
   // The focused chip rings like a poster: no drop shadow.
   expect(await focused.evaluate(el => getComputedStyle(el).boxShadow))
     .toMatch(/0px 0px 0px 5px.*0px 0px 20px/);
-  // Counts show only where the titles are loaded (the six rails).
-  await expect(grid.locator('[data-category-id="6"] .catalog-cat-count')).toHaveText('25 movies');
-  await expect(grid.locator('[data-category-id="7"] .catalog-cat-count')).toHaveCount(0);
+  // Counts show only where the titles are loaded (the ten rails).
+  await expect(grid.locator('[data-category-id="10"] .catalog-cat-count')).toHaveText('25 movies');
+  await expect(grid.locator('[data-category-id="11"] .catalog-cat-count')).toHaveCount(0);
   const at = () => focused.evaluate(el => el.getBoundingClientRect().toJSON() as DOMRect);
   const first = await at();
   // Down moves one row.
@@ -747,6 +747,39 @@ test('the pointer opens a category from All categories', async ({ page }) => {
   await expect(page.locator('#view-movies .catalog-layer-grid .catalog-grid-title')).toHaveText('Category 9');
 });
 
+test('All categories keeps the end of a long name and its count inside the chip', async ({ page }) => {
+  const long = (year: number) => `Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India ${String(year)}`;
+  const categories = [
+    ...categoryList(11),
+    // Joined by underscores: the cut falls inside the word.
+    { category_id: '12', category_name: long(2023).replace(/ /g, '_') },
+    { category_id: '13', category_name: long(2024) },
+  ];
+  categories[0] = { category_id: '1', category_name: long(2022) };
+  await seedCatalog(page, [], categories);
+  await page.goto('/');
+  await enterTab(page, 'movies');
+  await browse(page, 'movies').locator('.catalog-pill[data-action="all-categories"]').click();
+  const grid = page.locator('#view-movies .catalog-layer-categories');
+  // A rail category shows its count under two lines of name.
+  const counted = grid.locator('.catalog-cat[data-category-id="1"]');
+  await expect(counted.locator('.catalog-cat-count')).toHaveText('25 movies');
+  for (const [id, year] of [['1', 2022], ['12', 2023], ['13', 2024]] as const) {
+    const name = grid.locator(`.catalog-cat[data-category-id="${id}"] .catalog-cat-name`);
+    await expect(name).toHaveText(new RegExp(`^Alpha[ _].*… ${String(year)}$`));
+    expect(await name.evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+  }
+  const fits = await counted.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return Array.from(el.children).every((child) => {
+      const r = child.getBoundingClientRect();
+      return r.top >= box.top && r.bottom <= box.bottom;
+    });
+  });
+  expect(fits).toBe(true);
+  await expect(grid.locator('.catalog-cat[data-category-id="2"] .catalog-cat-name')).toHaveText('Category 2');
+});
+
 test('in Arabic the category pills mirror and keep the 80px keyline', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('iptv_locale', JSON.stringify('ar')));
   await seedCatalog(page, [], categoryList(300));
@@ -754,7 +787,7 @@ test('in Arabic the category pills mirror and keep the 80px keyline', async ({ p
   await enterRails(page, 'movies');
   const layer = '#view-movies .catalog-layer-browse';
   await page.keyboard.press('ArrowUp');
-  const first = page.locator(`${layer} .catalog-pill[data-category-id="1"]`);
+  const first = page.locator(`${layer} .catalog-pill[data-action="all-categories"]`);
   await expect(first).toHaveClass(/\bfocused\b/);
   // The row starts on the right keyline.
   const box = (await first.boundingBox())!;
@@ -765,7 +798,11 @@ test('in Arabic the category pills mirror and keep the 80px keyline', async ({ p
   expect(Math.abs(pills.last - 80)).toBeLessThanOrEqual(2);
   if (!isChromium53()) expect(pills.atEnd).toBe(true);
 
-  // All categories mirrors too: the first chip on the right.
+  // All categories mirrors too: the first chip on the right. In RTL the
+  // row's start, where the pill sits, is back to the right.
+  for (let i = 0; i < 12 && !(await first.evaluate(el => el.classList.contains('focused'))); i++) {
+    await page.keyboard.press('ArrowRight');
+  }
   await page.keyboard.press('Enter');
   const grid = page.locator('#view-movies .catalog-layer-categories');
   const one = (await grid.locator('[data-category-id="1"]').boundingBox())!;

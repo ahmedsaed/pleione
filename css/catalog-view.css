@@ -252,14 +252,15 @@ html[data-animation="reduced"] .catalog-tile { transition: transform var(--trans
 .catalog-see-all-label { margin-top: 16px; font-size: 26px; }
 .catalog-see-all-count { margin-top: 4px; font-size: 20px; color: var(--text-secondary); }
 
-/* All categories: a grid of name chips, the title count under the name
-   once it is known. Grows with the text size (CATEGORY_GRID_* in
-   catalog-view.ts). */
+/* All categories: a grid of name chips, two lines of name and the title
+   count under it once it is known. A longer name is cut in the middle in
+   JS (fitCategoryNames), keeping its end. Grows with the text size
+   (CATEGORY_GRID_* in catalog-view.ts). */
 .catalog-category-cell { position: absolute; width: 268px; }
 .catalog-cat {
   position: relative;
   width: 268px;
-  height: calc(40px + 64px * var(--font-scale));
+  height: calc(40px + 92px * var(--font-scale));
   display: flex; flex-direction: column; justify-content: center;
   padding: 0 24px;
   box-sizing: border-box;
@@ -275,7 +276,6 @@ html[data-animation="reduced"] .catalog-tile { transition: transform var(--trans
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-.catalog-cat-counted .catalog-cat-name { -webkit-line-clamp: 1; }
 .catalog-cat-count {
   margin-top: 2px;
   font-size: 20px; line-height: 1.3; color: var(--text-secondary);

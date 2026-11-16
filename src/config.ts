@@ -139,7 +139,8 @@ export const CONFIG = {
     CATALOG_MAX_BYTES: 32 * 1024 * 1024, // full or per-category stream-list budget
     DETAIL_MAX_BYTES: 8 * 1024 * 1024,   // VOD/series detail and episode response budget
     BACKGROUND_REFRESH_CONCURRENCY: 2,   // stale catalog lists re-fetched at once; the rest queue
-    RAIL_CATEGORIES: 6,                  // categories preloaded as rails in the browse view
+    RAIL_CATEGORIES: 10,                 // categories preloaded as rails in the browse view
+    RAILS_BEFORE_SHOW: 4,                // rails browse waits for before it shows; the rest join in order as they load
     RAIL_ITEMS: 10,                      // titles a rail shows before its trailing See all tile
     ALL_CATEGORIES_AFTER: 4,             // more categories than this earn browse a row of category pills
     CATEGORY_PILLS: 10,                  // category pills browse shows before its All categories pill

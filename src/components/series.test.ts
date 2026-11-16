@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, onTestFinished } from 'vitest';
+import { CONFIG } from '../config';
 import type { PlaylistEntry, WatchlistEntry, WatchlistKind } from '../types';
 import type { CatalogSortPreference } from '../utils/catalog-sort';
 
@@ -80,6 +81,14 @@ async function openWith(cats = [{ id: '1', name: 'Cat A' }], items = [series('s1
   return { view, handlers };
 }
 
+
+// Fewer rails than pills, so a pill opens a category that has no rail.
+function railsBelowPills(): void {
+  const xtream = CONFIG.XTREAM as { RAIL_CATEGORIES: number };
+  const rails = xtream.RAIL_CATEGORIES;
+  xtream.RAIL_CATEGORIES = 6;
+  onTestFinished(() => { xtream.RAIL_CATEGORIES = rails; });
+}
 describe('Series browse + grid', () => {
   // An entry saved before resume points named their series.
   it('plays an episode saved without its series directly, returning to its neighbor once it completes', async () => {
@@ -361,6 +370,7 @@ describe('Series browse + grid', () => {
   });
 
   it('drills into a non-rail category grid and back to browse', async () => {
+    railsBelowPills();
     // 7 categories: the first RAIL_CATEGORIES (6) become poster rails; the 7th
     // is a non-rail category pill — the drill-in target.
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));

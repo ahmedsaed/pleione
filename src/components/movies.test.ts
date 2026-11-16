@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, onTestFinished } from 'vitest';
 import type { Action, PlaylistEntry, ResumeEntry, VodItem, WatchlistEntry, WatchlistKind } from '../types';
 import type { CatalogSortPreference } from '../utils/catalog-sort';
 
@@ -98,6 +98,20 @@ async function openWith(cats = [{ id: '1', name: 'Cat A' }], streams = [vod('10'
   return { view, handlers };
 }
 
+
+function openCategoryPill(view: Movies, id: string): void {
+  container.querySelector<HTMLElement>(`.catalog-pill[data-category-id="${id}"]`)!
+    .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+  view.handleAction('select');
+}
+
+// Fewer rails than pills, so a pill opens a category that has no rail.
+function railsBelowPills(): void {
+  const xtream = CONFIG.XTREAM as { RAIL_CATEGORIES: number };
+  const rails = xtream.RAIL_CATEGORIES;
+  xtream.RAIL_CATEGORIES = 6;
+  onTestFinished(() => { xtream.RAIL_CATEGORIES = rails; });
+}
 describe('Movies browse + grid', () => {
   describe('collections', () => {
     function savedTitles(count: number): void {
@@ -708,6 +722,45 @@ describe('Movies browse + grid', () => {
     expect(handlers.onBack).not.toHaveBeenCalled();
   });
 
+  it('shows browse once the first rails load and adds the rest in order', async () => {
+    const cats = Array.from({ length: 8 }, (_, i) => ({ id: String(i + 1), name: `Cat ${String(i + 1)}` }));
+    catalogMock.loadVodCategories.mockResolvedValue(cats);
+    const pending: Record<string, (items: unknown[]) => void> = {};
+    catalogMock.loadVodStreams.mockImplementation((_a: unknown, categoryId: string) =>
+      Number(categoryId) <= CONFIG.XTREAM.RAILS_BEFORE_SHOW
+        ? Promise.resolve([vod(`${categoryId}0`, `Movie ${categoryId}`, categoryId)])
+        : new Promise((resolve) => { pending[categoryId] = resolve; }));
+    const view = new Movies(container, { onBack: vi.fn(), onPlayVod: vi.fn() });
+    Focus.setBase(() => view.focusScope);
+    await view.open(account);
+    const rails = () => Array.from(container.querySelectorAll<HTMLElement>('.catalog-layer-browse [data-rail-key^="cat:"]'))
+      .map(el => el.dataset.railKey);
+    const settle = async () => { for (let i = 0; i < 4; i++) await Promise.resolve(); };
+    expect(rails()).toEqual(['cat:1', 'cat:2', 'cat:3', 'cat:4']);
+    container.querySelector<HTMLElement>('.catalog-tile[data-item-id="20"]')!
+      .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+    expect(focusedKey()).toContain('20');
+    const focused = focusedKey();
+
+    // A later rail waits for the one above it.
+    pending['6']([vod('60', 'Movie 6', '6')]);
+    await settle();
+    expect(rails()).toEqual(['cat:1', 'cat:2', 'cat:3', 'cat:4']);
+    pending['5']([vod('50', 'Movie 5', '5')]);
+    await settle();
+    expect(rails()).toEqual(['cat:1', 'cat:2', 'cat:3', 'cat:4', 'cat:5', 'cat:6']);
+    expect(focusedKey()).toBe(focused);
+
+    // A rail that loads under a category page joins browse without showing it.
+    openCategoryPill(view, '1');
+    pending['7']([vod('70', 'Movie 7', '7')]);
+    pending['8']([vod('80', 'Movie 8', '8')]);
+    await settle();
+    expect(container.querySelector('.catalog-layer-browse')!.classList).toContain('catalog-layer-hidden');
+    view.handleAction('back');
+    expect(rails()).toEqual(['cat:1', 'cat:2', 'cat:3', 'cat:4', 'cat:5', 'cat:6', 'cat:7', 'cat:8']);
+  });
+
   // One failing rail category must not blank every other rail.
   it('drops only the failed rail when one category load rejects', async () => {
     const cats = Array.from({ length: 6 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
@@ -742,6 +795,7 @@ describe('Movies browse + grid', () => {
   });
 
   it('retries a category grid whose load failed when it is opened again', async () => {
+    railsBelowPills();
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
     const { view } = await openWith(cats, [vod('10', 'Movie One')]);
     const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -786,6 +840,7 @@ describe('Movies browse + grid', () => {
   });
 
   it('drills into a non-rail category grid and back to browse', async () => {
+    railsBelowPills();
     // 7 categories: the first RAIL_CATEGORIES (6) become poster rails; the 7th
     // is a non-rail category pill — the drill-in target.
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
@@ -804,6 +859,7 @@ describe('Movies browse + grid', () => {
   });
 
   it('keeps browse resident under a grid and returns to the same tile', async () => {
+    railsBelowPills();
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
     const { view } = await openWith(cats, [vod('10', 'Movie One')]);
     const browse = container.querySelector('.catalog-browse');
@@ -1112,6 +1168,7 @@ describe('Movies browse + grid', () => {
   });
 
   it('stays in browse when Back cancels a category grid that is still loading', async () => {
+    railsBelowPills();
     const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
     const { view } = await openWith(cats, [vod('10', 'Movie One')]);
     const cat = container.querySelector('.catalog-pill[data-category-id="7"]') as HTMLElement;
@@ -1287,7 +1344,7 @@ describe('Movies browse + grid', () => {
       const limit = CONFIG.XTREAM.CATEGORY_PILLS;
       await manyCategories(limit + extra);
       const capped = Array.from({ length: limit }, (_, i) => String(i + 1));
-      expect(pills()).toEqual(extra ? [...capped, 'all-categories'] : capped);
+      expect(pills()).toEqual(extra ? ['all-categories', ...capped] : capped);
       // The pills sit right under the viewer's rails, with no title.
       expect(container.querySelector('[data-rail-key="categories"] .catalog-rail-title')).toBeNull();
     });
@@ -1299,20 +1356,20 @@ describe('Movies browse + grid', () => {
       expect(chips().querySelector('.catalog-grid-title')?.textContent).toMatch(/All categories\s*14 categories/);
       expect(chips().querySelector('.catalog-grid-count')?.textContent).toBe('14 categories');
       expect(chips().querySelectorAll('.catalog-cat').length).toBe(14);
-      // The six rails are loaded; the rest are not counted until opened.
-      expect(chip('6').querySelector('.catalog-cat-count')?.textContent).toBe('1 movie');
-      expect(chip('7').querySelector('.catalog-cat-count')).toBeNull();
-      expect(chip('7').textContent?.trim()).toBe('Cat 7');
+      // The ten rails are loaded; the rest are not counted until opened.
+      expect(chip('10').querySelector('.catalog-cat-count')?.textContent).toBe('1 movie');
+      expect(chip('11').querySelector('.catalog-cat-count')).toBeNull();
+      expect(chip('11').textContent?.trim()).toBe('Cat 11');
       expect(catalogMock.loadVodStreams).toHaveBeenCalledTimes(CONFIG.XTREAM.RAIL_CATEGORIES);
 
       // OK opens the category's poster grid; Back returns to its chip, and
       // the count it loaded now shows.
-      await selectAndSettle(view, chip('7'));
-      expect(container.querySelector('.catalog-layer-grid .catalog-grid-title')?.textContent).toBe('Cat 7');
+      await selectAndSettle(view, chip('11'));
+      expect(container.querySelector('.catalog-layer-grid .catalog-grid-title')?.textContent).toBe('Cat 11');
       view.handleAction('back');
       expect(chips().classList.contains('catalog-layer-hidden')).toBe(false);
-      expect(focusedKey()).toBe('c:7');
-      expect(chip('7').querySelector('.catalog-cat-count')?.textContent).toBe('1 movie');
+      expect(focusedKey()).toBe('c:11');
+      expect(chip('11').querySelector('.catalog-cat-count')?.textContent).toBe('1 movie');
       // Back again lands on the All categories pill.
       view.handleAction('back');
       expect(focusedKey()).toBe('all-categories');
@@ -1429,9 +1486,9 @@ describe('Movies browse + grid', () => {
       .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
     view.handleAction('select');
     expect(container.querySelectorAll('.catalog-category-cell').length).toBeLessThan(100);
-    // 8,334 rows of six 104px chips, each row with its 24px gap.
+    // 8,334 rows of six 132px chips, each row with its 24px gap.
     expect(container.querySelector<HTMLElement>('.catalog-layer-categories .catalog-grid-track')?.style.height)
-      .toBe(`${String(Math.ceil(50_000 / 6) * 128)}px`);
+      .toBe(`${String(Math.ceil(50_000 / 6) * 156)}px`);
     view.handleAction('back');
 
     const category = container.querySelector<HTMLElement>(
@@ -1465,7 +1522,7 @@ describe('Movies browse + grid', () => {
     // A scroll within a row keeps the same cells.
     for (const top of [10, 20, 30]) await scrollTo(top);
     expect(render).not.toHaveBeenCalled();
-    await scrollTo(128 * 50);
+    await scrollTo(156 * 50);
     expect(render).toHaveBeenCalledTimes(1);
     expect(container.querySelector('[data-category-index="300"]')).not.toBeNull();
   });

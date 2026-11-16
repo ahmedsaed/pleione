@@ -35,7 +35,8 @@ import {
   defaultSortDirection, isCatalogSort, sortCatalogItems,
   type CatalogSort, type CatalogSortDirection, type CatalogSortItem, type CatalogSortPreference,
 } from '../utils/catalog-sort';
-import { uiPx, uiTextPx } from '../utils/ui-scale';
+import { textScale, uiPx, uiScale, uiTextPx } from '../utils/ui-scale';
+import { cutMiddle } from '../utils/text';
 import { paintArt } from '../utils/art-layer';
 
 const log = createLogger('Catalog');
@@ -63,11 +64,11 @@ const CATALOG_GRID_OVERSCAN_ROWS = 2;
 const CATALOG_GRID_VIEWPORT_WIDTH = 1760;
 const CATALOG_GRID_VIEWPORT_HEIGHT = 900;
 // Match .catalog-cat in catalog-view.css: 268px wide with 24px gaps, and
-// 40px of padding plus two lines of text tall.
+// 40px of padding plus two lines of name and a count line tall.
 const CATEGORY_GRID_COLUMN_STRIDE = 292;
 const CATEGORY_GRID_CHIP_WIDTH = 268;
 const CATEGORY_GRID_ROW_FIXED = 40 + 24;
-const CATEGORY_GRID_ROW_TEXT = 64;
+const CATEGORY_GRID_ROW_TEXT = 92;
 // Match .detail-body, .detail-poster-wrap, and the line boxes in
 // catalog-view.css.
 const DETAIL_BODY_TOP = 96;
@@ -256,6 +257,8 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
   // The All categories window last rendered; its cells sit at fixed offsets,
   // so a scroll inside the window needs no render.
   private categoryGridWindow = '';
+  // Category names cut to fit their chip, by scale and name.
+  private readonly fittedCategoryNames = new Map<string, string>();
   private categoryFocusIndex = 0;
   // The poster grid was opened from All categories, so Back returns there.
   private gridFromCategories = false;
@@ -853,41 +856,59 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       this.categories = categories;
       const railCats = this.categories.slice(0, CONFIG.XTREAM.RAIL_CATEGORIES);
       // Settle each rail on its own: one failing category must not blank the rest.
-      const loaded = await Promise.all(
-        railCats.map((c) => this.loadItems(account, c.id, signal).then(
-          (items): I[] | null => items,
-          (err: unknown): null => {
-            if (!signal.aborted) {
-              log.error(
-                'Catalog rail load failed',
-                'event=xtream.view.load.failed',
-                'operation=rail',
-                `mode=${this.catalogKind}`,
-                err,
-              );
-            }
-            return null;
-          },
-        )),
-      );
-      if (signal.aborted || this.account?.id !== account.id) return;
-      const groups: { category: C; items: I[] }[] = [];
-      railCats.forEach((category, i) => {
-        const items = loaded[i];
-        if (!items) return;
-        this.setCategoryItems(category.id, items);
-        groups.push({ category, items: this.itemsByCategory[category.id].slice(0, CONFIG.XTREAM.RAIL_ITEMS) });
-      });
-      this.railGroups = groups;
-      if (groups.length < railCats.length) {
+      const settled: (I[] | null | undefined)[] = railCats.map(() => undefined);
+      const current = () => !signal.aborted && this.account?.id === account.id;
+      let shown = false;
+      let added = 0;
+      // Rails join in category order, so one that arrives early waits for
+      // those above it and nothing on screen moves.
+      const addSettled = (): boolean => {
+        const start = added;
+        while (added < railCats.length && settled[added] !== undefined) {
+          const category = railCats[added];
+          const items = settled[added];
+          added++;
+          if (!items) continue;
+          this.setCategoryItems(category.id, items);
+          this.railGroups.push({ category, items: this.itemsByCategory[category.id].slice(0, CONFIG.XTREAM.RAIL_ITEMS) });
+        }
+        return added > start;
+      };
+      const loads = railCats.map((c, i) => this.loadItems(account, c.id, signal).then(
+        (items): I[] | null => items,
+        (err: unknown): null => {
+          if (!signal.aborted) {
+            log.error(
+              'Catalog rail load failed',
+              'event=xtream.view.load.failed',
+              'operation=rail',
+              `mode=${this.catalogKind}`,
+              err,
+            );
+          }
+          return null;
+        },
+      ).then((items) => {
+        settled[i] = items;
+        if (!shown || !current() || !addSettled()) return;
+        if (this.mode === 'browse') this.renderBrowse(false);
+        else if (this.mode === 'categories') this.renderCategoryGrid(false);
+      }));
+      void Promise.all(loads).then(() => {
+        const kept = this.railGroups.length;
+        if (!current() || kept >= railCats.length) return;
         log.warn(
           'Catalog rails partially loaded',
           'event=xtream.view.rails.partial',
           `mode=${this.catalogKind}`,
-          `kept=${String(groups.length)}`,
+          `kept=${String(kept)}`,
           `total=${String(railCats.length)}`,
         );
-      }
+      });
+      await Promise.all(loads.slice(0, CONFIG.XTREAM.RAILS_BEFORE_SHOW));
+      if (!current()) return;
+      shown = true;
+      addSettled();
       this.renderBrowse();
       void this.loadResumeCategories(signal);
     } catch (err) {
@@ -2212,8 +2233,8 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
   }
 
   // A few categories that each have a rail need no shortcuts. Otherwise the
-  // first CATEGORY_PILLS categories get a pill each, rails included, and
-  // All categories leads to the rest.
+  // first CATEGORY_PILLS categories get a pill each, rails included, after
+  // an All categories pill that leads to the rest.
   private categoryPills(): Safe | '' {
     const categories = this.categories;
     if (categories.length <= CONFIG.XTREAM.ALL_CATEGORIES_AFTER
@@ -2222,14 +2243,14 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     return html`
       <div class="catalog-rail catalog-pill-rail" data-key="rail:categories" data-rail-key="categories">
         <div class="catalog-rail-track catalog-pill-track" data-edge-scroll>
-          ${categories.slice(0, limit).map(c => html`
-            <div class="pill-chip catalog-pill" data-focusable data-key="c:${c.id}" data-category-id="${c.id}"><span class="pill-chip-label" dir="${nameDir()}">${c.name}</span></div>
-          `)}
           ${categories.length > limit ? html`
             <div class="pill-chip catalog-pill" data-focusable data-key="all-categories"
                  data-action="all-categories">${raw(CATEGORIES_ICON)}<span class="pill-chip-label">${
               t('catalog.allCategories')}</span></div>
           ` : ''}
+          ${categories.slice(0, limit).map(c => html`
+            <div class="pill-chip catalog-pill" data-focusable data-key="c:${c.id}" data-category-id="${c.id}"><span class="pill-chip-label" dir="${nameDir()}">${c.name}</span></div>
+          `)}
         </div>
       </div>
     `;
@@ -2251,7 +2272,8 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
            style="${inlineStart()}:${left}px;top:${top}px">
         <div class="catalog-cat${items ? ' catalog-cat-counted' : ''}"
              data-focusable data-key="c:${category.id}" data-category-id="${category.id}">
-          <div class="catalog-cat-name" dir="${nameDir()}">${category.name}</div>
+          <div class="catalog-cat-name" dir="${nameDir()}" data-name="${category.name}">${
+            this.fittedCategoryNames.get(this.categoryNameKey(category.name)) ?? category.name}</div>
           ${items ? html`<div class="catalog-cat-count">${this.itemCount(items.length)}</div>` : ''}
         </div>
       </div>
@@ -2293,6 +2315,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
         <div class="catalog-grid-track" style="height:${grid.getTotalSize(count, viewportWidth)}px">${cells}</div>
       </div>
     `);
+    this.fitCategoryNames(layer);
     const view = layer.querySelector<HTMLElement>('.catalog-grid');
     const track = layer.querySelector<HTMLElement>('.catalog-grid-track');
     if (view && !followView) {
@@ -2307,6 +2330,34 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
         `[data-category-index="${this.categoryFocusIndex}"] [data-focusable]`,
       );
       this.place(focused ?? layer.querySelector<HTMLElement>('[data-focusable]'), this.placementVia());
+    }
+  }
+
+  private categoryNameKey(name: string): string {
+    return `${String(uiScale())}:${String(textScale())}:${name}`;
+  }
+
+  // Cuts each chip name that overflows its two lines from the middle, so
+  // names that share a start still show the end that tells them apart.
+  // Overflow is read for every new chip before any is cut, in one layout.
+  private fitCategoryNames(layer: HTMLElement): void {
+    const overflowing = Array.from(layer.querySelectorAll<HTMLElement>('.catalog-cat-name[data-name]'))
+      .filter((el) => {
+        const name = el.dataset.name ?? '';
+        const key = this.categoryNameKey(name);
+        if (this.fittedCategoryNames.has(key)) return false;
+        if (el.scrollHeight > el.clientHeight + 1) return true;
+        this.fittedCategoryNames.set(key, name);
+        return false;
+      });
+    for (const el of overflowing) {
+      const name = el.dataset.name ?? '';
+      const fitted = cutMiddle(name, (text) => {
+        el.textContent = text;
+        return el.scrollHeight <= el.clientHeight + 1;
+      });
+      el.textContent = fitted;
+      this.fittedCategoryNames.set(this.categoryNameKey(name), fitted);
     }
   }
 

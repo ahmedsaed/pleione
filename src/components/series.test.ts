@@ -388,6 +388,53 @@ describe('Series browse + grid', () => {
     expect(handlers.onBack).not.toHaveBeenCalled();
   });
 
+  it('shows the focused title\'s art behind a category grid once focus rests', async () => {
+    vi.useFakeTimers();
+    try {
+      railsBelowPills();
+      const cats = Array.from({ length: 7 }, (_, i) => ({ id: String(i + 1), name: `Cat ${i + 1}` }));
+      const { view } = await openWith(cats, [series('s1', 'Series One')]);
+      container.querySelector('.catalog-pill[data-category-id="7"]')!
+        .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+      catalogMock.loadSeries.mockResolvedValue([
+        { ...series('s2', 'Series Two', '7'), poster: 'http://host/a2.jpg' },
+        { ...series('s3', 'Series Three', '7'), poster: 'http://host/a3.jpg', backdrop: 'http://host/b3.jpg' },
+        { ...series('s4', 'Series Four', '7'), poster: 'http://host/a4.jpg' },
+      ]);
+      view.handleAction('select');
+      await vi.advanceTimersByTimeAsync(0);
+      const grid = container.querySelector<HTMLElement>('.catalog-layer-grid')!;
+      const art = () => grid.querySelector<HTMLElement>('.catalog-grid-backdrop .catalog-grid-art');
+      const rest = () => vi.advanceTimersByTimeAsync(CONFIG.XTREAM.GRID_ART_DELAY_MS);
+      const hover = (id: string) => grid.querySelector(`.catalog-tile[data-item-id="${id}"]`)!
+        .dispatchEvent(new CustomEvent('nav:hover', { bubbles: true }));
+      // The first title lands focused: its poster stands in as a wash.
+      await rest();
+      expect(artSrc(art())).toBe('http://host/a2.jpg');
+      expect(art()!.hasAttribute('data-art-soft')).toBe(true);
+      expect(art()!.hasAttribute('data-morph-preserve')).toBe(true);
+
+      // Passing over a title paints nothing; the art follows where focus rests.
+      hover('s3');
+      await vi.advanceTimersByTimeAsync(CONFIG.XTREAM.GRID_ART_DELAY_MS - 1);
+      hover('s4');
+      await vi.advanceTimersByTimeAsync(CONFIG.XTREAM.GRID_ART_DELAY_MS - 1);
+      expect(artSrc(art())).toBe('http://host/a2.jpg');
+      hover('s3');
+      await rest();
+      expect(artSrc(art())).toBe('http://host/b3.jpg');
+      expect(art()!.hasAttribute('data-art-soft')).toBe(false);
+      // The grid sits over the art, which the next category starts without.
+      expect(grid.querySelector('.catalog-grid-backdrop + .catalog-grid')).not.toBeNull();
+      hover('s4');
+      view.handleAction('back');
+      await rest();
+      expect(grid.querySelector('.catalog-grid-art')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('opens a series detail on select and backs out to browse', async () => {
     catalogMock.loadSeriesInfo.mockResolvedValue({ seasons: [], episodesBySeason: {} });
     const { view, handlers } = await openWith();

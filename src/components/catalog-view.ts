@@ -227,6 +227,9 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
   private sort: CatalogSortPreference = { by: 'default', direction: 'asc' };
   private resetBrowseRailOffsets = false;
   private hero: HeroSubject<I> | null = null;
+  // The title whose art the poster grid shows behind it.
+  private gridArt: HeroSubject<I> | null = null;
+  private gridArtTimer: ReturnType<typeof setTimeout> | null = null;
   private heroTimer: ReturnType<typeof setTimeout> | null = null;
   private heroController: AbortController | null = null;
   private lastWheelStepAt = 0;
@@ -285,6 +288,8 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       const el = document.createElement('div');
       el.className = `catalog-layer catalog-layer-${mode}`;
       if (mode !== 'browse') el.classList.add('catalog-layer-hidden');
+      // All categories shows no titles, so it sits on Home's backdrop.
+      if (mode === 'categories') el.setAttribute('data-backdrop', 'home');
       container.appendChild(el);
       return el;
     };
@@ -442,6 +447,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       this.leaveBrowse();
       this.cancelHeroDetails();
     }
+    if (mode !== 'grid') this.cancelGridArt();
     this.mode = mode;
     (Object.keys(this.layers) as Mode[]).forEach((key) => {
       this.layers[key].classList.toggle('catalog-layer-hidden', key !== mode);
@@ -456,7 +462,11 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
   }
 
   protected clearLayer(mode: Mode): void {
-    if (mode === 'grid') this.gridReturnKey = null;
+    if (mode === 'grid') {
+      this.gridReturnKey = null;
+      this.gridArt = null;
+      this.cancelGridArt();
+    }
     morph(this.layers[mode], html``);
   }
 
@@ -1263,6 +1273,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
     const gridCell = el?.closest<HTMLElement>('[data-grid-index]');
     if (this.mode === 'grid' && gridCell?.dataset.gridIndex !== undefined) {
       this.gridFocusIndex = parseInt(gridCell.dataset.gridIndex, 10);
+      if (el) this.showGridArt(el);
       return;
     }
     const categoryCell = el?.closest<HTMLElement>('[data-category-index]');
@@ -1412,6 +1423,42 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
         ${details.plot ? html`<p class="catalog-hero-plot">${details.plot}</p>` : ''}
       </div>
     `;
+  }
+
+  // The poster grid's backdrop follows its focused title as the browse
+  // hero's does, with the same art (art-layer.ts), under a scrim that keeps
+  // the posters readable. It shows only what the title already carries.
+  private gridArtMarkup(): Safe {
+    const subject = this.gridArt;
+    if (!subject) return html`<div class="catalog-grid-scrim"></div>`;
+    const details = subject.item ? this.heroDetails(subject.item) : {};
+    return html`
+      ${this.artMarkup('catalog-grid-art', details.backdrop ?? '', details.poster || subject.poster)}
+      <div class="catalog-grid-scrim"></div>
+    `;
+  }
+
+  // The art changes once focus rests: a held D-pad would otherwise load and
+  // crossfade a full-screen layer per title it passes.
+  private showGridArt(el: HTMLElement): void {
+    const subject = this.heroSubjectFor(el);
+    if (!subject) return;
+    this.cancelGridArt();
+    if (this.gridArt?.key === subject.key && this.gridArt.item === subject.item) return;
+    this.gridArtTimer = setTimeout(() => {
+      this.gridArtTimer = null;
+      if (this.mode !== 'grid') return;
+      this.gridArt = subject;
+      const host = this.layers.grid.querySelector<HTMLElement>('.catalog-grid-backdrop');
+      if (!host) return;
+      morph(host, this.gridArtMarkup());
+      paintArt(host);
+    }, CONFIG.XTREAM.GRID_ART_DELAY_MS);
+  }
+
+  private cancelGridArt(): void {
+    if (this.gridArtTimer !== null) clearTimeout(this.gridArtTimer);
+    this.gridArtTimer = null;
   }
 
   private renderHero(): void {
@@ -1582,8 +1629,12 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       this.gridVirtualizer.setScrollOffset(0);
       this.resetBrowseRailOffsets = true;
     }
-    if (this.mode === 'grid') this.renderGrid(false);
-    else this.renderBrowse(false);
+    if (this.mode === 'grid') {
+      this.renderGrid(false);
+      // The focus goes to the sort control; the art follows the new first title.
+      const first = applied && this.layers.grid.querySelector<HTMLElement>('[data-grid-index="0"] [data-focusable]');
+      if (first) this.showGridArt(first);
+    } else this.renderBrowse(false);
     this.place(this.layer().querySelector<HTMLElement>(direction
       ? `[data-sort-direction="${direction}"]` : '.catalog-sort .dropdown-trigger'), this.placementVia());
   }
@@ -2152,6 +2203,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       `);
     }
     morph(gridLayer, html`
+      <div class="catalog-grid-backdrop">${this.gridArtMarkup()}</div>
       <div class="catalog-view catalog-grid" data-nav-container>
         <div class="catalog-grid-head" style="padding-left:${inset}px;padding-right:${inset}px">
           <h1 class="catalog-grid-title">${kind ? html`
@@ -2170,6 +2222,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
           `}
       </div>
     `);
+    paintArt(gridLayer);
     const view = gridLayer.querySelector<HTMLElement>('.catalog-grid');
     const track = gridLayer.querySelector<HTMLElement>('.catalog-grid-track');
     const viewOffset = this.gridVirtualizer.scrollOffset === 0
@@ -2307,6 +2360,7 @@ export abstract class CatalogView<C extends { id: string; name: string }, I exte
       cells.push(this.categoryChip(categories[index], index, position.left + inset, position.top));
     }
     morph(layer, html`
+      <div class="home-glow home-glow-${this.scopeName()}"></div>
       <div class="catalog-view catalog-grid catalog-category-grid" data-nav-container>
         <div class="catalog-grid-head" style="padding-left:${inset}px;padding-right:${inset}px">
           <h1 class="catalog-grid-title">${t('catalog.allCategories')} <span class="catalog-grid-count">${

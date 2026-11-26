@@ -12,6 +12,17 @@ release's headline wherever it is shown. Then `### Added`, `### Changed` and
 `scripts/release-notes.test.mjs` fails when `package.json` carries a version
 with no section here, so a version bump and its notes land together.
 
+## [2.6.5] — 2026-11-26
+
+**A category's page now shows the selected title's artwork behind its posters.**
+
+### Changed
+
+- Opening a category in Movies or Series shows the selected title's
+  artwork, dimmed, behind the posters. It changes once you stop on a
+  title, so scrolling through a long category stays smooth on older TVs.
+- All categories now has the same colored background as the Home screen.
+
 ## [2.6.4] — 2026-11-17
 
 **Movies and Series show more categories at once, and long category names stay readable.**

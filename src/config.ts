@@ -153,7 +153,9 @@ export const CONFIG = {
     // The browse hero asks for a movie's details only once focus rests on it
     // this long, so scrolling the rails sends the provider no request burst.
     HERO_DETAILS_DELAY_MS: 1000,
-    HERO_DETAILS_CACHE_ITEMS: 200,       // movie details the browse hero keeps in memory
+    HERO_DETAILS_CACHE_ITEMS: 200,
+    // The category grid's art waits for focus to rest this long.
+    GRID_ART_DELAY_MS: 250,       // movie details the browse hero keeps in memory
   },
 
   // Catch-up (time-shift) resume and history store tuning.

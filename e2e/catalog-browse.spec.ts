@@ -491,6 +491,62 @@ for (const section of ['movies', 'series'] as const) {
   });
 }
 
+test('a category page fades the focused title\'s art in behind its posters', async ({ page }) => {
+  await seedCatalog(page, []);
+  // Real images, so the art loads: a poster and a backdrop in two colors.
+  await page.route('http://host/*.png', route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="${
+      route.request().url().indexOf('/b') >= 0 ? '#3060c0' : '#c06030'}"/></svg>`,
+  }));
+  await page.goto('/');
+  // By keys: a pointer resting over the grid would light the title under it.
+  await enterRails(page, 'series');
+  await page.mouse.move(0, 0);
+  const layer = browse(page, 'series');
+  await walkRailToEnd(page, '#view-series [data-rail-key="cat:1"] .catalog-rail-track');
+  await expect(layer.locator('[data-rail-key="cat:1"] .catalog-see-all')).toHaveClass(/\bfocused\b/);
+  await page.keyboard.press('Enter');
+  const grid = page.locator('#view-series .catalog-layer-grid');
+  const art = grid.locator('.catalog-grid-backdrop .catalog-grid-art');
+  await expect(grid.locator('.catalog-grid-title')).toHaveText('Category 1');
+  await expect(art).toHaveAttribute('data-art', /\/b100\.png/);
+  await expect(art.locator('.art-layer-in')).toHaveAttribute('data-art-shown', /\/b100\.png/);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(grid.locator('.catalog-tile.focused')).toHaveAttribute('data-item-id', '102');
+  await expect(art).toHaveAttribute('data-art', /\/b102\.png/);
+  await expect(art.locator('.art-layer-in')).toHaveAttribute('data-art-shown', /\/b102\.png/);
+  // The art stays put under the posters as the grid scrolls.
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+  const box = await art.boundingBox();
+  const view = await page.locator('#view-series').boundingBox();
+  expect(box!.y).toBeCloseTo(view!.y, 0);
+  const onTop = await grid.locator('.catalog-tile.focused').evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!hit && el.contains(hit);
+  });
+  expect(onTop).toBe(true);
+  await expect(art.locator('.art-layer-in')).toHaveAttribute('data-art-shown', /\/b123\.png/);
+  await expect(art.locator('.art-layer')).toHaveCount(1);
+  await page.screenshot({ path: test.info().outputPath('category-grid.png') });
+});
+
+test('All categories sits on Home\'s backdrop with the section\'s glow', async ({ page }) => {
+  await seedCatalog(page, [], categoryList(40));
+  await page.goto('/');
+  await enterRails(page, 'movies');
+  await openAllCategories(page);
+  const grid = page.locator('#view-movies .catalog-layer-categories');
+  await expect(grid.locator('.catalog-cat.focused')).toHaveAttribute('data-category-id', '1');
+  await expect(grid).toHaveAttribute('data-backdrop', 'home');
+  const glow = grid.locator('.home-glow-movies');
+  await expect(glow).toHaveCSS('opacity', '1');
+  expect(await grid.evaluate(el => getComputedStyle(el).backgroundImage)).not.toBe('none');
+  await page.screenshot({ path: test.info().outputPath('all-categories.png') });
+});
+
 test('Right at the end of a See all row moves to the next row, Left moves back', async ({ page }) => {
   await seedCatalog(page, []);
   await page.goto('/');

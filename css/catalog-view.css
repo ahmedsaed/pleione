@@ -212,6 +212,35 @@
 }
 .catalog-sort-direction-icon svg { width: 100%; height: 100%; }
 .catalog-grid-track { position: relative; width: 100%; }
+/* Above the art behind it. */
+.catalog-grid { position: relative; }
+
+/* The poster grid's backdrop: the focused title's art, as on the browse
+   hero, and its scrim, each a layer of its own and fixed while the grid
+   scrolls over them. */
+.catalog-grid-backdrop {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.catalog-grid-art {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  will-change: transform;
+  opacity: 0.6;
+}
+.catalog-grid-art-soft { opacity: 0.45; }
+.catalog-grid-scrim {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  will-change: transform;
+  background:
+    linear-gradient(180deg, rgb(var(--catalog-hero-scrim-rgb) / 0.9) 0%, rgb(var(--catalog-hero-scrim-rgb) / 0.55) 30%, rgb(var(--catalog-hero-scrim-rgb) / 0.65) 100%);
+}
+/* All categories sits on Home's backdrop with the section's glow
+   (css/home.css), shown as when Home's card for the section is focused. */
+.catalog-layer-categories .home-glow { opacity: 1; transition: none; }
 .catalog-grid-cell { position: absolute; width: 220px; height: 371px; }
 
 .catalog-tile { width: 220px; flex: 0 0 auto; cursor: pointer; }

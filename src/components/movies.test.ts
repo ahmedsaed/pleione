@@ -312,6 +312,24 @@ describe('Movies browse + grid', () => {
       expect(order()).toEqual(original.slice(0, CONFIG.XTREAM.RAIL_ITEMS).map(item => item.streamId));
     });
 
+    it('moves the grid art to the new first title after a sort', async () => {
+      vi.useFakeTimers();
+      try {
+        const items = ['10', '2', '1'].map(id => ({ ...vod(id, `Title ${id}`), poster: `http://host/p${id}.jpg` }));
+        await openSortable(items);
+        const art = () => grid().querySelector('.catalog-grid-art')?.getAttribute('data-art');
+        await vi.advanceTimersByTimeAsync(CONFIG.XTREAM.GRID_ART_DELAY_MS);
+        expect(art()).toBe('http://host/p10.jpg');
+        // The focus stays on the sort control, out of the grid.
+        choose('name');
+        await vi.advanceTimersByTimeAsync(CONFIG.XTREAM.GRID_ART_DELAY_MS);
+        expect(gridOrder()[0]).toBe('1');
+        expect(art()).toBe('http://host/p1.jpg');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('keeps direction selection separate from focus', async () => {
       const { view } = await openSortable();
       choose('name');
@@ -1353,6 +1371,9 @@ describe('Movies browse + grid', () => {
       const view = await manyCategories(14);
       await selectAndSettle(view, container.querySelector<HTMLElement>('[data-action="all-categories"]')!);
       expect(chips().classList.contains('catalog-layer-hidden')).toBe(false);
+      // No titles to show art for: Home's backdrop, with the Movies glow.
+      expect(chips().getAttribute('data-backdrop')).toBe('home');
+      expect(chips().querySelector('.home-glow.home-glow-movies')).not.toBeNull();
       expect(chips().querySelector('.catalog-grid-title')?.textContent).toMatch(/All categories\s*14 categories/);
       expect(chips().querySelector('.catalog-grid-count')?.textContent).toBe('14 categories');
       expect(chips().querySelectorAll('.catalog-cat').length).toBe(14);
